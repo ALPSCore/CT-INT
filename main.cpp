@@ -34,6 +34,8 @@ typedef alps::mcmpiadapter<HubbardInteractionExpansion> sim_type;
 typedef HubbardInteractionExpansion sim_type;
 #endif
 
+#undef BUILD_PYTHON_MODULE
+
 bool stop_callback(boost::posix_time::ptime const & end_time) {
 //stops the simulation if time > end_time or if signals received.
   static alps::ngs::signal signal;
@@ -42,16 +44,9 @@ bool stop_callback(boost::posix_time::ptime const & end_time) {
 void compute_greens_functions(const alps::results_type<HubbardInteractionExpansion>::type &results, const alps::parameters_type<HubbardInteractionExpansion>::type& parms, const std::string &output_file);
 int global_mpi_rank;
 
-#ifdef BUILD_PYTHON_MODULE
-//compile it as a python module (requires boost::python library)
-using namespace boost::python;
-
-void solve(boost::python::dict parms_){
-    alps::parameters_type<HubbardInteractionExpansion>::type parms(parms_);
-    std::string output_file = boost::lexical_cast<std::string>(parms["BASENAME"]|"results")+std::string(".out.h5");
-#else
 int main(int argc, char** argv)
 {
+    /*
   alps::mcoptions options(argc, argv);
   if (options.valid) {
     std::string output_file = options.output_file;
@@ -67,7 +62,6 @@ int main(int argc, char** argv)
       if(options.time_limit!=0)
         throw std::invalid_argument("time limit is passed in the parameter file!");
       if(!parms.defined("MAX_TIME")) throw std::runtime_error("parameter MAX_TIME is not defined. How long do you want to run the code for? (in seconds)");
-#endif
 
 #ifndef ALPS_HAVE_MPI
       global_mpi_rank=0;
@@ -95,9 +89,6 @@ int main(int argc, char** argv)
 #else
       }
 #endif
-#ifdef BUILD_PYTHON_MODULE
-      return;
-#else
     }
     catch(std::exception& exc){
         std::cerr<<exc.what()<<std::endl;
@@ -109,13 +100,5 @@ int main(int argc, char** argv)
     }
   }//options.valid
   return 0;
-#endif
+  */
 }
-
-#ifdef BUILD_PYTHON_MODULE
-    BOOST_PYTHON_MODULE(ctint)
-    {
-        def("solve",solve);//define python-callable run method
-    };
-#endif
-    
