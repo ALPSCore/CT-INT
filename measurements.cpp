@@ -63,8 +63,10 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
   FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr_g0);
   //find whether our data is in imaginary time or frequency:
   bool measure_in_matsubara=true;
-  if(parms["HISTOGRAM_MEASUREMENT"] | false) 
+  if(parms["HISTOGRAM_MEASUREMENT"] | false) {
     measure_in_matsubara=false;
+  }
+  std::cout << "debug: measure_in_matsubara " << measure_in_matsubara << std::endl;
   std::vector<double> mean_order=results["PertOrder"].mean<std::vector<double> >();
   
   std::cout<<"average matrix size was: "<<std::endl;
@@ -79,6 +81,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
   //single particle Green function measurements
   matsubara_green_function_t bare_green_matsubara(n_matsubara, n_site, n_flavors);
   std::vector<double> densities(n_flavors);
+  /*
   {
     alps::hdf5::archive ar(parms["INFILE"],"r");
     if(parms.defined("DMFT_FRAMEWORK") && static_cast<bool>(parms["DMFT_FRAMEWORK"])){
@@ -96,6 +99,21 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
       tmp.clear();
     }
   }
+  */
+
+  //Load G0 in Matsubara frequency
+  for(std::size_t j=0; j<n_flavors; j++) {
+    std::ifstream ifs(parms["G0_OMEGA"].cast<std::string>().c_str());
+    for (std::size_t i = 0; i < n_matsubara; i++) {
+      int itmp;
+      double re, im;
+      ifs >> itmp >> re >> im;
+      for (std::size_t site1 = 0; site1 < n_site; ++site1) {
+        bare_green_matsubara(i, site1, site1, j) = std::complex<double>(re, im);
+      }
+    }
+  }
+
   if(measure_in_matsubara) {
     evaluate_selfenergy_measurement_matsubara(results, green_matsubara_measured, 
                                               bare_green_matsubara, densities, 
@@ -121,8 +139,9 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
     fourier_ptr->append_tail(green_matsubara_measured, bare_green_matsubara, n_matsubara_measurements);
     fourier_ptr->backward_ft(green_itime_measured, green_matsubara_measured);
   }
-  else 
+  else {
     fourier_ptr->forward_ft(green_itime_measured, green_matsubara_measured);
+  }
   {
     alps::hdf5::archive ar(output_file, "a");
     green_matsubara_measured.write_hdf5(ar, "/G_omega");

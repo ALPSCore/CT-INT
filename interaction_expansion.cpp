@@ -32,6 +32,8 @@
 #include "xml.h"
 #include "alps/ngs/make_deprecated_parameters.hpp"
 
+#include <boost/lexical_cast.hpp>
+
 //global variables
 
 frequency_t c_or_cdagger::nm_;
@@ -87,28 +89,53 @@ pert_hist(max_order)
   update_time=0;
   thermalized=therm_steps==0?true:false;
   if(!parms.defined("ATOMIC")) {
-    alps::hdf5::archive ar(parms["INFILE"],"r");
-    if(parms.defined("DMFT_FRAMEWORK") && parms["DMFT_FRAMEWORK"].cast<bool>()){
+    //alps::hdf5::archive ar(parms["INFILE"],"r");
+    //if(parms.defined("DMFT_FRAMEWORK") && parms["DMFT_FRAMEWORK"].cast<bool>()){
+      //std::cerr << "DMFT framework disabled by H. Shinaoka" << std::endl;
       //read in as green_function
 //      std::cerr << "Reading G0 ...";
-      bare_green_matsubara.read_hdf5(ar,"/G0");
+      //bare_green_matsubara.read_hdf5(ar,"/G0");
 //      std::cerr << " done.\n";
-      
-    } else { //plain hdf5
-      std::vector<std::complex<double> > tmp(n_matsubara);
-//      std::cerr << "Reading G0 ...";
-      for(std::size_t j=0; j<n_flavors; j++){
-        std::stringstream path; path<<"/G0_"<<j;
-        ar>>alps::make_pvp(path.str(),tmp);
-        for(std::size_t i=0; i<n_matsubara; i++)
-          bare_green_matsubara(i,0,0,j)=tmp[i];
+
+    //} else { //plain hdf5
+      //std::vector<std::complex<double> > tmp(n_matsubara);
+      //for(std::size_t j=0; j<n_flavors; j++){
+        //std::stringstream path; path<<"/G0_"<<j;
+        //ar>>alps::make_pvp(path.str(),tmp);
+        //for(std::size_t i=0; i<n_matsubara; i++)
+          //bare_green_matsubara(i,0,0,j)=tmp[i];
+      //}
+      //tmp.clear();
+    //}
+
+    //Load G0 in Matsubara frequency
+    for(std::size_t j=0; j<n_flavors; j++) {
+      std::ifstream ifs(parms["G0_OMEGA"].cast<std::string>().c_str());
+      for (std::size_t i = 0; i < n_matsubara; i++) {
+        int itmp;
+        double re, im;
+        ifs >> itmp >> re >> im;
+        for (std::size_t site1 = 0; site1<n_site; ++site1) {
+           bare_green_matsubara(i, site1, site1, j) = std::complex<double>(re, im);
+        }
       }
-//      std::cerr << " done.\n";
-      tmp.clear();
     }
-    
-    FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr);
-    fourier_ptr->backward_ft(bare_green_itime, bare_green_matsubara);
+
+    //Load G0 in imaginary time
+    for(std::size_t j=0; j<n_flavors; j++) {
+      std::ifstream ifs(parms["G0_TAU"].cast<std::string>().c_str());
+      for (std::size_t i = 0; i < n_tau+1; i++) {
+        int itmp;
+        double re;
+        ifs >> itmp >> re;
+        for (std::size_t site1 = 0; site1<n_site; ++site1) {
+          bare_green_itime(i, site1, site1, j) = re;
+        }
+      }
+    }
+
+    //FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr);
+    //fourier_ptr->backward_ft(bare_green_itime, bare_green_matsubara);
   } else {
     for(spin_t flavor=0; flavor<n_flavors; ++flavor) 
       for(site_t site1=0; site1<n_site; ++site1) 
@@ -132,7 +159,7 @@ pert_hist(max_order)
   }
   c_or_cdagger::initialize_simulation(parms);
   
-  if(n_site !=1) throw std::invalid_argument("you're trying to run this code for more than one site. Do you know what you're doing?!?");
+  //if(n_site !=1) throw std::invalid_argument("you're trying to run this code for more than one site. Do you know what you're doing?!?");
 }
 
 

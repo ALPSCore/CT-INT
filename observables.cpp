@@ -120,7 +120,7 @@ void InteractionExpansion::initialize_observables(void)
 //     measurements << alps::ngs::SignedRealObservable(sz2_name.str().c_str());
 //     measurements << alps::ngs::SignedRealObservable(sz0_szj_name.str().c_str());
 // #else
-  throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
+   //throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
 // #endif //ALPS_NGS_USE_NEW_ALEA
   }
   //acceptance probabilities

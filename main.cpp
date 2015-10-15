@@ -46,7 +46,6 @@ int global_mpi_rank;
 
 int main(int argc, char** argv)
 {
-    /*
   alps::mcoptions options(argc, argv);
   if (options.valid) {
     std::string output_file = options.output_file;
@@ -100,5 +99,4 @@ int main(int argc, char** argv)
     }
   }//options.valid
   return 0;
-  */
 }
