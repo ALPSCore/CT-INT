@@ -57,6 +57,7 @@ set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
        interaction_expansion.cpp 
        measurements.cpp 
        model.cpp
+       util.cpp
        )
 add_executable(interaction main.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
 

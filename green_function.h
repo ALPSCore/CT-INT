@@ -34,6 +34,10 @@
 #include <iostream>
 #include <cstring>
 
+//#include <alps/ngs.hpp>
+#include <alps/mcbase.hpp>
+#include "util.h"
+
 
 #ifdef USE_MPI
 #include <mpi.h>
@@ -280,4 +284,62 @@ void print_tau_green_functions(std::string const &basename, const int iteration_
                                const shape_t shape=nondiagonal, const std::string suffix="");
 void print_dressed_tau_green_functions(std::string const &basename, const int iteration_ctr, const itime_green_function_t &G_tau, const double beta, 
                                        const shape_t shape=nondiagonal, const std::string suffix="");
+
+
+template<typename T>
+std::pair<green_function<std::complex<double> >, green_function<T> >
+read_bare_green_functions(const alps::params &parms) {
+  const unsigned int n_matsubara = parms["NMATSUBARA"]|parms["N_MATSUBARA"];
+  const unsigned int n_tau=parms["N"]|parms["N_TAU"];
+  const spin_t n_flavors(parms["FLAVORS"] | (parms["N_ORBITALS"]| 2));
+  const unsigned int n_site(parms["SITES"] | 1);
+
+  green_function<std::complex<double> > bare_green_matsubara(n_matsubara, n_site, n_flavors);
+  green_function<T> bare_green_itime(n_tau+1, n_site, n_flavors);
+
+  //Load G0 in Matsubara frequency
+  {
+    std::ifstream ifs(parms["G0_OMEGA"].cast<std::string>().c_str());
+    int itmp, itmp2, itmp3;
+    double re, imag;
+    for (std::size_t site1=0; site1<n_site; ++site1) {
+      for (std::size_t site2=0; site2<n_site; ++site2) {
+        for (std::size_t iomega = 0; iomega < n_matsubara; iomega++) {
+          ifs >> itmp >> itmp2 >> itmp3 >> re >> imag;
+          //std::cout << "Error " << itmp << " " << itmp2 << " " << itmp3 << " " << re << " " << imag << std::endl;
+          if (!(itmp==site1 && itmp2==site2 && itmp3==iomega)) {
+            throw std::runtime_error("Ilegal format of G0_OMEGA0");
+          }
+          for(std::size_t orb1=0; orb1 <n_flavors; orb1++) {
+            bare_green_matsubara(iomega, site1, site2, orb1) = std::complex<double>(re, imag);
+          }
+        }
+      }
+    }
+  }
+
+  //Load G0 in imaginary time
+  {
+    std::ifstream ifs(parms["G0_TAU"].cast<std::string>().c_str());
+    int itmp, itmp2, itmp3;
+    double re, im;
+    for (std::size_t site1=0; site1<n_site; ++site1) {
+      for (std::size_t site2=0; site2<n_site; ++site2) {
+        for (std::size_t itau = 0; itau < n_tau+1; itau++) {
+          ifs >> itmp >> itmp2 >> itmp3 >> re >> im;
+          if (!(itmp==site1 && itmp2==site2 && itmp3==itau)) {
+            throw std::runtime_error("Ilegal format of G0_TAU");
+          }
+          for (std::size_t orb1 = 0; orb1 < n_flavors; orb1++) {
+            bare_green_itime(itau, site1, site2, orb1) = mycast<T>(std::complex<double>(re,im));
+          }
+        }
+      }
+    }
+  }
+
+  return std::pair< green_function<std::complex<double> >, green_function<T> >(bare_green_matsubara, bare_green_itime);
+};
+
+
 #endif

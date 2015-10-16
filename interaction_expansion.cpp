@@ -33,6 +33,7 @@
 #include "alps/ngs/make_deprecated_parameters.hpp"
 
 #include <boost/lexical_cast.hpp>
+#include "boost/tuple/tuple.hpp"
 
 //global variables
 
@@ -88,67 +89,14 @@ pert_hist(max_order)
   measurement_time=0;
   update_time=0;
   thermalized=therm_steps==0?true:false;
-  if(!parms.defined("ATOMIC")) {
-    //alps::hdf5::archive ar(parms["INFILE"],"r");
-    //if(parms.defined("DMFT_FRAMEWORK") && parms["DMFT_FRAMEWORK"].cast<bool>()){
-      //std::cerr << "DMFT framework disabled by H. Shinaoka" << std::endl;
-      //read in as green_function
-//      std::cerr << "Reading G0 ...";
-      //bare_green_matsubara.read_hdf5(ar,"/G0");
-//      std::cerr << " done.\n";
 
-    //} else { //plain hdf5
-      //std::vector<std::complex<double> > tmp(n_matsubara);
-      //for(std::size_t j=0; j<n_flavors; j++){
-        //std::stringstream path; path<<"/G0_"<<j;
-        //ar>>alps::make_pvp(path.str(),tmp);
-        //for(std::size_t i=0; i<n_matsubara; i++)
-          //bare_green_matsubara(i,0,0,j)=tmp[i];
-      //}
-      //tmp.clear();
-    //}
 
-    //Load G0 in Matsubara frequency
-    for(std::size_t j=0; j<n_flavors; j++) {
-      std::ifstream ifs(parms["G0_OMEGA"].cast<std::string>().c_str());
-      for (std::size_t i = 0; i < n_matsubara; i++) {
-        int itmp;
-        double re, im;
-        ifs >> itmp >> re >> im;
-        for (std::size_t site1 = 0; site1<n_site; ++site1) {
-           bare_green_matsubara(i, site1, site1, j) = std::complex<double>(re, im);
-        }
-      }
-    }
+  //load bare Green's function
+  boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
 
-    //Load G0 in imaginary time
-    for(std::size_t j=0; j<n_flavors; j++) {
-      std::ifstream ifs(parms["G0_TAU"].cast<std::string>().c_str());
-      for (std::size_t i = 0; i < n_tau+1; i++) {
-        int itmp;
-        double re;
-        ifs >> itmp >> re;
-        for (std::size_t site1 = 0; site1<n_site; ++site1) {
-          bare_green_itime(i, site1, site1, j) = re;
-        }
-      }
-    }
+  //FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr);
+  //fourier_ptr->backward_ft(bare_green_itime, bare_green_matsubara);
 
-    //FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr);
-    //fourier_ptr->backward_ft(bare_green_itime, bare_green_matsubara);
-  } else {
-    for(spin_t flavor=0; flavor<n_flavors; ++flavor) 
-      for(site_t site1=0; site1<n_site; ++site1) 
-        for(site_t site2=0; site2<n_site; ++site2) 
-          for(itime_index_t t=0; t<=n_tau; ++t)
-            bare_green_itime(t, site1, site2, flavor)=-0.5;
-    for(spin_t flavor=0; flavor<n_flavors; ++flavor) 
-      for(site_t site1=0; site1<n_site; ++site1) 
-        for(site_t site2=0; site2<n_site; ++site2) 
-          for(unsigned int k=0; k<n_matsubara; ++k) 
-            bare_green_matsubara(k, site1, site2, flavor)=std::complex<double>(0, -beta/((2*k+1)*M_PI)); 
-    //fourier transform of -1/2
-  }
   //initialize the simulation variables
   initialize_simulation(parms);
   if(node==0) {print(std::cout);}
