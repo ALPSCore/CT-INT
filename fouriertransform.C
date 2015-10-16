@@ -216,8 +216,8 @@ void FourierTransformer::append_tail(matsubara_green_function_t& G_omega,
 void FourierTransformer::generate_transformer(const alps::Parameters &parms,
                                               boost::shared_ptr<FourierTransformer> &fourier_ptr)
 {
-  int n_flavors = parms.value_or_default("FLAVORS", 2); 
-  if (static_cast<int>(parms.value_or_default("SITES", 1))!=1) 
+  int n_flavors = parms.value_or_default("FLAVORS", 2);
+  if (static_cast<int>(parms.value_or_default("SITES", 1))!=1)
     throw std::logic_error("ERROR: FourierTransformer::generate_transformer : SITES!=1, for cluster fourier transforms please use the cluster version of this framework");
   double h = static_cast<double>(parms.value_or_default("H",0.));
   std::cout << "using general fourier transformer" << "\n";
@@ -232,6 +232,14 @@ void FourierTransformer::generate_transformer(const alps::Parameters &parms,
 }
 
 
+void FourierTransformer::generate_transformer_lowest_order(const alps::Parameters &parms,
+                                              boost::shared_ptr<FourierTransformer> &fourier_ptr)
+{
+  int n_flavors = parms.value_or_default("FLAVORS", 2);
+  int n_site = parms.value_or_default("SITES", 1);
+  std::cout << "using general fourier transformer (up to lowest order)" << "\n";
+  fourier_ptr.reset(new FourierTransformer((double)parms["BETA"], n_flavors, n_site));
+}
 
 
 void FourierTransformer::generate_transformer_U(const alps::Parameters &parms,
@@ -239,7 +247,7 @@ void FourierTransformer::generate_transformer_U(const alps::Parameters &parms,
                                                 const std::vector<double> &densities)
 {
   int n_flavors = parms.value_or_default("FLAVORS", 2); 
-  if (static_cast<int>(parms.value_or_default("SITES", 1))!=1) 
+  if (static_cast<int>(parms.value_or_default("SITES", 1))!=1)
     throw std::logic_error("ERROR: FourierTransformer::generate_transformer_U : SITES!=1, for cluster fourier transforms please use the cluster version of this framework");
   double U = parms["U"];
   std::cout << "using general fourier transformer" << "\n";

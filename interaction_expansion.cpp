@@ -75,10 +75,13 @@ green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order)
 {
   //initialize measurement method
-  if (parms["HISTOGRAM_MEASUREMENT"] | false)
+  if (parms["HISTOGRAM_MEASUREMENT"] | false) {
     measurement_method=selfenergy_measurement_itime_rs;
-  else
+    std::cout << "debug: measure_in_itime_rs " << std::endl;
+  } else {
     measurement_method=selfenergy_measurement_matsubara;
+    std::cout << "debug: measure_matsubara " << std::endl;
+  }
   for(unsigned int i=0;i<n_flavors;++i)
     g0.push_back(green_matrix(n_tau, 20));
   //other parameters

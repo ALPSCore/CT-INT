@@ -30,6 +30,8 @@
 #ifndef DMFT_QMC_WEAK_COUPLING_H
 #define DMFT_QMC_WEAK_COUPLING_H
 
+#include "boost/multi_array.hpp"
+
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
 
@@ -52,7 +54,6 @@ class c_or_cdagger;
 class vertex;
 typedef class histogram simple_hist;
 typedef std::vector<vertex> vertex_array;
-
 
 
 enum measurement_methods {
@@ -233,7 +234,12 @@ public:
   void update();
   void measure();
   double fraction_completed() const;
-    
+
+  //type of G(tau) This should be std::complex when G(tau) has imaginary parts. At some point, this will be templatized.
+  typedef double GTYPE;
+//typedef std::vector<std::vector<std::valarray<std::complex<double> > > > Wk_t;
+  typedef boost::multi_array<std::complex<double>, 3> Wk_t;
+
 protected:
   
   /*functions*/
@@ -265,7 +271,7 @@ protected:
   
   void compute_W_matsubara();
   void compute_W_itime();
-  void measure_Wk(std::vector<std::vector<std::valarray<std::complex<double> > > >& Wk, const unsigned int nfreq);
+  void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();
   
   /*abstract virtual functions. Implement these for specific models.*/

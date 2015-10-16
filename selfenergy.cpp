@@ -76,22 +76,23 @@ inline twocomplex fastcmult(const twocomplex &a, const twocomplex &b)
 
 void InteractionExpansion::compute_W_matsubara()
 {
-  static std::vector<std::vector<std::valarray<std::complex<double> > > >Wk(n_flavors); 
+/*  static std::vector<std::vector<std::valarray<std::complex<double> > > >Wk(n_flavors);
   for(unsigned int z=0;z<n_flavors;++z){
     Wk[z].resize(n_site);
     for(unsigned int j=0;j<n_site;++j){
       Wk[z][j].resize(n_matsubara);
       memset(&(Wk[z][j][0]), 0, sizeof(std::complex<double>)*(n_matsubara));
     }
-  }
+  }*/
+  static Wk_t Wk(boost::extents[n_flavors][n_site][n_matsubara]);
+  std::fill(Wk.origin(), Wk.origin()+Wk.num_elements(), 0);
   measure_Wk(Wk, n_matsubara_measurements);
   measure_densities();
 }
 
 
 
-void InteractionExpansion::measure_Wk(std::vector<std::vector<std::valarray<std::complex<double> > > >& Wk, 
-                                         const unsigned int nfreq) 
+void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 {
   for (unsigned int z=0; z<n_flavors; ++z) {
     assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
@@ -100,16 +101,18 @@ void InteractionExpansion::measure_Wk(std::vector<std::vector<std::valarray<std:
         M[z].creators()[p].compute_exp(n_matsubara, +1);
         for(unsigned int q=0;q<num_cols(M[z].matrix());++q){
           M[z].annihilators()[q].compute_exp(n_matsubara, -1);
-          std::complex<double>* Wk_z_k1_k2 = &Wk[z][k][0];
+          //std::complex<double>* Wk_z_k1_k2 = &Wk[z][k][0];
           const std::complex<double>* exparray_creators = M[z].creators()[p].exp_iomegat();
           const std::complex<double>* exparray_annihilators = M[z].annihilators()[q].exp_iomegat();
           std::complex<double> tmp = M[z].matrix()(p,q);
 #ifndef SSE
 #pragma ivdep
           for(unsigned int o=0; o<nfreq; ++o){      
-            *Wk_z_k1_k2++ += (*exparray_creators++)*(*exparray_annihilators++)*tmp;
+            //*Wk_z_k1_k2++ += (*exparray_creators++)*(*exparray_annihilators++)*tmp;
+            Wk[z][k][o] += (*exparray_creators++)*(*exparray_annihilators++)*tmp;
           }
 #else
+          throw std::runtime_error("This is not supported any longer.")
 #pragma ivdep
           for(int o=0;o<nfreq;o+=2) {
             twocomplex exp_c(*exparray_creators++,    *exparray_creators++); //load it all into xmm registers
@@ -203,10 +206,15 @@ void InteractionExpansion::measure_densities()
 
 void InteractionExpansion::compute_W_itime()
 {
-  static std::vector<std::vector<std::vector<std::valarray<double> > > >W_z_i_j(n_flavors); 
   //first index: flavor. Second index: momentum. Third index: self energy tau point.
-  std::vector<std::vector<double> >density(n_flavors);
-  for(unsigned int z=0;z<n_flavors;++z){
+  static boost::multi_array<GTYPE,4> W_z_i_j(boost::extents[n_flavors][n_site][n_site][n_self+1]);
+  std::fill(W_z_i_j.origin(), W_z_i_j.origin()+W_z_i_j.num_elements(), 0);
+  boost::multi_array<double,2> density(boost::extents[n_flavors][n_site]);
+  std::fill(density.origin(), density.origin()+density.num_elements(), 0);
+
+  //static std::vector<std::vector<std::vector<std::valarray<double> > > >W_z_i_j(n_flavors);
+  //std::vector<std::vector<double> >density(n_flavors);
+/*  for(unsigned int z=0;z<n_flavors;++z){
     W_z_i_j[z].resize(n_site);
     density[z].resize(n_site);
     for(unsigned int i=0;i<n_site;++i){
@@ -216,7 +224,8 @@ void InteractionExpansion::compute_W_itime()
         memset(&(W_z_i_j[z][i][j][0]), 0, sizeof(double)*(n_self+1));
       }
     }
-  }
+  }*/
+
   int ntaupoints=10; //# of tau points at which we measure.
   std::vector<double> tau_2(ntaupoints);
   for(int i=0; i<ntaupoints;++i) 
@@ -232,8 +241,9 @@ void InteractionExpansion::compute_W_itime()
             g0_tauj(i,j) = green0_spline(M[z].creators()[i].t()-tau_2[j], z, M[z].creators()[i].s(), s2);
         }
       }
-      if (num_rows(M[z].matrix())>0)
-          gemm(M[z].matrix(), g0_tauj, M_g0_tauj);
+      if (num_rows(M[z].matrix())>0) {
+        gemm(M[z].matrix(), g0_tauj, M_g0_tauj);
+      }
       for(int j=0;j<ntaupoints;++j) {
         for(unsigned int p=0;p<num_rows(M[z].matrix());++p){       //operator one
           double sgn=1;
@@ -257,18 +267,23 @@ void InteractionExpansion::compute_W_itime()
     }
   }
   if(is_thermalized()){
+    std::valarray<double> tmparray(n_self+1);
     for(unsigned int flavor=0;flavor<n_flavors;++flavor){
       for(unsigned int i=0;i<n_site;++i){
         for(unsigned int j=0;j<n_site;++j){
           std::stringstream W_name;
           W_name  <<"W_"  <<flavor<<"_"<<i<<"_"<<j;
-          measurements[W_name  .str().c_str()] << static_cast<std::valarray<double> > (W_z_i_j[flavor][i][j]*(sign/ntaupoints));
+          for (unsigned int iw=0; iw<n_self+1; ++iw) {
+            tmparray[iw] = W_z_i_j[flavor][i][j][iw]*(sign/ntaupoints);
+          }
+          measurements[W_name  .str().c_str()] << tmparray;
+          //measurements[W_name  .str().c_str()] << static_cast<std::valarray<double> > (W_z_i_j[flavor][i][j]*(sign/ntaupoints));
         }
         std::stringstream density_name;
         density_name<<"density_"<<flavor;
         if (n_site>1) density_name<<"_"<<i;
         measurements[density_name.str().c_str()]<<(density[flavor][i]*sign);
-        if(n_flavors==2 && flavor==0){ //then we know how to compute Sz^2
+        if(false && n_flavors==2 && flavor==0){ //then we know how to compute Sz^2
           std::stringstream sz_name, sz2_name, sz0_szj_name;
           sz_name<<"Sz_"<<i; sz2_name<<"Sz2_"<<i; sz0_szj_name<<"Sz0_Sz"<<i;
           measurements[sz_name.str().c_str()]<<((density[0][i]-density[1][i])*sign);
@@ -388,7 +403,7 @@ void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardIn
       }
     }
   }
-  if(n_flavors==2){  
+/*  if(n_flavors==2){
     double Sz_obs = results["Sz_0"].mean<double>();
     double Sz_err = results["Sz_0"].error<double>();
     for(int i=1;i<n_site;i++) {
@@ -404,7 +419,7 @@ void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardIn
     Sz_err /= std::sqrt(double(n_site));
     std::ofstream szstream("staggered_sz", std::ios::app);
     szstream << Sz_obs << "\t" << Sz_err << std::endl;
-  }
+  }*/
   clock_t time1=clock();
   std::cout<<"evaluate of SE measurement took: "<<(time1-time0)/(double)CLOCKS_PER_SEC<<std::endl;
 }

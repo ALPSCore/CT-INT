@@ -61,6 +61,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   boost::shared_ptr<FourierTransformer> fourier_ptr_g0;
   //FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr_g0);
+  FourierTransformer::generate_transformer_lowest_order(alps::make_deprecated_parameters(parms), fourier_ptr_g0);
   //find whether our data is in imaginary time or frequency:
   bool measure_in_matsubara=true;
   if(parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -80,7 +81,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
   std::cout<<"average sign was: "<<results["Sign"].mean<double>()<<" error: "<<results["Sign"].error<double>()<<std::endl;
   //single particle Green function measurements
   matsubara_green_function_t bare_green_matsubara(n_matsubara, n_site, n_flavors);
-  itime_green_function_t bare_green_itime(n_tau, n_site, n_flavors);//this is not used. just dummy
+  itime_green_function_t bare_green_itime(n_tau+1, n_site, n_flavors);//this is not used. just dummy
   std::vector<double> densities(n_flavors);
 
   //Load G0 in Matsubara frequency
@@ -92,15 +93,13 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
                                               bare_green_matsubara, densities, 
                                               beta, n_site, n_flavors, n_matsubara_measurements);
   }
-    /*
   else {
-    itime_green_function_t bare_green_itime(n_tau+1, n_site, n_flavors);
     fourier_ptr_g0->backward_ft(bare_green_itime, bare_green_matsubara);
     evaluate_selfenergy_measurement_itime_rs(results, green_itime_measured, bare_green_itime, 
                                              beta, n_site, n_flavors, n_tau, n_self);
   }
-     */
-/*  //Fourier transformations
+  //Fourier transformations
+  /*
   if (!measure_in_matsubara) {
     for (unsigned int z=0; z<n_flavors; ++z) {
       densities[z] = 0;
@@ -110,16 +109,17 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
     }
   }
   FourierTransformer::generate_transformer_U(alps::make_deprecated_parameters(parms), fourier_ptr, densities);
+  */
+  FourierTransformer::generate_transformer_lowest_order(alps::make_deprecated_parameters(parms), fourier_ptr);
   if (measure_in_matsubara) {
     fourier_ptr->append_tail(green_matsubara_measured, bare_green_matsubara, n_matsubara_measurements);
     fourier_ptr->backward_ft(green_itime_measured, green_matsubara_measured);
-  }
-  else {
+  } else {
     fourier_ptr->forward_ft(green_itime_measured, green_matsubara_measured);
-  }*/
+  }
   {
     alps::hdf5::archive ar(output_file, "a");
     green_matsubara_measured.write_hdf5(ar, "/G_omega");
-    //green_itime_measured.write_hdf5(ar, "/G_tau");
+    green_itime_measured.write_hdf5(ar, "/G_tau");
   }
 } 

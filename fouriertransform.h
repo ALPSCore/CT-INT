@@ -98,11 +98,9 @@ public:
   static void generate_transformer_U(const alps::Parameters &parms,
                                      boost::shared_ptr<FourierTransformer> &fourier_ptr,
                                      const std::vector<double> &densities);
-  static void generate_transformer_U(const alps::Parameters &parms,
-                                     boost::shared_ptr<FourierTransformer> &fourier_ptr,
-                                     const std::vector<double> &densities,
-                                     const std::vector<double> &magnetization);
-  
+  static void generate_transformer_lowest_order(const alps::Parameters &parms,
+                                     boost::shared_ptr<FourierTransformer> &fourier_ptr);
+
 protected:
   
   double beta_;
@@ -111,9 +109,9 @@ protected:
   std::vector<std::vector<std::vector<double> > > c3_;
   std::vector<std::vector<std::vector<double> > > Sc0_; //coefficients for the self-energy
   std::vector<std::vector<std::vector<double> > > Sc1_;  
-  std::vector<std::vector<std::vector<double> > > Sc2_;  
-  
-  
+  std::vector<std::vector<std::vector<double> > > Sc2_;
+
+
 };
 
 
