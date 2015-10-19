@@ -238,7 +238,7 @@ public:
   //type of G(tau) This should be std::complex when G(tau) has imaginary parts. At some point, this will be templatized.
   typedef double GTYPE;
 //typedef std::vector<std::vector<std::valarray<std::complex<double> > > > Wk_t;
-  typedef boost::multi_array<std::complex<double>, 3> Wk_t;
+  typedef boost::multi_array<std::complex<double>, 5> Wk_t;
 
 protected:
   

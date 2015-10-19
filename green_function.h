@@ -50,7 +50,7 @@
 //Matsubara GF: use T=std::complex<double>
 //Imaginary time: use T=double
 template <typename T> class green_function{
-  
+
 public:
   //construction and destruction, assignement and copy constructor
   ///constructor: how many time slices, how many sites, how many flavors
@@ -88,10 +88,10 @@ public:
   inline T &operator()(unsigned int t, unsigned int flavor){return val_[t+nt_*flavor];}
   ///specialization for only one site: return const reference to element with given time and flavor
   inline const T &operator()(unsigned int t, unsigned int flavor)const{return val_[t+nt_*flavor];}
-  
+
   ///return an entire vector of times for a given flavor
   inline T *operator()(unsigned int flavor){return val_+ntnsns_*flavor;}
-  
+
   //error access
   inline T &error(unsigned int t, unsigned int flavor){return err_[t+nt_*flavor];}
   inline const T &error(unsigned int t, unsigned int flavor)const{return err_[t+nt_*flavor];}
@@ -102,16 +102,16 @@ public:
   inline const T &operator()(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor)const{return val_[t+nt_*site1+ntns_*site2+ntnsns_*flavor];}
   ///return an entire vector of imaginary time values for a given site 1, site2, flavor
   inline T *operator()(unsigned int site1, unsigned int site2, unsigned int flavor){return val_+nt_*site1+ntns_*site2+ntnsns_*flavor;}
-  
+
   inline T &error(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor){return err_[t+nt_*site1+ntns_*site2+ntnsns_*flavor];}
   inline const T &error(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor)const{return err_[t+nt_*site1+ntns_*site2+ntnsns_*flavor];}
   inline T *errors(unsigned int site1, unsigned int site2, unsigned int flavor){return err_+nt_*site1+ntns_*site2+ntnsns_*flavor;}
-  
+
   ///get all values at once
   inline const T *operator()() const {return val_;}
   ///get all errors at once
   inline const T *error() const {return err_;}
-  
+
   //size information
   ///how many flavors do we have? (flavors are usually spins, GF of different flavors are zero)
   unsigned int nflavor()const{return nf_;}
@@ -171,7 +171,7 @@ public:
         std::stringstream subpath; subpath<<path<<"/"<<i<<"/mean/value";
         ar>>alps::make_pvp(subpath.str(), val_+i*nt_, nt_);
         //currently we're not writing the error.
-        //std::stringstream subpath_e; subpath_e<<path<<"/"<<i<<"/mean/error";      
+        //std::stringstream subpath_e; subpath_e<<path<<"/"<<i<<"/mean/error";
         //ar<<alps::make_pvp(subpath_e.str(), err_+i*nt_, nt_);
       }
     } else {
@@ -180,7 +180,7 @@ public:
     }
 //    std::cerr << "3";
   }
-  
+
   std::pair<std::vector<T>,std::vector<T> > to_multiple_vector() const;
   void from_multiple_vector(const std::pair<std::vector<T>,std::vector<T> > &mv);
 #ifdef USE_MPI
@@ -189,7 +189,7 @@ public:
     MPI_Bcast( err_, ntnsns_*nf_*sizeof(T)/sizeof(double), MPI_DOUBLE, 0, MPI_COMM_WORLD);
   }
 #endif
-  
+
 private:
   //const values
   const unsigned int nt_; ///imag time points
@@ -201,8 +201,73 @@ private:
   T *val_;
   T *err_;
 };
+
+//This class allows off-diagonal elements in flavor space
+template <typename T> class full_green_function{
+
+public:
+    full_green_function(unsigned int ntime, unsigned int nsite, unsigned int nflavor)
+            :nt_(ntime), ns_(nsite), nf_(nflavor)
+            ,val_(boost::extents[nflavor][nflavor][nsite][nsite][ntime]) {
+      clear();
+    }
+
+    //full_green_function(const full_green_function& gf)
+            //:nt_(gf.nt_), ns_(gf.ns_), nf_(gf.nf_)
+            //,val_(gf.val_) {
+      //throw std::runtime_error("Called");
+    //}
+
+    void clear(){
+      std::fill(val_.origin(), val_.origin()+val_.num_elements(), 0);
+    }
+    //access of vectors and elements
+
+    ///access element with given time, site 1, site 2, and flavor
+    inline T &operator()(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor1, unsigned int flavor2){
+//return val_[t][site1][site2][flavor1][flavor2];
+      return val_[flavor2][flavor1][site2][site1][t];
+    }
+    ///access element with given time, site 1, site 2, and flavor (const reference)
+    inline const T &operator()(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor1, unsigned int flavor2) const {
+      //return val_[t][site1][site2][flavor1][flavor2];
+      return val_[flavor2][flavor1][site2][site1][t];
+    }
+
+    //size information
+    ///how many flavors do we have? (flavors are usually spins, GF of different flavors are zero)
+    unsigned int nflavor()const{return nf_;}
+    ///return # of sites
+    unsigned int nsite()const{return ns_;}
+    ///return # of imaginary time values
+    unsigned int ntime()const{return nt_;}
+    ///return # of matsubara frequencies. Exactly equivalent to ntime().
+    ///In the case of a Matsubara GF 'ntime' sounds odd -> define 'nfreq' instead.
+    unsigned int nfreq()const{return nt_;} //nfreq is an alias to ntime - more intuitive use for Matsubara GF
+    void write_hdf5(alps::hdf5::archive &ar, const std::string &path) const{
+      ar<<alps::make_pvp(path+"/nt",nt_);
+      ar<<alps::make_pvp(path+"/ns",ns_);
+      ar<<alps::make_pvp(path+"/nf",nf_);
+      std::stringstream subpath; subpath<<path<<"/values/mean";
+      ar<<alps::make_pvp(subpath.str(), val_.origin(), val_.num_elements()); // the nondiagonal components are needed for realspace representation of multisite problems
+    }
+
+private:
+    //const values
+    const unsigned int nt_; ///imag time points
+    const unsigned int ns_; ///number of sites
+    const unsigned int nf_; ///number of flavors
+    boost::multi_array<T,5> val_;
+};
+
+//diagonal in flavor space
 typedef green_function<std::complex<double> > matsubara_green_function_t;
 typedef green_function<double> itime_green_function_t;
+
+//has off-diagonal elements in flavor space
+typedef full_green_function<std::complex<double> > matsubara_full_green_function_t;
+typedef full_green_function<double> itime_full_green_function_t;
+
 ///write out imag time Green function
 std::ostream &operator<<(std::ostream &os, const green_function<double> &v);
 ///read in imag time Green function
@@ -340,6 +405,5 @@ read_bare_green_functions(const alps::params &parms) {
 
   return std::pair< green_function<std::complex<double> >, green_function<T> >(bare_green_matsubara, bare_green_itime);
 };
-
 
 #endif

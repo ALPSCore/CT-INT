@@ -76,16 +76,20 @@ void InteractionExpansion::initialize_observables(void)
   }
   else {
     for(unsigned int flavor=0;flavor<n_flavors;++flavor){
-      for (unsigned int k=0; k<n_site; k++) {                   
-        std::stringstream obs_name_real, obs_name_imag;
-        obs_name_real<<"Wk_real_"<<flavor<<"_"<<k << "_" << k;
-        obs_name_imag<<"Wk_imag_"<<flavor<<"_"<<k << "_" << k;
+      for(unsigned int flavor2=0;flavor2<n_flavors;++flavor2) {
+        for (unsigned int k = 0; k < n_site; k++) {
+          for (unsigned int k2 = 0; k2 < n_site; k2++) {
+            std::stringstream obs_name_real, obs_name_imag;
+            obs_name_real << "Wk_real_" << flavor << "_" << flavor2 << "_" << k << "_" << k2;
+            obs_name_imag << "Wk_imag_" << flavor << "_" << flavor2 << "_" << k << "_" << k2;
 #ifndef ALPS_NGS_USE_NEW_ALEA
-        measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
-        measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
+            measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
+            measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
 #else
-        throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
+            throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
 #endif //ALPS_NGS_USE_NEW_ALEA
+          }
+        }
       }
     }
   }

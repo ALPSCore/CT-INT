@@ -76,23 +76,13 @@ inline twocomplex fastcmult(const twocomplex &a, const twocomplex &b)
 
 void InteractionExpansion::compute_W_matsubara()
 {
-/*  static std::vector<std::vector<std::valarray<std::complex<double> > > >Wk(n_flavors);
-  for(unsigned int z=0;z<n_flavors;++z){
-    Wk[z].resize(n_site);
-    for(unsigned int j=0;j<n_site;++j){
-      Wk[z][j].resize(n_matsubara);
-      memset(&(Wk[z][j][0]), 0, sizeof(std::complex<double>)*(n_matsubara));
-    }
-  }*/
-  static Wk_t Wk(boost::extents[n_flavors][n_site][n_matsubara]);
+  static Wk_t Wk(boost::extents[n_flavors][n_flavors][n_site][n_site][n_matsubara]);
   std::fill(Wk.origin(), Wk.origin()+Wk.num_elements(), 0);
   measure_Wk(Wk, n_matsubara_measurements);
   measure_densities();
 }
 
-
-
-void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
+/*void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 {
   for (unsigned int z=0; z<n_flavors; ++z) {
     assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
@@ -107,8 +97,8 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
           std::complex<double> tmp = M[z].matrix()(p,q);
 #ifndef SSE
 #pragma ivdep
-          for(unsigned int o=0; o<nfreq; ++o){      
-            //*Wk_z_k1_k2++ += (*exparray_creators++)*(*exparray_annihilators++)*tmp;
+          for(unsigned int o=0; o<nfreq; ++o){
+            /*//*Wk_z_k1_k2++ += (*exparray_creators++)*(*exparray_annihilators++)*tmp;
             Wk[z][k][o] += (*exparray_creators++)*(*exparray_annihilators++)*tmp;
           }
 #else
@@ -130,7 +120,7 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
     }
   }
   for(unsigned int flavor=0;flavor<n_flavors;++flavor){
-    for (unsigned int k=0; k<n_site; k++) {                   
+    for (unsigned int k=0; k<n_site; k++) {
       std::stringstream Wk_real_name, Wk_imag_name;
       Wk_real_name  << "Wk_real_"  << flavor << "_" << k << "_" << k;
       Wk_imag_name  << "Wk_imag_"  << flavor << "_" << k << "_" << k;
@@ -142,6 +132,68 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       }
       measurements[Wk_real_name.str().c_str()]<<static_cast<std::valarray<double> > (Wk_real*sign);
       measurements[Wk_imag_name.str().c_str()]<<static_cast<std::valarray<double> > (Wk_imag*sign);
+    }
+  }
+}*/
+
+
+void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
+{
+  for (unsigned int z=0; z<n_flavors; ++z) {
+    assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
+
+    for(unsigned int p=0;p<num_rows(M[z].matrix());++p) {
+      M[z].creators()[p].compute_exp(n_matsubara, -1);
+    }
+    for(unsigned int q=0;q<num_cols(M[z].matrix());++q) {
+      M[z].annihilators()[q].compute_exp(n_matsubara, +1);
+    }
+
+    for(unsigned int p=0;p<num_rows(M[z].matrix());++p){
+      //M[z].creators()[p].compute_exp(n_matsubara, -1);
+      const unsigned int site_c = M[z].creators()[p].s();
+      const spin_t flavor_c = M[z].creators()[p].flavor();
+
+      for(unsigned int q=0;q<num_cols(M[z].matrix());++q){
+        //M[z].annihilators()[q].compute_exp(n_matsubara, +1);
+        const spin_t flavor_a = M[z].annihilators()[q].flavor();
+        const unsigned int site_a = M[z].annihilators()[q].s();
+
+        const std::complex<double>* exparray_creators = M[z].creators()[p].exp_iomegat();
+        const std::complex<double>* exparray_annihilators = M[z].annihilators()[q].exp_iomegat();
+        std::complex<double> tmp = M[z].matrix()(p,q);
+        for(unsigned int o=0; o<nfreq; ++o){
+          //const std::complex<double> exp_c = (*exparray_creators++);
+          //const std::complex<double> exp_a = (*exparray_annihilators++);
+          const std::complex<double> exp_c = exparray_creators[o];
+          const std::complex<double> exp_a = exparray_annihilators[o];
+          for (unsigned int site1=0; site1<n_site; site1++) {//loops for site1 and site2 may be vectorized.
+            for (unsigned int site2=0; site2<n_site; site2++) {
+              Wk[flavor_a][flavor_c][site1][site2][o] +=
+                      tmp * exp_c * exp_a * bare_green_matsubara(o, site1, site_a, flavor_a) * bare_green_matsubara(o, site_c, site2, flavor_c);
+            }
+          }
+        }
+      }
+    }
+  }
+  for(unsigned int flavor=0;flavor<n_flavors;++flavor) {
+    for (unsigned int flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+      for (unsigned int site1 = 0; site1 < n_site; ++site1) {
+        for (unsigned int site2 = 0; site2 < n_site; ++site2) {
+          std::stringstream Wk_real_name, Wk_imag_name;
+          Wk_real_name << "Wk_real_" << flavor << "_" << flavor2 << "_" << site1 << "_" << site2;
+          Wk_imag_name << "Wk_imag_" << flavor << "_" << flavor2 << "_" << site1 << "_" << site2;
+          std::valarray<double> Wk_real(nfreq);
+          std::valarray<double> Wk_imag(nfreq);
+          for (unsigned int w = 0; w < nfreq; ++w) {
+            Wk_real[w] = Wk[flavor][flavor2][site1][site2][w].real();
+            Wk_imag[w] = Wk[flavor][flavor2][site1][site2][w].imag();
+          }
+          measurements[Wk_real_name.str().c_str()] << static_cast<std::valarray<double> > (Wk_real * sign);
+          measurements[Wk_imag_name.str().c_str()] << static_cast<std::valarray<double> > (Wk_imag * sign);
+        }
+      }
     }
   }
 }
@@ -212,26 +264,13 @@ void InteractionExpansion::compute_W_itime()
   boost::multi_array<double,2> density(boost::extents[n_flavors][n_site]);
   std::fill(density.origin(), density.origin()+density.num_elements(), 0);
 
-  //static std::vector<std::vector<std::vector<std::valarray<double> > > >W_z_i_j(n_flavors);
-  //std::vector<std::vector<double> >density(n_flavors);
-/*  for(unsigned int z=0;z<n_flavors;++z){
-    W_z_i_j[z].resize(n_site);
-    density[z].resize(n_site);
-    for(unsigned int i=0;i<n_site;++i){
-      W_z_i_j[z][i].resize(n_site);
-      for(unsigned int j=0;j<n_site;++j){
-        W_z_i_j[z][i][j].resize(n_self+1);
-        memset(&(W_z_i_j[z][i][j][0]), 0, sizeof(double)*(n_self+1));
-      }
-    }
-  }*/
-
   int ntaupoints=10; //# of tau points at which we measure.
   std::vector<double> tau_2(ntaupoints);
-  for(int i=0; i<ntaupoints;++i) 
+  for(int i=0; i<ntaupoints;++i) {
     tau_2[i]=beta*random();
+  }
   for(unsigned int z=0;z<n_flavors;++z){                  //loop over flavor
-    assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
+    assert(num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
     alps::numeric::matrix<double> g0_tauj(num_cols(M[z].matrix()),ntaupoints);
     alps::numeric::matrix<double> M_g0_tauj(num_rows(M[z].matrix()),ntaupoints);
     alps::numeric::vector<double> g0_taui(num_rows(M[z].matrix()));
@@ -298,46 +337,49 @@ void InteractionExpansion::compute_W_itime()
 
 
 void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardInteractionExpansion>::type &results, 
-                                                                        matsubara_green_function_t &green_matsubara_measured,
-                                                                        const matsubara_green_function_t &bare_green_matsubara, 
+                                                                        matsubara_full_green_function_t &green_matsubara_measured,
+                                                                        const matsubara_green_function_t &bare_green_matsubara,
                                                                         std::vector<double>& densities,
                                                                         const double &beta, std::size_t n_site, 
-                                                                        std::size_t n_flavors, std::size_t n_matsubara)
-{
+                                                                        std::size_t n_flavors, std::size_t n_matsubara) {
   double max_error = 0.;
-  std::cout<<"evaluating self energy measurement: matsubara, reciprocal space"<<std::endl;
-  matsubara_green_function_t Wk(n_matsubara, n_site, n_flavors);
-  Wk.clear();
-  //matsubara_green_function_t reduced_bare_green_matsubara(n_matsubara, n_site, n_flavors);   UNUSED
-  //reduced_bare_green_matsubara.clear();
-  for(std::size_t z=0;z<n_flavors;++z){
-    for (std::size_t k=0; k<n_site; k++) {                   
-      std::stringstream Wk_real_name, Wk_imag_name;
-      Wk_real_name  <<"Wk_real_"  <<z<<"_"<<k << "_" << k;
-      Wk_imag_name  <<"Wk_imag_"  <<z<<"_"<<k << "_" << k;
-      std::vector<double> mean_real = results[Wk_real_name.str().c_str()].mean<std::vector<double> >();
-      std::vector<double> mean_imag = results[Wk_imag_name.str().c_str()].mean<std::vector<double> >();
-      for(unsigned int w=0;w<n_matsubara;++w)
-        Wk(w, k, k, z) = std::complex<double>(mean_real[w], mean_imag[w])/( beta*n_site);
-      //for(unsigned int w=0;w<n_matsubara;++w)
-      //  reduced_bare_green_matsubara(w, k, k, z) = bare_green_matsubara(w, k, k, z);
-      std::vector<double> error_real = results[Wk_real_name.str().c_str()].error<std::vector<double> >();
-      std::vector<double> error_imag = results[Wk_imag_name.str().c_str()].error<std::vector<double> >();
-      for (unsigned int e=0; e<error_real.size(); ++e) {
-        double ereal = error_real[e];
-        double eimag = error_imag[e];
-        double error = (ereal >= eimag) ? ereal : eimag;
-        max_error = (error > max_error) ? error : max_error;
+  green_matsubara_measured.clear();
+  std::cout << "evaluating self energy measurement: matsubara, reciprocal space" << std::endl;
+  //boost::multi_array<std::complex<double>, 5> Wk;
+  for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+    for (std::size_t flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+      for (std::size_t site1 = 0; site1 < n_site; ++site1) {
+        for (std::size_t site2 = 0; site2 < n_site; ++site2) {
+          std::stringstream Wk_real_name, Wk_imag_name;
+          Wk_real_name << "Wk_real_" << flavor1 << "_" << flavor2 << "_" << site1 << "_" << site2;
+          Wk_imag_name << "Wk_imag_" << flavor1 << "_" << flavor2 << "_" << site1 << "_" << site2;
+          std::vector<double> mean_real = results[Wk_real_name.str().c_str()].mean<std::vector<double> >();
+          std::vector<double> mean_imag = results[Wk_imag_name.str().c_str()].mean<std::vector<double> >();
+          for (unsigned int w = 0; w < n_matsubara; ++w) {
+            green_matsubara_measured(w, site1, site2, flavor1, flavor2) = -std::complex<double>(mean_real[w], mean_imag[w]) / (beta);
+          }
+          std::vector<double> error_real = results[Wk_real_name.str().c_str()].error<std::vector<double> >();
+          std::vector<double> error_imag = results[Wk_imag_name.str().c_str()].error<std::vector<double> >();
+          for (unsigned int e = 0; e < error_real.size(); ++e) {
+            double ereal = error_real[e];
+            double eimag = error_imag[e];
+            double error = (ereal >= eimag) ? ereal : eimag;
+            max_error = (error > max_error) ? error : max_error;
+          }
+        }
       }
     }
   }
   std::cout << "Maximal error in Wk: " << max_error << std::endl;
-  green_matsubara_measured.clear();
-  for(std::size_t z=0;z<n_flavors;++z)
-    for (std::size_t k=0; k<n_site; k++)                    
-      for(std::size_t w=0;w<n_matsubara;++w)
-        green_matsubara_measured(w,k,k, z) = bare_green_matsubara(w,k,k,z) 
-        - bare_green_matsubara(w,k,k,z) * bare_green_matsubara(w,k,k,z) * Wk(w,k,k,z);
+  for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+    for (std::size_t site1 = 0; site1 < n_site; ++site1) {
+      for (std::size_t site2 = 0; site2 < n_site; ++site2) {
+        for (std::size_t w = 0; w < n_matsubara; ++w) {
+          green_matsubara_measured(w, site1, site2, flavor1, flavor1) += bare_green_matsubara(w, site1, site2, flavor1);
+        }
+      }
+    }
+  }
   std::vector<double> dens = results["densities"].mean<std::vector<double> >();
   for (std::size_t z=0; z<n_flavors; ++z) 
     densities[z] = dens[z];
@@ -349,77 +391,13 @@ double green0_spline(const itime_green_function_t &green0, const itime_t delta_t
 
 
 void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardInteractionExpansion>::type &results, 
-                                                                       itime_green_function_t &green_result,
+                                                                       itime_full_green_function_t &green_result,
                                                                        const itime_green_function_t &green0, 
                                                                        const double &beta, const int n_site, 
                                                                        const int n_flavors, const int n_tau, const int n_self)
 {
   std::cout<<"evaluating self energy measurement: itime, real space."<<std::endl;
   clock_t time0=clock();
-  std::vector<std::vector<std::vector<std::vector<double> > > >W_z_i_j(n_flavors); 
-  //first index: flavor. Second index: momentum. Third index: self energy tau point.
-  double max_error = 0.;
-  for(int z=0;z<n_flavors;++z){
-    W_z_i_j[z].resize(n_site);
-    for(int i=0;i<n_site;++i){
-      W_z_i_j[z][i].resize(n_site);
-    }
-    for(int i=0;i<n_site;++i){
-      for(int j=0;j<n_site;++j){
-        std::stringstream W_name;
-        W_name<<"W_"<<z<<"_"<<i<<"_"<<j;
-        W_z_i_j[z][i][j].resize(n_self+1);
-        std::vector<double> tmp=results[W_name.  str().c_str()].mean<std::vector<double> >();
-        std::vector<double> errorvec = results[W_name.  str().c_str()].error<std::vector<double> >();
-        for(int k=0;k<n_self+1;++k){
-          W_z_i_j[z][i][j][k]=tmp[k];
-          double error = errorvec[k];
-          max_error = error>max_error ? error : max_error;
-        }
-      }
-    }
-    std::cout << "Maximum error in W: " << max_error << std::endl;
-    for(int i=0;i<n_site;++i){
-      for(int j=0;j<n_site;++j){
-        for(int k=0;k<n_tau;++k){
-          green_result(k,i,j,z)=green0(k,i,j,z);
-          double timek=(k/(double)n_tau)*beta;
-          for(int l=0;l<=n_self;++l){
-            double timel;
-            if(l==0){
-              timel=(0.5/(double)n_self)*beta; //middle position of our first bin.
-            }else if(l==n_self){
-              timel=((n_self-0.5)/(double)n_self)*beta; //middle position of our last bin.
-            }else{
-              timel=(l/(double)n_self)*beta; //middle position of our remaining bins.
-            }
-            for(int p=0;p<n_site;++p){
-              //this will make a tiny error if the bins are equal.
-              green_result(k,i,j,z)-=green0_spline(green0, timek-timel,i,p,z, n_tau, beta)*W_z_i_j[z][p][j][l];
-            }
-          }
-        }
-        green_result(n_tau,i,j,z)=(i==j?-1:0)-green_result(0,i,j,z);
-      }
-    }
-  }
-/*  if(n_flavors==2){
-    double Sz_obs = results["Sz_0"].mean<double>();
-    double Sz_err = results["Sz_0"].error<double>();
-    for(int i=1;i<n_site;i++) {
-      std::stringstream Sz_name;
-      Sz_name << "Sz_" << i;
-      double Sz_i_obs = results[Sz_name.str().c_str()].mean<double>();
-      double Sz_i_err = results[Sz_name.str().c_str()].error<double>();
-      Sz_i_obs *= ((i%2==0) ? 1 : -1);
-      Sz_obs += Sz_i_obs;
-      Sz_err += Sz_i_err;
-    }
-    Sz_obs /= n_site;
-    Sz_err /= std::sqrt(double(n_site));
-    std::ofstream szstream("staggered_sz", std::ios::app);
-    szstream << Sz_obs << "\t" << Sz_err << std::endl;
-  }*/
   clock_t time1=clock();
   std::cout<<"evaluate of SE measurement took: "<<(time1-time0)/(double)CLOCKS_PER_SEC<<std::endl;
 }

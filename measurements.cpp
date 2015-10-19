@@ -33,14 +33,14 @@
 #include "alps/ngs/make_deprecated_parameters.hpp"
 
 void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardInteractionExpansion>::type &results, 
-                                                                        matsubara_green_function_t &green_matsubara_measured,
+                                                                        matsubara_full_green_function_t &green_matsubara_measured,
                                                                         const matsubara_green_function_t &bare_green_matsubara, 
                                                                         std::vector<double>& densities,
                                                                         const double &beta, std::size_t n_site, 
                                                                         std::size_t n_flavors, std::size_t n_matsubara);
 void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardInteractionExpansion>::type &results, 
                                                                        itime_green_function_t &green_result,
-                                                                       const itime_green_function_t &green0, 
+                                                                       const itime_full_green_function_t &green0,
                                                                        const double &beta, const int n_site, 
                                                                        const int n_flavors, const int n_tau, const int n_self);
 
@@ -56,8 +56,9 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
   spin_t n_flavors(parms["FLAVORS"] | (parms["N_ORBITALS"]| 2));
   unsigned int n_site(parms["SITES"] | 1);
   double beta(parms["BETA"]);
-  itime_green_function_t green_itime_measured(n_tau+1, n_site, n_flavors);
-  matsubara_green_function_t green_matsubara_measured(n_matsubara, n_site, n_flavors);
+  itime_full_green_function_t green_itime_measured(n_tau+1, n_site, n_flavors);
+  matsubara_full_green_function_t green_matsubara_measured(n_matsubara, n_site, n_flavors);
+
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   boost::shared_ptr<FourierTransformer> fourier_ptr_g0;
   //FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr_g0);
@@ -89,33 +90,22 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
 
 
   if(measure_in_matsubara) {
-    evaluate_selfenergy_measurement_matsubara(results, green_matsubara_measured, 
-                                              bare_green_matsubara, densities, 
+    evaluate_selfenergy_measurement_matsubara(results, green_matsubara_measured,
+                                              bare_green_matsubara, densities,
                                               beta, n_site, n_flavors, n_matsubara_measurements);
   }
   else {
-    fourier_ptr_g0->backward_ft(bare_green_itime, bare_green_matsubara);
-    evaluate_selfenergy_measurement_itime_rs(results, green_itime_measured, bare_green_itime, 
-                                             beta, n_site, n_flavors, n_tau, n_self);
+    //fourier_ptr_g0->backward_ft(bare_green_itime, bare_green_matsubara);
+    //evaluate_selfenergy_measurement_itime_rs(results, green_itime_measured, bare_green_itime,
+                                             //beta, n_site, n_flavors, n_tau, n_self);
   }
   //Fourier transformations
-  /*
-  if (!measure_in_matsubara) {
-    for (unsigned int z=0; z<n_flavors; ++z) {
-      densities[z] = 0;
-      for (unsigned int i=0; i<n_site; ++i)
-        densities[z] -= green_itime_measured(n_tau,i,i,z);
-      densities[z] /= n_site;
-    }
-  }
-  FourierTransformer::generate_transformer_U(alps::make_deprecated_parameters(parms), fourier_ptr, densities);
-  */
   FourierTransformer::generate_transformer_lowest_order(alps::make_deprecated_parameters(parms), fourier_ptr);
   if (measure_in_matsubara) {
     fourier_ptr->append_tail(green_matsubara_measured, bare_green_matsubara, n_matsubara_measurements);
-    fourier_ptr->backward_ft(green_itime_measured, green_matsubara_measured);
+    fourier_ptr->backward_ft_fullG(green_itime_measured, green_matsubara_measured);
   } else {
-    fourier_ptr->forward_ft(green_itime_measured, green_matsubara_measured);
+    //fourier_ptr->forward_ft(green_itime_measured, green_matsubara_measured);
   }
   {
     alps::hdf5::archive ar(output_file, "a");

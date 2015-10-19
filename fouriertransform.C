@@ -42,7 +42,7 @@
 typedef boost::numeric::ublas::matrix<double,boost::numeric::ublas::column_major> dense_matrix;
 
 
-void FourierTransformer::backward_ft(itime_green_function_t &G_tau, 
+void FourierTransformer::backward_ft(itime_green_function_t &G_tau,
                                      const matsubara_green_function_t &G_omega) const {
   assert(G_tau.nflavor()==G_omega.nflavor() && G_tau.nsite()==G_omega.nsite());
   unsigned int N_tau = G_tau.ntime()-1;
@@ -58,14 +58,14 @@ void FourierTransformer::backward_ft(itime_green_function_t &G_tau,
           for (unsigned int i=0; i<=N_tau; i++) {
             G_tau(i,s1,s2,f)=0.;
           }
-        } 
+        }
         else {
           for (unsigned int k=0; k<N_omega; k++) {
             std::complex<double> iw(0,(2*k+1)*M_PI/beta_);
             G_omega_no_model(k,s1,s2,f) -= f_omega(iw, c1_[f][s1][s2],c2_[f][s1][s2], c3_[f][s1][s2]);
-          } 
+          }
           for (unsigned int i=0; i<N_tau; i++) {
-            G_tau(i,s1,s2,f) = f_tau(i*dt, beta_, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]); 
+            G_tau(i,s1,s2,f) = f_tau(i*dt, beta_, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]);
             for (unsigned int k=0; k<N_omega; k++) {
               double wt((2*k+1)*i*M_PI/N_tau);
               G_tau(i,s1,s2,f) += 2/beta_*(cos(wt)*G_omega_no_model(k,s1,s2,f).real()+
@@ -74,6 +74,57 @@ void FourierTransformer::backward_ft(itime_green_function_t &G_tau,
           }
           G_tau(N_tau,s1,s2,f)= s1==s2 ? -1. : 0.;
           G_tau(N_tau,s1,s2,f)-=G_tau(0,s1,s2,f);
+        }
+      }
+    }
+  }
+}
+
+void FourierTransformer::backward_ft_fullG(itime_full_green_function_t &G_tau,
+                                     const matsubara_full_green_function_t &G_omega) const {
+  assert(G_tau.nflavor()==G_omega.nflavor() && G_tau.nsite()==G_omega.nsite());
+  const unsigned int N_tau = G_tau.ntime()-1;
+  const unsigned int N_omega = G_omega.nfreq();
+  const unsigned int N_site = G_omega.nsite();
+  const unsigned int N_flavor = G_omega.nflavor();
+  matsubara_full_green_function_t G_omega_no_model(G_omega);
+  //matsubara_green_function_t test(G_omega);
+  double dt = beta_/N_tau;
+
+  G_tau.clear();
+  for(unsigned int f=0;f<N_flavor;++f) {
+    for (unsigned int f2 = 0; f2 < N_flavor; ++f2) {
+
+      for (unsigned int s1 = 0; s1 < N_site; ++s1) {
+        for (unsigned int s2 = 0; s2 < N_site; ++s2) {
+
+          if (c1_[f][s1][s2] == 0 && c2_[f][s1][s2] == 0 && c3_[f][s1][s2]) {  //nothing happening in this gf.
+            throw std::runtime_error("What is this...");
+            for (unsigned int i = 0; i <= N_tau; i++) {
+              G_tau(i, s1, s2, f, f2) = 0.;
+            }
+          }
+          else {
+            if (f==f2) {//Note: bare GF is zero for f != f2
+              for (unsigned int k = 0; k < N_omega; k++) {
+                std::complex<double> iw(0, (2 * k + 1) * M_PI / beta_);
+                G_omega_no_model(k, s1, s2, f, f2) -= f_omega(iw, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]);
+              }
+              for (unsigned int i = 0; i < N_tau; i++) {
+                G_tau(i, s1, s2, f, f2) = f_tau(i * dt, beta_, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]);
+              }
+            }
+            for (unsigned int i = 0; i < N_tau; i++) {
+              //G_tau(i, s1, s2, f, f2) = f_tau(i * dt, beta_, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]);
+              for (unsigned int k = 0; k < N_omega; k++) {
+                double wt((2 * k + 1) * i * M_PI / N_tau);
+                G_tau(i, s1, s2, f, f2) += 2 / beta_ * (cos(wt) * G_omega_no_model(k, s1, s2, f, f2).real() +
+                                                    sin(wt) * G_omega_no_model(k, s1, s2, f, f2).imag());
+              }
+            }
+            G_tau(N_tau, s1, s2, f, f2) = (s1 == s2 && f==f2) ? -1. : 0.;
+            G_tau(N_tau, s1, s2, f, f2) -= G_tau(0, s1, s2, f, f2);
+          }
         }
       }
     }
@@ -194,7 +245,7 @@ void FourierTransformer::forward_ft(const itime_green_function_t & gtau, matsuba
 
 
 
-void FourierTransformer::append_tail(matsubara_green_function_t& G_omega, 
+void FourierTransformer::append_tail(matsubara_full_green_function_t& G_omega,
                                      const matsubara_green_function_t& G0_omega,
                                      const int nfreq_measured) const
 {
@@ -207,7 +258,7 @@ void FourierTransformer::append_tail(matsubara_green_function_t& G_omega,
       for (frequency_t freq=nfreq_measured; freq<G0_omega.nfreq(); ++freq) {
         std::complex<double> iw(0,(2*freq+1)*M_PI/beta_);
         std::complex<double> Sigma = Sc0_[flavor][k][k] + Sc1_[flavor][k][k]/iw + Sc2_[flavor][k][k]/(iw*iw);
-        G_omega(freq, k, k, flavor) = 1./(1./G0_omega(freq, k, k, flavor) - Sigma);
+        G_omega(freq, k, k, flavor, flavor) = 1./(1./G0_omega(freq, k, k, flavor) - Sigma);
       }
     }
   }
