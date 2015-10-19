@@ -111,5 +111,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
     alps::hdf5::archive ar(output_file, "a");
     green_matsubara_measured.write_hdf5(ar, "/G_omega");
     green_itime_measured.write_hdf5(ar, "/G_tau");
+    bare_green_matsubara.write_hdf5(ar, "/G0_omega");
+    bare_green_itime.write_hdf5(ar, "/G0_tau");
   }
 } 

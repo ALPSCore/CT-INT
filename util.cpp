@@ -13,3 +13,13 @@ template<>
 std::complex<double> mycast(std::complex<double> val) {
     return val;
 }
+
+template<>
+double myconj(double val) {
+    return val;
+}
+
+template<>
+std::complex<double> myconj(std::complex<double> val) {
+    return std::conj(val);
+}

@@ -8,5 +8,6 @@
 #include <complex>
 
 template<typename T> T mycast(std::complex<double> val);
+template<typename T> T myconj(T val);
 
 #endif //IMPSOLVER_UTIL_H

@@ -161,7 +161,7 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
         const std::complex<double>* exparray_creators = M[z].creators()[p].exp_iomegat();
         const std::complex<double>* exparray_annihilators = M[z].annihilators()[q].exp_iomegat();
-        std::complex<double> tmp = M[z].matrix()(p,q);
+        std::complex<double> tmp = M[z].matrix()(q,p);
         for(unsigned int o=0; o<nfreq; ++o){
           //const std::complex<double> exp_c = (*exparray_creators++);
           //const std::complex<double> exp_a = (*exparray_annihilators++);
@@ -355,9 +355,11 @@ void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardI
           Wk_imag_name << "Wk_imag_" << flavor1 << "_" << flavor2 << "_" << site1 << "_" << site2;
           std::vector<double> mean_real = results[Wk_real_name.str().c_str()].mean<std::vector<double> >();
           std::vector<double> mean_imag = results[Wk_imag_name.str().c_str()].mean<std::vector<double> >();
+          //std::cout << "debug: " << Wk_real_name.str() << " " << Wk_imag_name.str() << " " << mean_real[0] << " " << mean_imag[0] << std::endl;
           for (unsigned int w = 0; w < n_matsubara; ++w) {
-            green_matsubara_measured(w, site1, site2, flavor1, flavor2) = -std::complex<double>(mean_real[w], mean_imag[w]) / (beta);
+            green_matsubara_measured(w, site1, site2, flavor1, flavor2) = -std::complex<double>(mean_real[w], mean_imag[w]) / (1.*beta);
           }
+          //std::cout << "debug G: " << Wk_real_name.str() << " " << Wk_imag_name.str() << " " << green_matsubara_measured(0,site1, site2, flavor1, flavor2) << std::endl;
           std::vector<double> error_real = results[Wk_real_name.str().c_str()].error<std::vector<double> >();
           std::vector<double> error_imag = results[Wk_imag_name.str().c_str()].error<std::vector<double> >();
           for (unsigned int e = 0; e < error_real.size(); ++e) {

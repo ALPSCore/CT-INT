@@ -252,6 +252,8 @@ public:
       ar<<alps::make_pvp(subpath.str(), val_.origin(), val_.num_elements()); // the nondiagonal components are needed for realspace representation of multisite problems
     }
 
+    typedef T value_type;
+
 private:
     //const values
     const unsigned int nt_; ///imag time points

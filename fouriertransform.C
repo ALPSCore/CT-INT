@@ -38,6 +38,7 @@
 #include <alps/parameter.h>
 
 #include <math.h>
+#include "util.h"
 
 typedef boost::numeric::ublas::matrix<double,boost::numeric::ublas::column_major> dense_matrix;
 
@@ -117,9 +118,16 @@ void FourierTransformer::backward_ft_fullG(itime_full_green_function_t &G_tau,
             for (unsigned int i = 0; i < N_tau; i++) {
               //G_tau(i, s1, s2, f, f2) = f_tau(i * dt, beta_, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]);
               for (unsigned int k = 0; k < N_omega; k++) {
-                double wt((2 * k + 1) * i * M_PI / N_tau);
-                G_tau(i, s1, s2, f, f2) += 2 / beta_ * (cos(wt) * G_omega_no_model(k, s1, s2, f, f2).real() +
-                                                    sin(wt) * G_omega_no_model(k, s1, s2, f, f2).imag());
+                const double wt((2 * k + 1) * i * M_PI / N_tau);
+                const double t_cos=cos(wt), t_sin=sin(wt);
+                //const std::complex<double> t_exp = std::complex<double>(cos(wt), sin(wt));
+                //CAUTION: HERE G(TAU) IS ASSUMED TO BE REAL
+                //G_tau(i, s1, s2, f, f2) += 2 / beta_ * (cos(wt) * G_omega_no_model(k, s1, s2, f, f2).real() +
+                                                    //sin(wt) * G_omega_no_model(k, s1, s2, f, f2).imag());
+                G_tau(i, s1, s2, f, f2) += 1./beta_ * mycast<itime_full_green_function_t::value_type>(
+                    G_omega_no_model(k, s1, s2, f, f2)*std::complex<double>(t_cos, -t_sin)
+                    +myconj(G_omega_no_model(k, s2, s1, f2, f))*std::complex<double>(t_cos, t_sin)
+                  );
               }
             }
             G_tau(N_tau, s1, s2, f, f2) = (s1 == s2 && f==f2) ? -1. : 0.;

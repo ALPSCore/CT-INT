@@ -117,6 +117,7 @@ pert_hist(max_order)
 
 void InteractionExpansion::update()
 {
+  std::cout << "step " << step << std::endl;
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     interaction_expansion_step();                
@@ -134,7 +135,9 @@ void InteractionExpansion::measure(){
 
 double InteractionExpansion::fraction_completed() const{
   //check for error convergence
-  if (!thermalized) 
+  std::cout << "fraction " << ((step-therm_steps) / (double) mc_steps) << std::endl;
+  std::cout << "debug fraction " << "step=" << step << " therm_steps " << therm_steps << " mc_steps= " << mc_steps << std::endl;
+  if (!thermalized)
     return 0.;
   if(time(NULL)-start_time> max_time_in_seconds){
     std::cout<<"we ran out of time!"<<std::endl;
