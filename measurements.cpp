@@ -31,12 +31,13 @@
 #include <complex>
 #include <alps/alea.h>
 #include "alps/ngs/make_deprecated_parameters.hpp"
+#include "legendre.h"
 
-void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardInteractionExpansion>::type &results, 
+void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardInteractionExpansion>::type &results,
                                                                         matsubara_full_green_function_t &green_matsubara_measured,
-                                                                        const matsubara_green_function_t &bare_green_matsubara, 
+                                                                        const matsubara_green_function_t &bare_green_matsubara,
                                                                         std::vector<double>& densities,
-                                                                        const double &beta, std::size_t n_site, 
+                                                                        const double &beta, std::size_t n_site,
                                                                         std::size_t n_flavors, std::size_t n_matsubara);
 void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardInteractionExpansion>::type &results, 
                                                                        itime_green_function_t &green_result,
@@ -44,6 +45,13 @@ void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardIn
                                                                        const double &beta, const int n_site, 
                                                                        const int n_flavors, const int n_tau, const int n_self);
 
+void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardInteractionExpansion>::type &results,
+                                               matsubara_full_green_function_t &green_matsubara_measured,
+                                               itime_full_green_function_t &green_itime_measured,
+                                               const matsubara_green_function_t &bare_green_matsubara,
+                                               std::vector<double>& densities,
+                                               const double &beta, std::size_t n_site,
+                                               std::size_t n_flavors, std::size_t n_matsubara, std::size_t n_tau, std::size_t n_legendre);
 
 
 void compute_greens_functions(const alps::results_type<HubbardInteractionExpansion>::type &results, const alps::parameters_type<HubbardInteractionExpansion>::type& parms, const std::string &output_file)
@@ -56,6 +64,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
   spin_t n_flavors(parms["FLAVORS"] | (parms["N_ORBITALS"]| 2));
   unsigned int n_site(parms["SITES"] | 1);
   double beta(parms["BETA"]);
+  const int n_legendre(parms["N_LEGENDRE"] | 0);
   itime_full_green_function_t green_itime_measured(n_tau+1, n_site, n_flavors);
   matsubara_full_green_function_t green_matsubara_measured(n_matsubara, n_site, n_flavors);
 
@@ -95,6 +104,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
                                               beta, n_site, n_flavors, n_matsubara_measurements);
   }
   else {
+    throw std::runtime_error("Please make sure that sign is correcly treated!");
     //fourier_ptr_g0->backward_ft(bare_green_itime, bare_green_matsubara);
     //evaluate_selfenergy_measurement_itime_rs(results, green_itime_measured, bare_green_itime,
                                              //beta, n_site, n_flavors, n_tau, n_self);
@@ -105,8 +115,11 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
     fourier_ptr->append_tail(green_matsubara_measured, bare_green_matsubara, n_matsubara_measurements);
     fourier_ptr->backward_ft_fullG(green_itime_measured, green_matsubara_measured);
   } else {
+    throw std::runtime_error("Please make sure that sign is correcly treated!");
     //fourier_ptr->forward_ft(green_itime_measured, green_matsubara_measured);
   }
+
+
   {
     alps::hdf5::archive ar(output_file, "a");
     green_matsubara_measured.write_hdf5(ar, "/G_omega");
@@ -114,4 +127,20 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
     bare_green_matsubara.write_hdf5(ar, "/G0_omega");
     bare_green_itime.write_hdf5(ar, "/G0_tau");
   }
-} 
+
+  //Legendre measurement
+  if (n_legendre>0) {
+    evaluate_selfenergy_measurement_legendre(results, green_matsubara_measured, green_itime_measured,
+                                              bare_green_matsubara, densities,
+                                              beta, n_site, n_flavors, n_matsubara, n_tau, n_legendre);
+
+    //just for test use: G(tau) should be computed directly from S_l to prevent truncation errors.
+    FourierTransformer::generate_transformer_lowest_order(alps::make_deprecated_parameters(parms), fourier_ptr);
+    fourier_ptr->append_tail(green_matsubara_measured, bare_green_matsubara, n_matsubara_measurements);
+    fourier_ptr->backward_ft_fullG(green_itime_measured, green_matsubara_measured);
+
+    alps::hdf5::archive ar(output_file, "a");
+    green_matsubara_measured.write_hdf5(ar, "/G_omega_test");
+      green_itime_measured.write_hdf5(ar, "/G_tau_test");
+  }
+}

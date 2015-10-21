@@ -198,6 +198,66 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
   }
 }
 
+void InteractionExpansion::compute_Sl() {
+  static boost::multi_array<std::complex<double>,5> Sl(boost::extents[n_flavors][n_flavors][n_site][n_site][n_legendre]);
+  static std::vector<double> legendre_vals(n_legendre), sqrt_vals(n_legendre);
+
+  //if (n_legendre==0) {
+    //return;
+  //}
+
+  for(unsigned int i_legendre=0; i_legendre<n_legendre; ++i_legendre) {
+    sqrt_vals[i_legendre] = std::sqrt(2.0*i_legendre+1.0);
+  }
+
+  for (unsigned int z=0; z<n_flavors; ++z) {
+    assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
+
+    for(unsigned int q=0;q<num_cols(M[z].matrix());++q){//annihilation operators
+      const spin_t flavor_a = M[z].annihilators()[q].flavor();
+      const unsigned int site_a = M[z].annihilators()[q].s();
+      const itime_t time_a = M[z].annihilators()[q].t();
+
+      legendre_transformer.compute_legendre(2*time_a/beta-1.0, legendre_vals);//P_l[x(tau_q)]
+
+      for(unsigned int p=0;p<num_rows(M[z].matrix());++p){//creation operators
+        const unsigned int site_c = M[z].creators()[p].s();
+        const spin_t flavor_c = M[z].creators()[p].flavor();
+        const itime_t time_c = M[z].creators()[p].t();
+
+        std::complex<double> tmp = M[z].matrix()(q,p);
+
+        for(unsigned int i_legendre=0; i_legendre<n_legendre; ++i_legendre) {
+          for (unsigned int site1=0; site1<n_site; site1++) {//loops for site1 and site2 may be vectorized.
+            for (unsigned int site2 = 0; site2 < n_site; site2++) {
+              Sl[flavor_a][flavor_c][site1][site2][i_legendre] +=
+                      -sqrt_vals[i_legendre]*legendre_vals[i_legendre]*tmp*green0_spline(time_c,flavor_c,site_c,site2);
+            }
+          }
+        }
+      }
+    }
+  }
+  for(unsigned int flavor=0;flavor<n_flavors;++flavor) {
+    for (unsigned int flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+      for (unsigned int site1 = 0; site1 < n_site; ++site1) {
+        for (unsigned int site2 = 0; site2 < n_site; ++site2) {
+          std::stringstream Sl_real_name, Sl_imag_name;
+          Sl_real_name << "Sl_real_" << flavor << "_" << flavor2 << "_" << site1 << "_" << site2;
+          Sl_imag_name << "Sl_imag_" << flavor << "_" << flavor2 << "_" << site1 << "_" << site2;
+          std::valarray<double> Sl_real(n_legendre);
+          std::valarray<double> Sl_imag(n_legendre);
+          for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
+            Sl_real[i_legendre] = Sl[flavor][flavor2][site1][site2][i_legendre].real();
+            Sl_imag[i_legendre] = Sl[flavor][flavor2][site1][site2][i_legendre].imag();
+          }
+          measurements[Sl_real_name.str().c_str()] << static_cast<std::valarray<double> > (Sl_real * sign);
+          measurements[Sl_imag_name.str().c_str()] << static_cast<std::valarray<double> > (Sl_imag * sign);
+        }
+      }
+    }
+  }
+}
 
 
 void InteractionExpansion::measure_densities()
@@ -336,16 +396,15 @@ void InteractionExpansion::compute_W_itime()
 
 
 
-void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardInteractionExpansion>::type &results, 
+void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardInteractionExpansion>::type &results,
                                                                         matsubara_full_green_function_t &green_matsubara_measured,
                                                                         const matsubara_green_function_t &bare_green_matsubara,
                                                                         std::vector<double>& densities,
-                                                                        const double &beta, std::size_t n_site, 
+                                                                        const double &beta, std::size_t n_site,
                                                                         std::size_t n_flavors, std::size_t n_matsubara) {
-  double max_error = 0.;
   green_matsubara_measured.clear();
   std::cout << "evaluating self energy measurement: matsubara, reciprocal space" << std::endl;
-  //boost::multi_array<std::complex<double>, 5> Wk;
+  double sign = results["Sign"].mean<double>();
   for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
     for (std::size_t flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
       for (std::size_t site1 = 0; site1 < n_site; ++site1) {
@@ -355,24 +414,13 @@ void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardI
           Wk_imag_name << "Wk_imag_" << flavor1 << "_" << flavor2 << "_" << site1 << "_" << site2;
           std::vector<double> mean_real = results[Wk_real_name.str().c_str()].mean<std::vector<double> >();
           std::vector<double> mean_imag = results[Wk_imag_name.str().c_str()].mean<std::vector<double> >();
-          //std::cout << "debug: " << Wk_real_name.str() << " " << Wk_imag_name.str() << " " << mean_real[0] << " " << mean_imag[0] << std::endl;
           for (unsigned int w = 0; w < n_matsubara; ++w) {
-            green_matsubara_measured(w, site1, site2, flavor1, flavor2) = -std::complex<double>(mean_real[w], mean_imag[w]) / (1.*beta);
-          }
-          //std::cout << "debug G: " << Wk_real_name.str() << " " << Wk_imag_name.str() << " " << green_matsubara_measured(0,site1, site2, flavor1, flavor2) << std::endl;
-          std::vector<double> error_real = results[Wk_real_name.str().c_str()].error<std::vector<double> >();
-          std::vector<double> error_imag = results[Wk_imag_name.str().c_str()].error<std::vector<double> >();
-          for (unsigned int e = 0; e < error_real.size(); ++e) {
-            double ereal = error_real[e];
-            double eimag = error_imag[e];
-            double error = (ereal >= eimag) ? ereal : eimag;
-            max_error = (error > max_error) ? error : max_error;
+            green_matsubara_measured(w, site1, site2, flavor1, flavor2) = -std::complex<double>(mean_real[w], mean_imag[w]) / (sign*beta);
           }
         }
       }
     }
   }
-  std::cout << "Maximal error in Wk: " << max_error << std::endl;
   for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
     for (std::size_t site1 = 0; site1 < n_site; ++site1) {
       for (std::size_t site2 = 0; site2 < n_site; ++site2) {
@@ -383,19 +431,131 @@ void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardI
     }
   }
   std::vector<double> dens = results["densities"].mean<std::vector<double> >();
-  for (std::size_t z=0; z<n_flavors; ++z) 
+  for (std::size_t z=0; z<n_flavors; ++z)
     densities[z] = dens[z];
 }
 
+void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardInteractionExpansion>::type &results,
+                                               matsubara_full_green_function_t &green_matsubara_measured,
+                                               itime_full_green_function_t &green_itime_measured,
+                                               const matsubara_green_function_t &bare_green_matsubara,
+                                               std::vector<double>& densities,
+                                               const double &beta, std::size_t n_site,
+                                               std::size_t n_flavors, std::size_t n_matsubara, std::size_t n_tau, std::size_t n_legendre) {
+  green_matsubara_measured.clear();
+  green_itime_measured.clear();
+  std::cout << "evaluating self energy measurement: lengendre, real space" << std::endl;
+  double sign = results["Sign"].mean<double>();
 
-double green0_spline(const itime_green_function_t &green0, const itime_t delta_t, 
+  //Legendre expansion utils
+  LegendreTransformer legendre_transformer(n_matsubara,n_legendre);
+  const alps::numeric::matrix<std::complex<double> > & Tnl(legendre_transformer.Tnl());
+  //alps::numeric::matrix<std::complex<double> > & Tnl(legendre_transformer.Tnl());
+
+  boost::multi_array<std::complex<double>, 5> Sl(boost::extents[n_legendre][n_site][n_site][n_flavors][n_flavors]);
+  boost::multi_array<std::complex<double>, 5> Sw(boost::extents[n_legendre][n_site][n_site][n_flavors][n_flavors]);
+
+  //load S_l
+  for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+    for (std::size_t flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+      for (std::size_t site1 = 0; site1 < n_site; ++site1) {
+        for (std::size_t site2 = 0; site2 < n_site; ++site2) {
+          std::stringstream Sl_real_name, Sl_imag_name;
+          Sl_real_name << "Sl_real_" << flavor1 << "_" << flavor2 << "_" << site1 << "_" << site2;
+          Sl_imag_name << "Sl_imag_" << flavor1 << "_" << flavor2 << "_" << site1 << "_" << site2;
+          std::vector<double> mean_real = results[Sl_real_name.str().c_str()].mean<std::vector<double> >();
+          std::vector<double> mean_imag = results[Sl_imag_name.str().c_str()].mean<std::vector<double> >();
+          for (unsigned int i_l = 0; i_l < n_legendre; ++i_l) {
+            Sl[i_l][site1][site2][flavor1][flavor2] = std::complex<double>(mean_real[i_l], mean_imag[i_l])/sign;
+          }
+        }
+      }
+    }
+  }
+
+  //compute S(iomega_n)
+  {
+    alps::numeric::matrix<std::complex<double> > Sl_vec(n_legendre,1), Sw_vec(n_matsubara,1);//tmp arrays for gemm
+    for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+      for (std::size_t flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+        for (std::size_t site1 = 0; site1 < n_site; ++site1) {
+          for (std::size_t site2 = 0; site2 < n_site; ++site2) {
+            for(std::size_t i_l = 0; i_l < n_legendre;  ++ i_l) {
+              Sl_vec(i_l,0) = Sl[i_l][site1][site2][flavor1][flavor2];
+            }
+            alps::numeric::gemm(Tnl,Sl_vec,Sw_vec);
+            for (std::size_t w = 0; w < n_matsubara; ++w) {
+              Sw[w][site1][site2][flavor1][flavor1] = Sw_vec(w,0);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  //compute G(iomega_n) by Dyson eq.
+  {
+    alps::numeric::matrix<std::complex<double> > g0_mat(n_site*n_flavors, n_site*n_flavors), s_mat(n_site*n_flavors,n_site*n_flavors);//tmp arrays for gemm
+    alps::numeric::matrix<std::complex<double> > g_mat(n_site*n_flavors, n_site*n_flavors);
+    for (std::size_t w = 0; w < n_matsubara; ++w) {
+      g0_mat.clear();
+      s_mat.clear();
+      g_mat.clear();
+
+      //prepare a matrix for S=Sigma G
+      for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+        for (std::size_t flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+          for (std::size_t site1 = 0; site1 < n_site; ++site1) {
+            for (std::size_t site2 = 0; site2 < n_site; ++site2) {
+              int idx1 = site1 + flavor1*n_site;
+              int idx2 = site2 + flavor2*n_site;
+              s_mat(idx1, idx2) = Sw[w][site1][site2][flavor1][flavor2];
+            }
+          }
+        }
+      }
+
+      //prepare a matrix for bare G
+      for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+         for (std::size_t site1 = 0; site1 < n_site; ++site1) {
+           for (std::size_t site2 = 0; site2 < n_site; ++site2) {
+             int idx1 = site1 + flavor1*n_site;
+             int idx2 = site2 + flavor1*n_site;
+             g0_mat(idx1, idx2) = bare_green_matsubara(w, site1, site2, flavor1);
+           }
+         }
+      }
+
+      //solve Dyson equation
+      alps::numeric::gemm(g0_mat,s_mat,g_mat);
+      g_mat += g0_mat;
+
+      //write back full G
+      for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+        for (std::size_t flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+          for (std::size_t site1 = 0; site1 < n_site; ++site1) {
+            for (std::size_t site2 = 0; site2 < n_site; ++site2) {
+              int idx1 = site1 + flavor1*n_site;
+              int idx2 = site2 + flavor2*n_site;
+              green_matsubara_measured(w, site1, site2, flavor1, flavor2) = g_mat(idx1, idx2);
+            }
+          }
+        }
+      }
+
+    }
+  }
+}
+
+
+double green0_spline(const itime_green_function_t &green0, const itime_t delta_t,
                                               const int s1, const int s2, const spin_t z, int n_tau, double beta);
 
 
-void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardInteractionExpansion>::type &results, 
+void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardInteractionExpansion>::type &results,
                                                                        itime_full_green_function_t &green_result,
-                                                                       const itime_green_function_t &green0, 
-                                                                       const double &beta, const int n_site, 
+                                                                       const itime_green_function_t &green0,
+                                                                       const double &beta, const int n_site,
                                                                        const int n_flavors, const int n_tau, const int n_self)
 {
   std::cout<<"evaluating self energy measurement: itime, real space."<<std::endl;

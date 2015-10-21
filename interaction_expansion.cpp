@@ -55,6 +55,7 @@ n_matsubara_measurements(parms["NMATSUBARA_MEASUREMENTS"] | (int)n_matsubara),
 n_tau((int)(parms["N"]|parms["N_TAU"])),
 n_tau_inv(1./n_tau),
 n_self(parms["NSELF"] | (int)(10*n_tau)),
+n_legendre(parms["N_LEGENDRE"] | 0),
 mc_steps((boost::uint64_t)parms["SWEEPS"]),
 therm_steps((unsigned int)parms["THERMALIZATION"]),        
 max_time_in_seconds(parms["MAX_TIME"] | 86400),
@@ -72,15 +73,16 @@ green_matsubara(n_matsubara, n_site, n_flavors),
 bare_green_matsubara(n_matsubara,n_site, n_flavors), 
 bare_green_itime(n_tau+1, n_site, n_flavors),
 green_itime(n_tau+1, n_site, n_flavors),
-pert_hist(max_order)
+pert_hist(max_order),
+legendre_transformer(n_matsubara,n_legendre)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
     measurement_method=selfenergy_measurement_itime_rs;
-    std::cout << "debug: measure_in_itime_rs " << std::endl;
+    //std::cout << "debug: measure_in_itime_rs " << std::endl;
   } else {
     measurement_method=selfenergy_measurement_matsubara;
-    std::cout << "debug: measure_matsubara " << std::endl;
+    //std::cout << "debug: measure_matsubara " << std::endl;
   }
   for(unsigned int i=0;i<n_flavors;++i)
     g0.push_back(green_matrix(n_tau, 20));
@@ -117,7 +119,7 @@ pert_hist(max_order)
 
 void InteractionExpansion::update()
 {
-  std::cout << "step " << step << std::endl;
+  //std::cout << "step " << step << std::endl;
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     interaction_expansion_step();                
@@ -127,6 +129,7 @@ void InteractionExpansion::update()
       reset_perturbation_series();
   }
 }
+
 void InteractionExpansion::measure(){
   measure_observables();
 }
@@ -137,12 +140,14 @@ double InteractionExpansion::fraction_completed() const{
   //check for error convergence
   std::cout << "fraction " << ((step-therm_steps) / (double) mc_steps) << std::endl;
   std::cout << "debug fraction " << "step=" << step << " therm_steps " << therm_steps << " mc_steps= " << mc_steps << std::endl;
-  if (!thermalized)
+  if (!thermalized) {
     return 0.;
+  }
   if(time(NULL)-start_time> max_time_in_seconds){
     std::cout<<"we ran out of time!"<<std::endl;
     return 1;
   }
+  assert(step>=therm_steps);
   return ((step-therm_steps) / (double) mc_steps);
 }
 
@@ -192,3 +197,4 @@ void c_or_cdagger::initialize_simulation(const alps::params &p)
     use_static_exp_=false;
   }
 }
+

@@ -10,6 +10,8 @@
       <sourceFolder url="file://$MODULE_DIR$/interaction_expansion.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/interaction_expansion.hpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/io.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/legendre.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/legendre.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/main.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/measurements.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/model.cpp" isTestSource="false" />

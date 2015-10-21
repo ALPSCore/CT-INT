@@ -47,6 +47,7 @@
 #include "operator.hpp"
 #include "green_matrix.hpp"
 #include <alps/numeric/matrix.hpp>
+#include "legendre.h"
 
 
 /*types*/
@@ -271,6 +272,7 @@ protected:
   
   void compute_W_matsubara();
   void compute_W_itime();
+  void compute_Sl();
   void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();
   
@@ -291,6 +293,7 @@ protected:
   const itime_index_t n_tau;                        //number of imag time slices
   const itime_t n_tau_inv;                        //the inverse of n_tau
   const frequency_t n_self;                        //number of self energy (W) binning points
+  const std::size_t n_legendre;
   const boost::uint64_t mc_steps;                        
   const unsigned long therm_steps;                
   const double max_time_in_seconds;
@@ -337,6 +340,7 @@ protected:
   clock_t update_time;
   clock_t measurement_time;
 
+  LegendreTransformer legendre_transformer;
 };
 
 
@@ -348,6 +352,7 @@ std::ostream& operator << (std::ostream &os, const vertex &v);
 std::ostream& operator << (std::ostream &os, const c_or_cdagger &c);
 std::ostream& operator << (std::ostream& os, const simple_hist &h);
 
+/*
 
 
 //Use this for the most simple single site Hubbard model.
@@ -365,6 +370,7 @@ public:
   void perform_remove(unsigned int vertex_nr);
   void reject_remove();
 };
+*/
 
 
 
@@ -384,7 +390,7 @@ public:
 };
 
 
-
+/*
 //Use this for multiple bands where you have terms Un_i n_j
 class MultiBandDensityHubbardInteractionExpansion: public InteractionExpansion{
 public:
@@ -400,6 +406,6 @@ public:
   double try_remove(unsigned int vertex_nr);
   void perform_remove(unsigned int vertex_nr);
   void reject_remove();
-};
+};*/
 
 #endif

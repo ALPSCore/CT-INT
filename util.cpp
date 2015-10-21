@@ -2,6 +2,8 @@
 // Created by H. Shinaoka on 2015/10/15.
 //
 
+#include <vector>
+#include <assert.h>
 #include "util.h"
 
 template<>
@@ -23,3 +25,4 @@ template<>
 std::complex<double> myconj(std::complex<double> val) {
     return std::conj(val);
 }
+

@@ -5,6 +5,7 @@
 #ifndef IMPSOLVER_UTIL_H
 #define IMPSOLVER_UTIL_H
 
+#include <vector>
 #include <complex>
 
 template<typename T> T mycast(std::complex<double> val);

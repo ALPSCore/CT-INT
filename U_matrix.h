@@ -130,7 +130,6 @@ private:
 };
 
 //Data structure for general two-body interactions for a multi-orbital cluster impurity problem
- /*
 template<class T>
 class general_U_matrix{
   public:
@@ -143,7 +142,8 @@ class general_U_matrix{
       if (!parms["GENERAL_U_MATRIX_FILE"]) {
         throw std::runtime_error("Error: GENERAL_U_MATRIX_FILE is not defined!");
       }
-      std::ifstream ifs(parms["GENERAL_U_MATRIX_FILE"].cast<std::string>().c_str());
+      std::string ufilename(parms["GENERAL_U_MATRIX_FILE"]);
+      std::ifstream ifs(ufilename.c_str());
       ifs >> num_nonzero_;
       Uval_.resize(num_nonzero_);
       site_indices_.resize(boost::extents(num_nonzero_,4));
@@ -162,19 +162,19 @@ class general_U_matrix{
 
     ~U_matrix(){ }
 
-    inline int n_nonzero() const{return n_nonzero_;}
+    inline int n_nonzero() const{return num_nonzero_;}
     spin_t nf()const {return nf_;}
     spin_t ns()const {return ns_;}
 
-    T operator()(unsigned int idx_non_zero_) {
+    T operator()(unsigned int idx_non_zero) {
       assert(idx_non_zero<num_nonzero_);
-      return Uval_[idx_non_zero_];
+      return Uval_[idx_non_zero];
     }
 
-    boost::tuples<int,int,int,int>
+    boost::tuple<int,int,int,int>
     site_indices(unsigned int idx_non_zero) {
       assert(idx_non_zero<num_nonzero_);
-      return boost::tuples(
+      return boost::tuple<int,int,int,int>(
               site_indices_[idx_non_zero][0],
               site_indices_[idx_non_zero][1],
               site_indices_[idx_non_zero][2],
@@ -182,10 +182,10 @@ class general_U_matrix{
       );
     };
 
-    boost::tuples<spin_t,spin_t,spin_t,spin_t>
+    boost::tuple<spin_t,spin_t,spin_t,spin_t>
     flavor_indices(unsigned int idx_non_zero) {
       assert(idx_non_zero<num_nonzero_);
-      return boost::tuples(
+      return boost::tuple<spin_t,spin_t,spin_t,spin_t>(
               flavor_indices_[idx_non_zero][0],
               flavor_indices_[idx_non_zero][1],
               flavor_indices_[idx_non_zero][2],
@@ -200,7 +200,6 @@ class general_U_matrix{
     boost::multi_array<spin_t,2> flavor_indices_;//flavor indices (sigma^I, sigma^J, sigma^K, sigma^L)
     boost::multi_array<T,3> alpha_;//the first index is the index of non-zero interaction terms, the second index is auxially spin, the third denotes (ij) or (kl).
  };
-  */
 
 std::ostream &operator<<(std::ostream &os, const U_matrix &U);
 //U_MATRIX_H
