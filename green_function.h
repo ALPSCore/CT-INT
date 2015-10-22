@@ -267,8 +267,8 @@ typedef green_function<std::complex<double> > matsubara_green_function_t;
 typedef green_function<double> itime_green_function_t;
 
 //has off-diagonal elements in flavor space
-typedef full_green_function<std::complex<double> > matsubara_full_green_function_t;
-typedef full_green_function<double> itime_full_green_function_t;
+//typedef full_green_function<std::complex<double> > matsubara_full_green_function_t;
+//typedef full_green_function<double> itime_full_green_function_t;
 
 ///write out imag time Green function
 std::ostream &operator<<(std::ostream &os, const green_function<double> &v);

@@ -90,8 +90,8 @@ public:
   virtual ~FourierTransformer() {}
   virtual void forward_ft(const itime_green_function_t &G_tau, matsubara_green_function_t &G_omega) const;
   virtual void backward_ft(itime_green_function_t &G_tau, const matsubara_green_function_t &G_omega) const;
-  virtual void backward_ft_fullG(itime_full_green_function_t &G_tau, const matsubara_full_green_function_t &G_omega) const;
-  virtual void append_tail(matsubara_full_green_function_t& G_omega, const matsubara_green_function_t& G0_omega,
+  //virtual void backward_ft_fullG(itime_full_green_function_t &G_tau, const matsubara_full_green_function_t &G_omega) const;
+  virtual void append_tail(matsubara_green_function_t& G_omega, const matsubara_green_function_t& G0_omega,
                            const int nfreq_measured) const;
   
   static void generate_transformer(const alps::Parameters &parms,

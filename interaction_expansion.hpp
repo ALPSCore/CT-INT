@@ -240,7 +240,7 @@ public:
   //type of G(tau) This should be std::complex when G(tau) has imaginary parts. At some point, this will be templatized.
   typedef double GTYPE;
 //typedef std::vector<std::vector<std::valarray<std::complex<double> > > > Wk_t;
-  typedef boost::multi_array<std::complex<double>, 5> Wk_t;
+  typedef boost::multi_array<std::complex<double>, 4> Wk_t;
 
 protected:
   
@@ -268,11 +268,11 @@ protected:
   
   /*measurement functions*/
   // in file measurements.cpp
-  void measure_observables(void);
+  void measure_observables(std::valarray<double>& timings);
   void initialize_observables(void);
   
   void compute_W_matsubara();
-  void compute_W_itime();
+//  void compute_W_itime();
   void compute_Sl();
   void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();

@@ -65,7 +65,8 @@ onsite_U((double)parms["U"]),
 alpha((double)parms["ALPHA"]),
 U(alps::make_deprecated_parameters(parms)),                         
 recalc_period(parms["RECALC_PERIOD"] | 5000),
-measurement_period(parms["MEASUREMENT_PERIOD"] | (parms["N_MEAS"] | 200)),
+//measurement_period(parms["MEASUREMENT_PERIOD"] | (parms["N_MEAS"] | 200)),
+measurement_period(parms["MEASUREMENT_PERIOD"] | 500*n_flavors*n_site),
 convergence_check_period(parms["CONVERGENCE_CHECK_PERIOD"] | (int)recalc_period),
 almost_zero(parms["ALMOSTZERO"] | 1.e-16),
 seed(parms["SEED"] | 0),
@@ -133,9 +134,9 @@ void InteractionExpansion::update()
 }
 
 void InteractionExpansion::measure(){
-  boost::timer::cpu_timer timer;
-  measure_observables();
-  measurements["MeasurementTimeMsec"] << timer.elapsed().wall*1E-6;
+  std::valarray<double> timings(2);
+  measure_observables(timings);
+  measurements["MeasurementTimeMsec"] << timings;
 }
 
 

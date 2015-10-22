@@ -81,6 +81,7 @@ void FourierTransformer::backward_ft(itime_green_function_t &G_tau,
   }
 }
 
+/*
 void FourierTransformer::backward_ft_fullG(itime_full_green_function_t &G_tau,
                                      const matsubara_full_green_function_t &G_omega) const {
   assert(G_tau.nflavor()==G_omega.nflavor() && G_tau.nsite()==G_omega.nsite());
@@ -138,6 +139,7 @@ void FourierTransformer::backward_ft_fullG(itime_full_green_function_t &G_tau,
     }
   }
 }
+*/
 
 
 void generate_spline_matrix(dense_matrix & spline_matrix, double dt) {
@@ -253,7 +255,7 @@ void FourierTransformer::forward_ft(const itime_green_function_t & gtau, matsuba
 
 
 
-void FourierTransformer::append_tail(matsubara_full_green_function_t& G_omega,
+void FourierTransformer::append_tail(matsubara_green_function_t& G_omega,
                                      const matsubara_green_function_t& G0_omega,
                                      const int nfreq_measured) const
 {
@@ -266,7 +268,7 @@ void FourierTransformer::append_tail(matsubara_full_green_function_t& G_omega,
       for (frequency_t freq=nfreq_measured; freq<G0_omega.nfreq(); ++freq) {
         std::complex<double> iw(0,(2*freq+1)*M_PI/beta_);
         std::complex<double> Sigma = Sc0_[flavor][k][k] + Sc1_[flavor][k][k]/iw + Sc2_[flavor][k][k]/(iw*iw);
-        G_omega(freq, k, k, flavor, flavor) = 1./(1./G0_omega(freq, k, k, flavor) - Sigma);
+        G_omega(freq, k, k, flavor) = 1./(1./G0_omega(freq, k, k, flavor) - Sigma);
       }
     }
   }

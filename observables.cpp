@@ -76,19 +76,17 @@ void InteractionExpansion::initialize_observables(void)
   }
   else {
     for(unsigned int flavor=0;flavor<n_flavors;++flavor){
-      for(unsigned int flavor2=0;flavor2<n_flavors;++flavor2) {
-        for (unsigned int k = 0; k < n_site; k++) {
-          for (unsigned int k2 = 0; k2 < n_site; k2++) {
-            std::stringstream obs_name_real, obs_name_imag;
-            obs_name_real << "Wk_real_" << flavor << "_" << flavor2 << "_" << k << "_" << k2;
-            obs_name_imag << "Wk_imag_" << flavor << "_" << flavor2 << "_" << k << "_" << k2;
+      for (unsigned int k = 0; k < n_site; k++) {
+        for (unsigned int k2 = 0; k2 < n_site; k2++) {
+          std::stringstream obs_name_real, obs_name_imag;
+          obs_name_real << "Wk_real_" << flavor << "_" << k << "_" << k2;
+          obs_name_imag << "Wk_imag_" << flavor << "_" << k << "_" << k2;
 #ifndef ALPS_NGS_USE_NEW_ALEA
-            measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
-            measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
+          measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
+          measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
 #else
-            throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
+          throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
 #endif //ALPS_NGS_USE_NEW_ALEA
-          }
         }
       }
     }
@@ -96,19 +94,17 @@ void InteractionExpansion::initialize_observables(void)
 
   if (n_legendre>0) {
     for(unsigned int flavor=0;flavor<n_flavors;++flavor){
-      for(unsigned int flavor2=0;flavor2<n_flavors;++flavor2) {
-        for (unsigned int k = 0; k < n_site; k++) {
-          for (unsigned int k2 = 0; k2 < n_site; k2++) {
-            std::stringstream obs_name_real, obs_name_imag;
-            obs_name_real << "Sl_real_" << flavor << "_" << flavor2 << "_" << k << "_" << k2;
-            obs_name_imag << "Sl_imag_" << flavor << "_" << flavor2 << "_" << k << "_" << k2;
+      for (unsigned int k = 0; k < n_site; k++) {
+        for (unsigned int k2 = 0; k2 < n_site; k2++) {
+          std::stringstream obs_name_real, obs_name_imag;
+          obs_name_real << "Sl_real_" << flavor << "_" << k << "_" << k2;
+          obs_name_imag << "Sl_imag_" << flavor << "_" << k << "_" << k2;
 #ifndef ALPS_NGS_USE_NEW_ALEA
-            measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
-            measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
+          measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
+          measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
 #else
-            throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
+          throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
 #endif //ALPS_NGS_USE_NEW_ALEA
-          }
         }
       }
     }
@@ -158,7 +154,7 @@ void InteractionExpansion::initialize_observables(void)
 #else
   measurements << alps::ngs::RealObservable("VertexInsertion");
   measurements << alps::ngs::RealObservable("VertexRemoval");
-  measurements << alps::ngs::RealObservable("MeasurementTimeMsec");
+  measurements << alps::ngs::SimpleRealVectorObservable("MeasurementTimeMsec");
   measurements << alps::ngs::RealObservable("UpdateTimeMsec");
   measurements << alps::ngs::RealObservable("RecomputeTime");
 #endif
@@ -171,15 +167,26 @@ void InteractionExpansion::initialize_observables(void)
 ///this function is called whenever measurements should be performed. Depending
 ///on the value of  measurement_method it will choose one particular
 ///measurement function. 
-void InteractionExpansion::measure_observables(void) 
+void InteractionExpansion::measure_observables(std::valarray<double>& timings)
 {
+  assert(timings.size()>=2);
+  boost::timer::cpu_timer timer;
+
   measurements["Sign"]<<sign;
-  if (measurement_method == selfenergy_measurement_matsubara)
-    compute_W_matsubara();
-  else if (measurement_method == selfenergy_measurement_itime_rs)
-    compute_W_itime();
+  const double t1 = timer.elapsed().wall*1E-6;
+  if (measurement_method == selfenergy_measurement_matsubara) {
+      compute_W_matsubara();
+  } else if (measurement_method == selfenergy_measurement_itime_rs) {
+      throw std::runtime_error("compute_W_itime is no long implemented!");
+      //compute_W_itime();
+  }
+  const double t2 = timer.elapsed().wall*1E-6;
 
   compute_Sl();
+
+  const double t3 = timer.elapsed().wall*1E-6;
+  timings[0] = t2-t1;
+  timings[1] = t3-t2;
 
   std::valarray<double> pert_order(n_flavors);
   for(unsigned int i=0;i<n_flavors;++i) { 
