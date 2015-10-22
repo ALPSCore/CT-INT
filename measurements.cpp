@@ -47,6 +47,7 @@ void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardIn
 
 void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardInteractionExpansion>::type &results,
                                                matsubara_full_green_function_t &green_matsubara_measured,
+                                               matsubara_full_green_function_t &sigma_green_matsubara_measured,
                                                itime_full_green_function_t &green_itime_measured,
                                                const matsubara_green_function_t &bare_green_matsubara,
                                                std::vector<double>& densities,
@@ -67,6 +68,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
   const int n_legendre(parms["N_LEGENDRE"] | 0);
   itime_full_green_function_t green_itime_measured(n_tau+1, n_site, n_flavors);
   matsubara_full_green_function_t green_matsubara_measured(n_matsubara, n_site, n_flavors);
+  matsubara_full_green_function_t sigma_green_matsubara_measured(n_matsubara, n_site, n_flavors);
 
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   boost::shared_ptr<FourierTransformer> fourier_ptr_g0;
@@ -130,7 +132,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
 
   //Legendre measurement
   if (n_legendre>0) {
-    evaluate_selfenergy_measurement_legendre(results, green_matsubara_measured, green_itime_measured,
+    evaluate_selfenergy_measurement_legendre(results, green_matsubara_measured, sigma_green_matsubara_measured, green_itime_measured,
                                               bare_green_matsubara, densities,
                                               beta, n_site, n_flavors, n_matsubara, n_tau, n_legendre);
 
@@ -141,6 +143,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
 
     alps::hdf5::archive ar(output_file, "a");
     green_matsubara_measured.write_hdf5(ar, "/G_omega_test");
-      green_itime_measured.write_hdf5(ar, "/G_tau_test");
+    sigma_green_matsubara_measured.write_hdf5(ar, "/SigmaG_omega_test");
+    green_itime_measured.write_hdf5(ar, "/G_tau_test");
   }
 }

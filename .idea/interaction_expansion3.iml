@@ -7,6 +7,10 @@
       <sourceFolder url="file://$MODULE_DIR$/fastupdate.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fouriertransform.C" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fouriertransform.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gtest.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gtest.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gtest/gtest-all.cc" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gtest/gtest_main.cc" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/interaction_expansion.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/interaction_expansion.hpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/io.cpp" isTestSource="false" />

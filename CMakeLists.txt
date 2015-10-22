@@ -48,23 +48,27 @@ set(ALPS_ROOT ${ALPS_LIBRARY_DIRS} $ENV{BLAS_LAPACK_DIRS} CACHE STRINGS "CHYB li
 set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
        fouriertransform.C
        auxiliary.cpp
-       observables.cpp 
+       observables.cpp
        fastupdate.cpp
-       selfenergy.cpp 
-       solver.cpp 
-       io.cpp 
-       splines.cpp 
-       interaction_expansion.cpp 
-       measurements.cpp 
+       selfenergy.cpp
+       solver.cpp
+       io.cpp
+       splines.cpp
+       interaction_expansion.cpp
+       measurements.cpp
        model.cpp
        util.cpp
-        legendre.cpp legendre.h)
+       legendre.cpp legendre.h)
 add_executable(interaction main.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
+
+set (GTEST_SOURCE legendre.cpp)
+add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTEST_SOURCE})
 
 #libraries
 list(APPEND CHYB_LIBRARIES alps boost $ENV{BLAS_LAPACK_LIBRARIES})
 message(CHYB_LIBRARIES "${CHYB_LIBRARIES}")
 target_link_libraries(interaction ${CHYB_LIBRARIES})
+target_link_libraries(gtest ${CHYB_LIBRARIES})
 
 message("CXX, CC=")
 message(STATUS "${CMAKE_CXX_COMPILER}")

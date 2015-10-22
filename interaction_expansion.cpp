@@ -119,6 +119,7 @@ legendre_transformer(n_matsubara,n_legendre)
 
 void InteractionExpansion::update()
 {
+  boost::timer::cpu_timer timer;
   //std::cout << "step " << step << std::endl;
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
@@ -128,18 +129,21 @@ void InteractionExpansion::update()
     if(step % recalc_period ==0)
       reset_perturbation_series();
   }
+  measurements["UpdateTimeMsec"] << timer.elapsed().wall*1E-6;
 }
 
 void InteractionExpansion::measure(){
+  boost::timer::cpu_timer timer;
   measure_observables();
+  measurements["MeasurementTimeMsec"] << timer.elapsed().wall*1E-6;
 }
 
 
 
 double InteractionExpansion::fraction_completed() const{
   //check for error convergence
-  std::cout << "fraction " << ((step-therm_steps) / (double) mc_steps) << std::endl;
-  std::cout << "debug fraction " << "step=" << step << " therm_steps " << therm_steps << " mc_steps= " << mc_steps << std::endl;
+  //std::cout << "fraction " << ((step-therm_steps) / (double) mc_steps) << std::endl;
+  //std::cout << "debug fraction " << "step=" << step << " therm_steps " << therm_steps << " mc_steps= " << mc_steps << std::endl;
   if (!thermalized) {
     return 0.;
   }

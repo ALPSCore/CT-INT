@@ -30,7 +30,8 @@
 #ifndef DMFT_QMC_WEAK_COUPLING_H
 #define DMFT_QMC_WEAK_COUPLING_H
 
-#include "boost/multi_array.hpp"
+#include <boost/multi_array.hpp>
+#include <boost/timer/timer.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>

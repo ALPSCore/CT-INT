@@ -158,8 +158,8 @@ void InteractionExpansion::initialize_observables(void)
 #else
   measurements << alps::ngs::RealObservable("VertexInsertion");
   measurements << alps::ngs::RealObservable("VertexRemoval");
-  measurements << alps::ngs::RealObservable("MeasurementTime");
-  measurements << alps::ngs::RealObservable("UpdateTime");
+  measurements << alps::ngs::RealObservable("MeasurementTimeMsec");
+  measurements << alps::ngs::RealObservable("UpdateTimeMsec");
   measurements << alps::ngs::RealObservable("RecomputeTime");
 #endif
   measurements.reset(true);
@@ -178,6 +178,9 @@ void InteractionExpansion::measure_observables(void)
     compute_W_matsubara();
   else if (measurement_method == selfenergy_measurement_itime_rs)
     compute_W_itime();
+
+  compute_Sl();
+
   std::valarray<double> pert_order(n_flavors);
   for(unsigned int i=0;i<n_flavors;++i) { 
       assert(num_rows(M[i].matrix()) == num_cols(M[i].matrix()));
