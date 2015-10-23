@@ -28,6 +28,7 @@
  *****************************************************************************/
 
 #include "interaction_expansion.hpp"
+#include "operator.hpp"
 #include <complex>
 #include <alps/alea.h>
 #include <alps/alea/simpleobseval.h>
@@ -84,45 +85,71 @@ void InteractionExpansion::compute_W_matsubara()
 
 void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 {
+  //clear contents of Wk
+  std::fill(Wk.origin(), Wk.origin()+Wk.num_elements(), 0);
+
+  //allocate memory for work
+  size_t max_mat_size = 0;
   for (unsigned int z=0; z<n_flavors; ++z) {
     assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
+    max_mat_size = std::max(max_mat_size, num_rows(M[z].matrix()));
+  }
+  alps::numeric::matrix<std::complex<double> > GR(max_mat_size, n_site),
+          GL(n_site, max_mat_size), MGR(max_mat_size, n_site), GLMGR(max_mat_size, max_mat_size);
 
-    for(unsigned int p=0;p<num_rows(M[z].matrix());++p) {
+  //Note: vectorized for the loops over operators (should be optimal for large beta)
+  for (size_t z=0; z<n_flavors; ++z) {
+    const size_t Nv = num_rows(M[z].matrix());
+
+    for(size_t p=0;p<Nv;++p) {
       M[z].creators()[p].compute_exp(n_matsubara, -1);
     }
-    for(unsigned int q=0;q<num_cols(M[z].matrix());++q) {
+    for(size_t q=0;q<Nv;++q) {
       M[z].annihilators()[q].compute_exp(n_matsubara, +1);
     }
 
-    for(unsigned int p=0;p<num_rows(M[z].matrix());++p){
-      //M[z].creators()[p].compute_exp(n_matsubara, -1);
-      const unsigned int site_c = M[z].creators()[p].s();
-      const spin_t flavor_c = M[z].creators()[p].flavor();
+    for(unsigned int i_freq=0; i_freq <nfreq; ++i_freq) {
+      GR.resize(Nv, n_site);
+      MGR.resize(Nv, n_site);
+      GL.resize(n_site, Nv);
+      GLMGR.resize(n_site, n_site);
 
-      for(unsigned int q=0;q<num_cols(M[z].matrix());++q){
-        //M[z].annihilators()[q].compute_exp(n_matsubara, +1);
-        const spin_t flavor_a = M[z].annihilators()[q].flavor();
-        const unsigned int site_a = M[z].annihilators()[q].s();
-
-        const std::complex<double>* exparray_creators = M[z].creators()[p].exp_iomegat();
-        const std::complex<double>* exparray_annihilators = M[z].annihilators()[q].exp_iomegat();
-        std::complex<double> tmp = M[z].matrix()(q,p);
-        for(unsigned int o=0; o<nfreq; ++o){
-          //const std::complex<double> exp_c = (*exparray_creators++);
-          //const std::complex<double> exp_a = (*exparray_annihilators++);
-          const std::complex<double> exp_c = exparray_creators[o];
-          const std::complex<double> exp_a = exparray_annihilators[o];
-          assert(flavor_c==z && flavor_a==z);
-          for (unsigned int site1=0; site1<n_site; site1++) {//loops for site1 and site2 may be vectorized.
-            for (unsigned int site2=0; site2<n_site; site2++) {
-              Wk[z][site1][site2][o] +=
-                      tmp * exp_c * exp_a * bare_green_matsubara(o, site1, site_a, flavor_a) * bare_green_matsubara(o, site_c, site2, flavor_c);
-            }
-          }
+      //GR
+      for(unsigned int p=0;p<Nv;++p) {
+        const size_t site_p = M[z].creators()[p].s();
+        const double phase = M[z].creators()[p].t()*(2*i_freq+1)*M_PI/beta;
+        const std::complex<double> exp = std::complex<double>(std::cos(phase), -std::sin(phase));
+        for (size_t site=0; site<n_site; ++site) {
+          GR(p, site) = bare_green_matsubara(i_freq, site_p, site, z)*exp;
         }
       }
-    }
-  }
+
+      //GL
+      for(unsigned int q=0;q<Nv;++q) {
+        const size_t site_q = M[z].annihilators()[q].s();
+        const double phase = M[z].annihilators()[q].t()*(2*i_freq+1)*M_PI/beta;
+        const std::complex<double> exp = std::complex<double>(std::cos(phase), std::sin(phase));
+        for (size_t site=0; site<n_site; ++site) {
+          GL(site, q) = bare_green_matsubara(i_freq, site, site_q, z)*exp;
+        }
+      }
+
+      //clear MGR, GLMGR
+      std::fill(MGR.get_values().begin(), MGR.get_values().end(), 0);
+      std::fill(GLMGR.get_values().begin(), GLMGR.get_values().end(), 0);
+
+      gemm(M[z].matrix(), GR, MGR);
+      gemm(GL, MGR, GLMGR);
+
+      for (unsigned int site1=0; site1<n_site; ++site1) {
+        for (unsigned int site2=0; site2<n_site; ++site2) {
+          Wk[z][site1][site2][i_freq] += GLMGR(site1, site2);
+        }
+      }
+
+    }//i_freq
+  }//z
+
   for(unsigned int flavor=0;flavor<n_flavors;++flavor) {
     for (unsigned int site1 = 0; site1 < n_site; ++site1) {
       for (unsigned int site2 = 0; site2 < n_site; ++site2) {
@@ -156,39 +183,35 @@ void InteractionExpansion::compute_Sl() {
   std::fill(Sl.origin(),Sl.origin()+Sl.num_elements(),0.0);//clear the content for safety
   for (unsigned int z=0; z<n_flavors; ++z) {
     assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
+    const size_t Nv = num_rows(M[z].matrix());
 
     //shift times of operators by time_shift
     for (std::size_t random_walk=0; random_walk<num_random_walk; ++random_walk) {
       const double time_shift = beta*random();
 
-      for(unsigned int q=0;q<num_cols(M[z].matrix());++q) {//annihilation operators
+      for(unsigned int q=0;q<Nv;++q) {//annihilation operators
         double tmp = M[z].annihilators()[q].t()+time_shift;
         time_a_shifted[q] = tmp<beta ? tmp : tmp-beta;
         assert(time_a_shifted[q]<beta+1E-8);
       }
-      for(unsigned int p=0;p<num_rows(M[z].matrix());++p) {//creation operators
+      for(unsigned int p=0;p<Nv;++p) {//creation operators
         double tmp = M[z].creators()[p].t()+time_shift;
         time_c_shifted[p] = tmp<beta ? tmp : tmp-beta;
         assert(time_c_shifted[p]<beta+1E-8);
       }
 
-      for(unsigned int p=0;p<num_rows(M[z].matrix());++p){//creation operators
+      for(unsigned int p=0;p<Nv;++p){//creation operators
         const unsigned int site_c = M[z].creators()[p].s();
-        const spin_t flavor_c = M[z].creators()[p].flavor();
-        assert(flavor_c==z);
 
         //interpolate G0
         for (unsigned int site1=0; site1<n_site; ++site1) {
           for (unsigned int site2=0; site2<n_site; ++site2) {
-            g0_c(site1, site2) = green0_spline(time_c_shifted[p],flavor_c,site1,site2);
+            g0_c(site1, site2) = green0_spline(time_c_shifted[p],z,site1,site2);
           }
         }
 
         for(unsigned int q=0;q<num_cols(M[z].matrix());++q){//annihilation operators
-          const spin_t flavor_a = M[z].annihilators()[q].flavor();
           const unsigned int site_a = M[z].annihilators()[q].s();
-          assert(flavor_a==z);
-          assert(flavor_c==z);
           legendre_transformer.compute_legendre(2*time_a_shifted[q]/beta-1.0, legendre_vals);//P_l[x(tau_q)]
 
           const std::complex<double> Mqp = M[z].matrix()(q,p);
@@ -439,6 +462,7 @@ void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardIn
           for(std::size_t i_l = 0; i_l < n_legendre;  ++ i_l) {
             Sl_vec(i_l,0) = Sl[i_l][site1][site2][flavor1];
           }
+          std::fill(Sw_vec.get_values().begin(), Sw_vec.get_values().end(), 0.0);
           alps::numeric::gemm(Tnl,Sl_vec,Sw_vec);
           for (std::size_t w = 0; w < n_matsubara; ++w) {
             Sw[w][site1][site2][flavor1] = Sw_vec(w,0);
