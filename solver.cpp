@@ -72,7 +72,8 @@ void InteractionExpansion::interaction_expansion_step(void)
 ///error. This is done by iserting the vertices starting from zero.
 void InteractionExpansion::reset_perturbation_series()
 {
-  std::vector<inverse_m_matrix> M2(M); //make a copy of M
+  big_inverse_m_matrix M2(M); //make a copy of M
+  //std::vector<inverse_m_matrix> M2(M); //make a copy of M
   vertex_array vertices_backup;
   for(unsigned int i=0;i<vertices.size();++i){
     vertices_backup.push_back(vertices[i]);

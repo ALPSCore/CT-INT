@@ -133,12 +133,16 @@ private:
 };
 
 
+typedef class vertex_new {
+private:
+} vertex_new;
+
 
 typedef class vertex
-{        
+{
 public:
-  vertex(const spin_t &flavor1, const site_t &site1, const unsigned int &c_dagger_1, const unsigned int &c_1, 
-         const spin_t &flavor2, const site_t &site2, const unsigned int &c_dagger_2, const unsigned int &c_2, 
+  vertex(const spin_t &flavor1, const site_t &site1, const unsigned int &c_dagger_1, const unsigned int &c_1,
+         const spin_t &flavor2, const site_t &site2, const unsigned int &c_dagger_2, const unsigned int &c_2,
          const double &abs_w)
   {
     z1_=flavor1;
@@ -151,7 +155,7 @@ public:
     c2_=c_2;
     abs_w_=abs_w;
   }
-  
+
   inline const double &abs_w() const {return abs_w_;}
   inline const unsigned int &flavor1() const {return z1_;}
   inline const unsigned int &flavor2() const {return z2_;}
@@ -196,35 +200,25 @@ private:
   std::vector<double> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
 };
 
-/*class InteractionExpansionSim: public alps::scheduler::MCSimulation, public alps::MatsubaraImpurityTask
+class big_inverse_m_matrix
 {
 public:
+    void push_back(const inverse_m_matrix& new_one) {
+      sub_matrices_.push_back(new_one);
+    }
 
-  InteractionExpansionSim(const alps::ProcessList &w, const boost::filesystem::path &p) : alps::scheduler::MCSimulation(w,p) {}
-  
-  InteractionExpansionSim(const alps::ProcessList &w, const alps::Parameters &p) : alps::scheduler::MCSimulation(w,p) {p_=p;}
-  
-  std::pair<matsubara_green_function_t,itime_green_function_t> get_result(); 
+    inverse_m_matrix& operator[](size_t flavor) {
+      assert(flavor<sub_matrices_.size());
+      return sub_matrices_[flavor];
+    }
 
-  void evaluate_selfenergy_measurement_matsubara(const alps::ObservableSet &gathered_measurements, 
-                                                 matsubara_green_function_t &green_matsubara_measured,
-                                                 const matsubara_green_function_t &bare_green_matsubara, 
-                                                 std::vector<double>& densities, const double &beta, 
-                                                 const int n_site, const int n_flavors, const int n_matsubara) const;
+    size_t size() const {
+      return sub_matrices_.size();
+    };
 
-  void evaluate_selfenergy_measurement_itime_rs(const alps::ObservableSet &gathered_measurements, itime_green_function_t &green_result,
-                                                const itime_green_function_t &green0, const double &beta, const int n_site, 
-                                                const int n_flavors, const int n_tau, const int n_self) const;
-
-  double green0_spline(const itime_green_function_t &green0, const itime_t delta_t, const int s1, const int s2, 
-                       const spin_t flavor, int n_tau, double beta) const;
-  
 private:
-
-  alps::Parameters p_;
-};*/
-
-
+    std::vector<inverse_m_matrix> sub_matrices_;
+};
 
 class InteractionExpansion: public alps::mcbase
 {
@@ -304,6 +298,7 @@ protected:
   const double onsite_U;                        
   const double alpha;                                
   const U_matrix U;
+  const general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
   
   
   const unsigned int recalc_period;                
@@ -324,8 +319,9 @@ protected:
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
   vertex_array vertices;
-  std::vector<inverse_m_matrix> M;
-    
+  big_inverse_m_matrix M;
+    //std::vector<inverse_m_matrix> M;
+
   double weight;
   double sign;
   unsigned int measurement_method;
