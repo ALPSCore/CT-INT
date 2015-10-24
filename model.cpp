@@ -34,14 +34,19 @@ double HubbardInteractionExpansion::try_add()
 {
   //work array
   std::valarray<int> num_inserted_ops(0,n_flavors);
-  assert(Uijkl.rank==2);//only two-body interactions
-  const size_t rank = Uijkl.rank;
+  //const size_t rank = Uijkl.rank;
 
+  //select a new vertex
   double t = beta*random();
-  const size_t v_type = static_cast<size_t>(random()*Uijkl.n_vertex_type());
-  const size_t pseudo_spin = static_cast<size_t>(random()*Uijkl.n_pseudo_spin());
+  const size_t v_id = static_cast<size_t>(random()*Uijkl.n_vertex_type());
+  const vertex_new new_vertex = Uijkl.get_vertex(v_id);
+  const size_t rank = new_vertex.rank();
+  assert(rank==2);
 
-  double abs_w = Uijkl.get_Uval(v_type);
+  //select a new AF state
+  const size_t af_state = static_cast<size_t>(random()*new_vertex.num_af_states());
+
+  const double Uval = new_vertex.Uval();
 
   std::vector<spin_t> flavor_vertex(rank);
   std::vector<site_t> site_c_vertex(rank), site_a_vertex(rank);
@@ -49,10 +54,10 @@ double HubbardInteractionExpansion::try_add()
 
   for (size_t i_rank=0; i_rank<rank; ++i_rank) {
     //We insert c^dagger c - alpha.
-    size_t flavor_rank = Uijkl.flavor_index(v_type, i_rank);
-    size_t site_c = Uijkl.site_index(v_type, 2*i_rank);
-    size_t site_a = Uijkl.site_index(v_type, 2*i_rank+1);
-    size_t alpha_val = Uijkl.alpha(v_type,pseudo_spin,i_rank);
+    size_t flavor_rank = Uijkl.flavor_index(v_id, i_rank);
+    size_t site_c = Uijkl.site_index(v_id, 2*i_rank);
+    size_t site_a = Uijkl.site_index(v_id, 2*i_rank+1);
+    size_t alpha_val = Uijkl.alpha(v_id,af_state,i_rank);
 
     assert(flavor_rank<n_flavors);
     assert(site_c<n_site);
@@ -102,6 +107,7 @@ double HubbardInteractionExpansion::try_add()
   double metropolis_weight=-beta*abs_w*num_vertex_types/(vertices.size())*lambda0*lambda1;
   //return weight
   return metropolis_weight;
+  return 0.0;
 }
 
 

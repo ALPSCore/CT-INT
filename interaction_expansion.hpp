@@ -133,11 +133,6 @@ private:
 };
 
 
-typedef class vertex_new {
-private:
-} vertex_new;
-
-
 typedef class vertex
 {
 public:
