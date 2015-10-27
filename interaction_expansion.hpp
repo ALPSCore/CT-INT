@@ -196,34 +196,6 @@ private:
   std::vector<double> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
 };
 
-/*class InteractionExpansionSim: public alps::scheduler::MCSimulation, public alps::MatsubaraImpurityTask
-{
-public:
-
-  InteractionExpansionSim(const alps::ProcessList &w, const boost::filesystem::path &p) : alps::scheduler::MCSimulation(w,p) {}
-  
-  InteractionExpansionSim(const alps::ProcessList &w, const alps::Parameters &p) : alps::scheduler::MCSimulation(w,p) {p_=p;}
-  
-  std::pair<matsubara_green_function_t,itime_green_function_t> get_result(); 
-
-  void evaluate_selfenergy_measurement_matsubara(const alps::ObservableSet &gathered_measurements, 
-                                                 matsubara_green_function_t &green_matsubara_measured,
-                                                 const matsubara_green_function_t &bare_green_matsubara, 
-                                                 std::vector<double>& densities, const double &beta, 
-                                                 const int n_site, const int n_flavors, const int n_matsubara) const;
-
-  void evaluate_selfenergy_measurement_itime_rs(const alps::ObservableSet &gathered_measurements, itime_green_function_t &green_result,
-                                                const itime_green_function_t &green0, const double &beta, const int n_site, 
-                                                const int n_flavors, const int n_tau, const int n_self) const;
-
-  double green0_spline(const itime_green_function_t &green0, const itime_t delta_t, const int s1, const int s2, 
-                       const spin_t flavor, int n_tau, double beta) const;
-  
-private:
-
-  alps::Parameters p_;
-};*/
-
 
 
 class InteractionExpansion: public alps::mcbase
@@ -253,9 +225,11 @@ protected:
   
   /*green's function*/
   // in file spines.cpp
-  double green0_spline(const c_or_cdagger &cdagger, const c_or_cdagger &c) const;
-  double green0_spline(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
-  double green0_spline(const itime_t delta_t, const spin_t flavor) const;
+  //double green0_spline(const creator &cdagger, const annihilator &c) const;
+  //double green0_spline(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
+  double green0_spline_new(const annihilator &c, const creator &cdagger) const;
+  double green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
+  //double green0_spline(const itime_t delta_t, const spin_t flavor) const;
   
   /*the actual solver functions*/
   // in file solver.cpp

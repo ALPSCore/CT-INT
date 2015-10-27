@@ -128,7 +128,6 @@ void InteractionExpansion::update()
     if(vertices.size()<max_order)
       pert_hist[vertices.size()]++;
     if(step % recalc_period ==0) {
-      //just for debug
       sanity_check();
       reset_perturbation_series();
     }
@@ -187,7 +186,7 @@ void InteractionExpansion::sanity_check() {
     const size_t Nv = M[flavor].matrix().num_rows();
     for (size_t q=0; q<Nv; ++q) {
       for (size_t p=0; p<Nv; ++p) {
-        G0(p, q) = green0_spline(M[flavor].creators()[p], M[flavor].annihilators()[q]);
+        G0(p, q) = green0_spline_new(M[flavor].annihilators()[p], M[flavor].creators()[q]);
       }
     }
     for (size_t p=0; p<Nv; ++p) {

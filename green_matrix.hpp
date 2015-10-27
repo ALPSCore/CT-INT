@@ -34,7 +34,8 @@
 //tau_A-tau_i, where i is a vertex and A is a measuring point for the imag
 //time greens function.
 
-double green0_spline(const double, const unsigned int,const unsigned int,const unsigned int);
+//double green0_spline(const double, const unsigned int,const unsigned int,const unsigned int);
+//double green0_spline_new(const double, const unsigned int,const unsigned int,const unsigned int);
 
 class green_matrix
 {

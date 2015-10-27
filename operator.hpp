@@ -195,7 +195,21 @@ public:
 
   }
 
-} creator, annihilator;
+};// creator, annihilator;
+
+class creator : public c_or_cdagger {
+public:
+    creator(const spin_t z,const site_t s, const itime_t t, const frequency_t n_matsubara)
+            : c_or_cdagger(z, s, t, n_matsubara){};
+    ~creator(){};
+};
+
+class annihilator : public c_or_cdagger {
+public:
+    annihilator(const spin_t z,const site_t s, const itime_t t, const frequency_t n_matsubara)
+            : c_or_cdagger(z, s, t, n_matsubara){};
+    ~annihilator(){};
+};
 
 #endif
 
