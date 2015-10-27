@@ -42,15 +42,16 @@ double InteractionExpansion::fastupdate_up(const int flavor, bool compute_only_w
   unsigned int noperators = num_rows(M[flavor].matrix());
   //current size of M: number of vertices -1. We need to add the last vertex. 
   //A pointer to the creator and annihilator is already stored in creators_ and annihilators_ at position M[flavor].size();
-  double Green0_n_n=green0_spline(M[flavor].creators()[noperators],M[flavor].annihilators()[noperators]); 
+  //double Green0_n_n=green0_spline(M[flavor].creators()[noperators],M[flavor].annihilators()[noperators]);
+  double Green0_n_n=green0_spline_new(M[flavor].annihilators()[noperators], M[flavor].creators()[noperators]);
   alps::numeric::vector<double> Green0_n_j(noperators);
   alps::numeric::vector<double> Green0_j_n(noperators);
   alps::numeric::vector<double> lastcolumn(noperators);
   alps::numeric::vector<double> lastrow(noperators);
   //compute the Green's functions with interpolation
   for(unsigned int i=0;i<noperators;++i){
-    Green0_n_j[i]=green0_spline(M[flavor].creators()[noperators],M[flavor].annihilators()[i]);
-    Green0_j_n[i]=green0_spline(M[flavor].creators()[i],M[flavor].annihilators()[noperators]);
+    Green0_n_j[i]=green0_spline_new(M[flavor].annihilators()[noperators], M[flavor].creators()[i]);
+    Green0_j_n[i]=green0_spline_new(M[flavor].annihilators()[i], M[flavor].creators()[noperators]);
   }
   //compute the last row
   if(noperators!=0)

@@ -48,7 +48,7 @@ ostream& operator <<(ostream &os, const vertex &v)
   return os;
 }
 
-ostream &operator<<(ostream &os, const creator &c)
+ostream &operator<<(ostream &os, const c_or_cdagger &c)
 {
   std::cout<<c.flavor()<<" "<<c.s()<<" "<<c.t();
   return os;
