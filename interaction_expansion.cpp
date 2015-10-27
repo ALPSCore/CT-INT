@@ -128,8 +128,11 @@ void InteractionExpansion::update()
     interaction_expansion_step();                
     if(vertices.size()<max_order)
       pert_hist[vertices.size()]++;
-    if(step % recalc_period ==0)
+    if(step % recalc_period ==0) {
+      //just for debug
+      sanity_check();
       reset_perturbation_series();
+    }
   }
   measurements["UpdateTimeMsec"] << timer.elapsed().wall*1E-6;
 }
@@ -175,6 +178,39 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
   green_itime=bare_green_itime;
 }
 
+
+void InteractionExpansion::sanity_check() {
+  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    alps::numeric::matrix<GTYPE> tmp(M[flavor].matrix()), G0(M[flavor].matrix());
+    std::fill(tmp.get_values().begin(), tmp.get_values().end(), 0);
+    std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
+
+    const size_t Nv = M[flavor].matrix().num_rows();
+    for (size_t q=0; q<Nv; ++q) {
+      for (size_t p=0; p<Nv; ++p) {
+        G0(p, q) = green0_spline(M[flavor].creators()[p], M[flavor].annihilators()[q]);
+      }
+    }
+    for (size_t p=0; p<Nv; ++p) {
+      G0(p, p) += M[flavor].alpha()[p];
+    }
+
+    gemm(G0, M[flavor].matrix(), tmp);
+    bool OK = true;
+    for (size_t q=0; q<Nv; ++q) {
+      for (size_t p=0; p<Nv; ++p) {
+        if (p==q) {
+          OK = OK && (std::abs(tmp(p,q)-1.)<1E-8);
+        } else {
+          OK = OK && (std::abs(tmp(p,q))<1E-8);
+        }
+      }
+    }
+    if (!OK) {
+      throw std::runtime_error("There is something wrong: G^{-1} != M.");
+    }
+  }
+}
 
 
 void c_or_cdagger::initialize_simulation(const alps::params &p)

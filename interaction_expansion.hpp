@@ -133,11 +133,12 @@ private:
 };
 
 
+
 typedef class vertex
-{
+{        
 public:
-  vertex(const spin_t &flavor1, const site_t &site1, const unsigned int &c_dagger_1, const unsigned int &c_1,
-         const spin_t &flavor2, const site_t &site2, const unsigned int &c_dagger_2, const unsigned int &c_2,
+  vertex(const spin_t &flavor1, const site_t &site1, const unsigned int &c_dagger_1, const unsigned int &c_1, 
+         const spin_t &flavor2, const site_t &site2, const unsigned int &c_dagger_2, const unsigned int &c_2, 
          const double &abs_w)
   {
     z1_=flavor1;
@@ -150,7 +151,7 @@ public:
     c2_=c_2;
     abs_w_=abs_w;
   }
-
+  
   inline const double &abs_w() const {return abs_w_;}
   inline const unsigned int &flavor1() const {return z1_;}
   inline const unsigned int &flavor2() const {return z2_;}
@@ -242,9 +243,11 @@ protected:
   
   /*green's function*/
   // in file spines.cpp
-  double green0_spline(const c_or_cdagger &cdagger, const c_or_cdagger &c) const;
-  double green0_spline(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
-  double green0_spline(const itime_t delta_t, const spin_t flavor) const;
+  //double green0_spline(const creator &cdagger, const annihilator &c) const;
+  //double green0_spline(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
+  double green0_spline_new(const annihilator &c, const creator &cdagger) const;
+  double green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
+  //double green0_spline(const itime_t delta_t, const spin_t flavor) const;
   
   /*the actual solver functions*/
   // in file solver.cpp
@@ -265,6 +268,7 @@ protected:
   void compute_Sl();
   void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();
+  void sanity_check();
   
   /*abstract virtual functions. Implement these for specific models.*/
   virtual double try_add()=0;

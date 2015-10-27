@@ -116,8 +116,8 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
       //GR
       for(unsigned int p=0;p<Nv;++p) {
-        const size_t site_p = M[z].creators()[p].s();
-        const double phase = M[z].creators()[p].t()*(2*i_freq+1)*M_PI/beta;
+        const size_t site_p = M[z].annihilators()[p].s();
+        const double phase = M[z].annihilators()[p].t()*(2*i_freq+1)*M_PI/beta;
         const std::complex<double> exp = std::complex<double>(std::cos(phase), -std::sin(phase));
         for (size_t site=0; site<n_site; ++site) {
           GR(p, site) = bare_green_matsubara(i_freq, site_p, site, z)*exp;
@@ -126,8 +126,8 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
       //GL
       for(unsigned int q=0;q<Nv;++q) {
-        const size_t site_q = M[z].annihilators()[q].s();
-        const double phase = M[z].annihilators()[q].t()*(2*i_freq+1)*M_PI/beta;
+        const size_t site_q = M[z].creators()[q].s();
+        const double phase = M[z].creators()[q].t()*(2*i_freq+1)*M_PI/beta;
         const std::complex<double> exp = std::complex<double>(std::cos(phase), std::sin(phase));
         for (size_t site=0; site<n_site; ++site) {
           GL(site, q) = bare_green_matsubara(i_freq, site, site_q, z)*exp;
@@ -206,7 +206,7 @@ void InteractionExpansion::compute_Sl() {
         //interpolate G0
         for (unsigned int site1=0; site1<n_site; ++site1) {
           for (unsigned int site2=0; site2<n_site; ++site2) {
-            g0_c(site1, site2) = green0_spline(time_c_shifted[p],z,site1,site2);
+            g0_c(site1, site2) = green0_spline_new(time_c_shifted[p],z,site1,site2);//CHECK!
           }
         }
 
@@ -253,19 +253,20 @@ void InteractionExpansion::measure_densities()
     memset(&(dens[z][0]), 0., sizeof(double)*(n_site));
   }
   double tau = beta*random();
-  for (unsigned int z=0; z<n_flavors; ++z) {                 
-    alps::numeric::vector<double> g0_tauj(num_rows(M[z].matrix()));
-    alps::numeric::vector<double> M_g0_tauj(num_rows(M[z].matrix()));
-    alps::numeric::vector<double> g0_taui(num_rows(M[z].matrix()));
+  for (unsigned int z=0; z<n_flavors; ++z) {
+    const size_t Nv = num_rows(M[z].matrix());
+    alps::numeric::vector<double> g0_tauj(Nv);
+    alps::numeric::vector<double> M_g0_tauj(Nv);
+    alps::numeric::vector<double> g0_taui(Nv);
     for (unsigned int s=0;s<n_site;++s) {             
-      for (unsigned int j=0;j<num_rows(M[z].matrix());++j) 
-        g0_tauj[j] = green0_spline(M[z].creators()[j].t()-tau, z, M[z].creators()[j].s(), s);
-      for (unsigned int i=0;i<num_rows(M[z].matrix());++i) 
-        g0_taui[i] = green0_spline(tau-M[z].annihilators()[i].t(),z, s, M[z].annihilators()[i].s());
+      for (unsigned int j=0;j<Nv;++j)
+        g0_tauj[j] = green0_spline_new(M[z].annihilators()[j].t()-tau, z, M[z].annihilators()[j].s(), s);
+      for (unsigned int i=0;i<Nv;++i)
+        g0_taui[i] = green0_spline_new(tau-M[z].creators()[i].t(),z, s, M[z].creators()[i].s());
       if (num_rows(M[z].matrix())>0)
           gemv(M[z].matrix(),g0_tauj,M_g0_tauj);
-      dens[z][s] += green0_spline(0,z,s,s);
-      for (unsigned int j=0;j<num_rows(M[z].matrix());++j) 
+      dens[z][s] += green0_spline_new(0,z,s,s);
+      for (unsigned int j=0;j<Nv;++j)
         dens[z][s] -= g0_taui[j]*M_g0_tauj[j]; 
     }
   }
@@ -298,86 +299,6 @@ void InteractionExpansion::measure_densities()
   }
   measurements["n_i n_j"] << static_cast<std::valarray<double> > (ninj*sign);
 }
-
-/*
-void InteractionExpansion::compute_W_itime()
-{
-  //first index: flavor. Second index: momentum. Third index: self energy tau point.
-  static boost::multi_array<GTYPE,4> W_z_i_j(boost::extents[n_flavors][n_site][n_site][n_self+1]);
-  std::fill(W_z_i_j.origin(), W_z_i_j.origin()+W_z_i_j.num_elements(), 0);
-  boost::multi_array<double,2> density(boost::extents[n_flavors][n_site]);
-  std::fill(density.origin(), density.origin()+density.num_elements(), 0);
-
-  int ntaupoints=10; //# of tau points at which we measure.
-  std::vector<double> tau_2(ntaupoints);
-  for(int i=0; i<ntaupoints;++i) {
-    tau_2[i]=beta*random();
-  }
-  for(unsigned int z=0;z<n_flavors;++z){                  //loop over flavor
-    assert(num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
-    alps::numeric::matrix<double> g0_tauj(num_cols(M[z].matrix()),ntaupoints);
-    alps::numeric::matrix<double> M_g0_tauj(num_rows(M[z].matrix()),ntaupoints);
-    alps::numeric::vector<double> g0_taui(num_rows(M[z].matrix()));
-    for(unsigned int s2=0;s2<n_site;++s2){             //site loop - second site.
-      for(int j=0;j<ntaupoints;++j) { 
-        for(unsigned int i=0;i<num_cols(M[z].matrix());++i){ //G0_{s_p s_2}(tau_p - tau_2) where we set t2=0.
-            g0_tauj(i,j) = green0_spline(M[z].creators()[i].t()-tau_2[j], z, M[z].creators()[i].s(), s2);
-        }
-      }
-      if (num_rows(M[z].matrix())>0) {
-        gemm(M[z].matrix(), g0_tauj, M_g0_tauj);
-      }
-      for(int j=0;j<ntaupoints;++j) {
-        for(unsigned int p=0;p<num_rows(M[z].matrix());++p){       //operator one
-          double sgn=1;
-          double delta_tau=M[z].creators()[p].t()-tau_2[j];
-          if(delta_tau<0){ 
-            sgn=-1; 
-            delta_tau+=beta; 
-          }
-          int bin=(int)(delta_tau/beta*n_self+0.5);
-          site_t site_p=M[z].creators()[p].s();
-          W_z_i_j[z][site_p][s2][bin] += M_g0_tauj(p,j)*sgn;
-        }
-      }
-      for(unsigned int i=0;i<num_rows(M[z].matrix());++i){
-        g0_taui[i]=green0_spline(tau_2[0]-M[z].annihilators()[i].t(),z, s2, M[z].annihilators()[i].s());
-      }
-      density[z][s2]=green0_spline(0,z,s2,s2);
-      for(unsigned int i=0;i<num_rows(M[z].matrix());++i){
-        density[z][s2]-= g0_taui[i]*M_g0_tauj(i,0);
-      }
-    }
-  }
-  if(is_thermalized()){
-    std::valarray<double> tmparray(n_self+1);
-    for(unsigned int flavor=0;flavor<n_flavors;++flavor){
-      for(unsigned int i=0;i<n_site;++i){
-        for(unsigned int j=0;j<n_site;++j){
-          std::stringstream W_name;
-          W_name  <<"W_"  <<flavor<<"_"<<i<<"_"<<j;
-          for (unsigned int iw=0; iw<n_self+1; ++iw) {
-            tmparray[iw] = W_z_i_j[flavor][i][j][iw]*(sign/ntaupoints);
-          }
-          measurements[W_name  .str().c_str()] << tmparray;
-          //measurements[W_name  .str().c_str()] << static_cast<std::valarray<double> > (W_z_i_j[flavor][i][j]*(sign/ntaupoints));
-        }
-        std::stringstream density_name;
-        density_name<<"density_"<<flavor;
-        if (n_site>1) density_name<<"_"<<i;
-        measurements[density_name.str().c_str()]<<(density[flavor][i]*sign);
-        if(false && n_flavors==2 && flavor==0){ //then we know how to compute Sz^2
-          std::stringstream sz_name, sz2_name, sz0_szj_name;
-          sz_name<<"Sz_"<<i; sz2_name<<"Sz2_"<<i; sz0_szj_name<<"Sz0_Sz"<<i;
-          measurements[sz_name.str().c_str()]<<((density[0][i]-density[1][i])*sign);
-          measurements[sz2_name.str().c_str()]<<((density[0][i]-density[1][i])*(density[0][i]-density[1][i])*sign);
-          measurements[sz0_szj_name.str().c_str()]<<((density[0][0]-density[1][0])*(density[0][i]-density[1][i])*sign);
-        }
-      }
-    }
-  }
-}
-*/
 
 void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardInteractionExpansion>::type &results,
                                                                         matsubara_green_function_t &green_matsubara_measured,
@@ -532,7 +453,12 @@ template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, c
 
 
 
+/*
+<<<<<<< HEAD
+double green0_spline(const itime_green_function_t &green0, const itime_t delta_t,
+=======
 double green0_spline(const itime_green_function_t &green0, const itime_t delta_t, 
+>>>>>>> work_G_new
                                               const int s1, const int s2, const spin_t z, int n_tau, double beta)
 {
   double temperature=1./beta;
