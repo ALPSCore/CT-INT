@@ -133,10 +133,10 @@ private:
 //typedef size_t vertex_t;
 
 template<class T>
-class vertex_new
+class vertex_definition
  {
  public:
-    vertex_new(size_t rank, size_t num_af_states, std::vector<spin_t>& flavors, std::vector<site_t>& sites, T Uval, boost::multi_array<T,2>& alpha_af_rank)
+    vertex_definition(size_t rank, size_t num_af_states, std::vector<spin_t>& flavors, std::vector<site_t>& sites, T Uval, boost::multi_array<T,2>& alpha_af_rank)
             : rank_(rank), num_af_states_(num_af_states), flavors_(flavors), sites_(sites), Uval_(Uval), alpha_af_rank_(alpha_af_rank) {
       assert(flavors_.size()==rank);
       assert(sites.size()==2*rank);
@@ -164,6 +164,10 @@ class vertex_new
       return num_af_states_;
     }
 
+    T get_alpha(size_t af_state, size_t idx_rank) const {
+      return alpha_af_rank_[af_state][idx_rank];
+    }
+
  private:
     size_t rank_;
     std::vector<spin_t> flavors_;
@@ -181,7 +185,7 @@ class general_U_matrix {
             ns_(parms.value_or_default("SITES", 1)),
             nf_(parms.value_or_default("FLAVORS", 2))
     {
-      if (!parms["GENERAL_U_MATRIX_FILE"]) {
+      if (!parms.defined("GENERAL_U_MATRIX_FILE")) {
         throw std::runtime_error("Error: GENERAL_U_MATRIX_FILE is not defined!");
       }
       std::string ufilename(parms["GENERAL_U_MATRIX_FILE"]);
@@ -202,10 +206,11 @@ class general_U_matrix {
         assert(itmp==idx);
         assert(rank==2);
         assert(num_af_states==2);
+        //std::cout << "debug " << itmp << " " << rank << " " << num_af_states << std::endl;
 
         site_indices_.resize(2*rank);
         flavor_indices_.resize(rank);
-        alpha_.resize(boost::extents[num_af_states][rank]);//assuming two-body interaction
+        alpha_.resize(boost::extents[num_af_states][rank]);
 
         for (size_t i_op=0; i_op<2*rank; ++i_op) {
           ifs >> site_indices_[i_op];//i, j, k, l
@@ -219,7 +224,7 @@ class general_U_matrix {
           }
         }
 
-        vertex_list.push_back(vertex_new<T>(rank, num_af_states, flavor_indices_, site_indices_, Uval_, alpha_));
+        vertex_list.push_back(vertex_definition<T>(rank, num_af_states, flavor_indices_, site_indices_, Uval_, alpha_));
       }
     }
 
@@ -227,15 +232,26 @@ class general_U_matrix {
     spin_t nf()const {return nf_;}
     spin_t ns()const {return ns_;}
 
-    vertex_new get_vertex(size_t vertex_idx) const {
+    const vertex_definition<T>& get_vertex(size_t vertex_idx) const {
       assert(vertex_idx<n_vertex_type());
       return vertex_list[vertex_idx];
     }
 
   private:
     unsigned int ns_, nf_, num_nonzero_;
-    std::vector<vertex_new<T> > vertex_list;
+    std::vector<vertex_definition<T> > vertex_list;
  };
+
+ //to remember what vertices is on the imaginary time axis..
+ typedef struct itime_vertex {
+   itime_vertex(size_t vertex_type, size_t af_state, std::vector<size_t> position_in_M)
+           : vertex_type_(vertex_type),
+             af_state_(af_state),
+             position_in_M_(position_in_M) {}
+
+   size_t vertex_type_, af_state_;
+   std::vector<size_t> position_in_M_;
+ } itime_vertex;
 
 std::ostream &operator<<(std::ostream &os, const U_matrix &U);
 //U_MATRIX_H

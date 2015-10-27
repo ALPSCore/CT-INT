@@ -37,6 +37,8 @@
 #include <alps/mcbase.hpp>
 
 #include <alps/alea.h>
+#include <alps/numeric/matrix.hpp>
+
 #include <cmath>
 #include "green_function.h"
 #include "alps_solver.h"
@@ -63,6 +65,24 @@ enum measurement_methods {
   selfenergy_measurement_itime_rs, //measurement using self energy method in imag time, real space
 };
 
+
+typedef struct fastupdate_add_helper {
+  fastupdate_add_helper(std::size_t num_flavors) : num_new_rows(num_flavors,0) {};
+
+  std::vector<std::size_t> num_new_rows;
+  void clear() {
+    std::fill(num_new_rows.begin(), num_new_rows.end(), 0);
+  }
+} fastupdate_add_helper;
+
+typedef struct fastupdate_remove_helper {
+    fastupdate_remove_helper(std::size_t num_flavors) : num_removed_rows(num_flavors,0) {};
+
+    std::vector<std::size_t> num_removed_rows;
+    void clear() {
+      std::fill(num_removed_rows.begin(), num_removed_rows.end(), 0);
+    }
+} fastupdate_remove_helper;
 
 
 class histogram
@@ -212,6 +232,11 @@ public:
       return sub_matrices_.size();
     };
 
+    void sanity_check() const {
+      for (spin_t flavor=0; flavor<size(); ++flavor) {
+        assert(sub_matrices_[flavor].creators().size()==sub_matrices_[flavor].annihilators().size());
+      }
+    }
 private:
     std::vector<inverse_m_matrix> sub_matrices_;
 };
@@ -271,12 +296,12 @@ protected:
   void sanity_check();
   
   /*abstract virtual functions. Implement these for specific models.*/
-  virtual double try_add()=0;
-  virtual void perform_add()=0;
-  virtual void reject_add()=0;
-  virtual double try_remove(unsigned int vertex_nr)=0;
-  virtual void perform_remove(unsigned int vertex_nr)=0;
-  virtual void reject_remove()=0;
+  virtual double try_add(fastupdate_add_helper&)=0;
+  virtual void perform_add(fastupdate_add_helper&)=0;
+  virtual void reject_add(fastupdate_add_helper&)=0;
+  virtual double try_remove(unsigned int vertex_nr, fastupdate_remove_helper&)=0;
+  virtual void perform_remove(unsigned int vertex_nr, fastupdate_remove_helper&)=0;
+  virtual void reject_remove(fastupdate_remove_helper&)=0;
   
   /*private member variables, constant throughout the simulation*/
   const unsigned int max_order;                        
@@ -318,6 +343,7 @@ protected:
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
   vertex_array vertices;
+  std::vector<itime_vertex> vertices_new;
   big_inverse_m_matrix M;
     //std::vector<inverse_m_matrix> M;
 
@@ -377,12 +403,12 @@ public:
   {
     if(n_flavors !=2){throw std::invalid_argument("you need a different model for n_flavors!=2.");}
   }
-  double try_add();
-  void perform_add();
-  void reject_add();
-  double try_remove(unsigned int vertex_nr);
-  void perform_remove(unsigned int vertex_nr);
-  void reject_remove();
+  double try_add(fastupdate_add_helper&);
+  void perform_add(fastupdate_add_helper&);
+  void reject_add(fastupdate_add_helper&);
+  double try_remove(unsigned int vertex_nr, fastupdate_remove_helper&);
+  void perform_remove(unsigned int vertex_nr, fastupdate_remove_helper&);
+  void reject_remove(fastupdate_remove_helper&);
 };
 
 

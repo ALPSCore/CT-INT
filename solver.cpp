@@ -29,25 +29,30 @@
 
 #include "interaction_expansion.hpp"
 
+#include <alps/numeric/matrix/algorithms.hpp>
+
 ///The basic updates for the InteractionExpansion algorithm: adding and removing vertices.
 ///This is the heart of InteractionExpansion's code.
 void InteractionExpansion::interaction_expansion_step(void)
 {
+  //temp work memory
+  static fastupdate_add_helper add_helper(n_flavors);
+  static fastupdate_remove_helper remove_helper(n_flavors);
+
   int pert_order=vertices.size();   //current order of perturbation series
   double metropolis_weight=0.;
-  //double oldsign=sign;
-  static unsigned int i=0; ++i;    
+  static unsigned int i=0; ++i;
   if(random()<0.5){  //trying to ADD vertex
     if(vertices.size()>=max_order) 
       return; //we have already reached the highest perturbation order
-    metropolis_weight=try_add();
+    metropolis_weight=try_add(add_helper);
     if(fabs(metropolis_weight)> random()){
       measurements["VertexInsertion"]<<1.;
-      perform_add();
+      perform_add(add_helper);
       sign*=metropolis_weight<0?-1:1;
     }else{
       measurements["VertexInsertion"]<<0.;
-      reject_add();
+      reject_add(add_helper);
     }
   }else{ // try to REMOVE a vertex
     pert_order=vertices.size(); //choose a vertex
@@ -55,16 +60,26 @@ void InteractionExpansion::interaction_expansion_step(void)
       return;     //we have an empty list or one with just one vertex
     //this might be the ideal place to do some cleanup, e.g. get rid of the roundoff errors and such.
     int vertex_nr=(int)(random() * pert_order);
-    metropolis_weight=try_remove(vertex_nr); //get the determinant ratio. don't perform fastupdate yet
+    metropolis_weight=try_remove(vertex_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
     if(fabs(metropolis_weight)> random()){ //do the actual update
       measurements["VertexRemoval"]<<1.;
-      perform_remove(vertex_nr);
+      perform_remove(vertex_nr, remove_helper);
       sign*=metropolis_weight<0?-1:1;
     }else{
       measurements["VertexRemoval"]<<0.;
-      reject_remove();
+      reject_remove(remove_helper);
     }
   }//end REMOVE
+  assert(vertices.size()==vertices_new.size());
+  //sanity check for onsite U
+  M.sanity_check();
+  {
+    size_t Nv = 0;
+    for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+      Nv += M[flavor].creators().size();
+    }
+    assert(2*vertices_new.size()==Nv);
+  }
   weight=metropolis_weight;
 }
 
@@ -72,14 +87,20 @@ void InteractionExpansion::interaction_expansion_step(void)
 ///error. This is done by iserting the vertices starting from zero.
 void InteractionExpansion::reset_perturbation_series()
 {
+  //static fastupdate_add_helper add_helper(n_flavors);
   big_inverse_m_matrix M2(M); //make a copy of M
+  /*
+  fastupdate_add_helper helper(n_flavors);
   //std::vector<inverse_m_matrix> M2(M); //make a copy of M
   vertex_array vertices_backup;
+  std::vector<itime_vertex> vertices_new_backup(vertices_new);
   for(unsigned int i=0;i<vertices.size();++i){
     vertices_backup.push_back(vertices[i]);
   }
   vertices.clear();
-  sign=1;
+  vertices_new.clear();
+  sign=1;//correct?
+  //throw std::runtime_error("CHECK SIGN!");
   for(spin_t z=0;z<n_flavors;++z){
     resize(M[z].matrix(),0,0);
   }
@@ -88,8 +109,39 @@ void InteractionExpansion::reset_perturbation_series()
   //recompute M from scratch
   for(unsigned int i=0;i<vertices_backup.size();++i){
     vertices.push_back(vertices_backup[i]);
-    perform_add();
+    vertices_new.push_back(vertices_new_backup[i]);
+    //throw std::runtime_error("SHOULD BE CHECK!");
+    perform_add(helper);
+    std::cout << " debug " << i << " " << M[0].matrix().num_rows() << " " << M[1].matrix().num_rows() << std::endl;
   }
+
+  {
+    for (size_t flavor=0; flavor<n_flavors; ++flavor) {
+      std::cout << M[flavor].matrix().num_rows() << " " << M2[flavor].matrix().num_rows() << std::endl;
+      assert(M[flavor].matrix().num_rows()==M2[flavor].matrix().num_rows());
+    }
+  }
+   */
+
+  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    alps::numeric::matrix<GTYPE> G0(M[flavor].matrix());
+    std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
+
+    const size_t Nv = M[flavor].matrix().num_rows();
+
+    //construct G0 matrix
+    for (size_t q=0; q<Nv; ++q) {
+      for (size_t p=0; p<Nv; ++p) {
+        G0(p, q) = green0_spline_new(M[flavor].annihilators()[p], M[flavor].creators()[q]);
+      }
+    }
+    for (size_t p=0; p<Nv; ++p) {
+      G0(p, p) += M[flavor].alpha()[p];
+    }
+
+    M[flavor].matrix() = alps::numeric::inverse(G0);
+  }
+
   for(unsigned int z=0;z<M2.size();++z){
     double max_diff=0;
     for(unsigned int j=0;j<num_cols(M2[z].matrix());++j){

@@ -188,7 +188,7 @@ void InteractionExpansion::sanity_check() {
     const size_t Nv = M[flavor].matrix().num_rows();
     for (size_t q=0; q<Nv; ++q) {
       for (size_t p=0; p<Nv; ++p) {
-        G0(p, q) = green0_spline(M[flavor].creators()[p], M[flavor].annihilators()[q]);
+        G0(p, q) = green0_spline_new(M[flavor].annihilators()[p], M[flavor].creators()[q]);
       }
     }
     for (size_t p=0; p<Nv; ++p) {
@@ -209,6 +209,7 @@ void InteractionExpansion::sanity_check() {
     if (!OK) {
       throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
+    //std::cout << " OK " << OK << std::endl;
   }
 }
 

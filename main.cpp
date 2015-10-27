@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 
     //create ALPS parameters from hdf5 parameter file
     alps::parameters_type<HubbardInteractionExpansion>::type parms(alps::hdf5::archive(options.input_file, alps::hdf5::archive::READ));
-    try {
+    //try {
       if(options.time_limit!=0)
         throw std::invalid_argument("time limit is passed in the parameter file!");
       if(!parms.defined("MAX_TIME")) throw std::runtime_error("parameter MAX_TIME is not defined. How long do you want to run the code for? (in seconds)");
@@ -88,15 +88,15 @@ int main(int argc, char** argv)
 #else
       }
 #endif
-    }
-    catch(std::exception& exc){
-        std::cerr<<exc.what()<<std::endl;
-        return -1;
-    }
-    catch(...){
-        std::cerr << "Fatal Error: Unknown Exception!\n";
-        return -2;
-    }
+    //}
+    //catch(std::exception& exc){
+        //std::cerr<<exc.what()<<std::endl;
+        //return -1;
+    //}
+    //catch(...){
+        //std::cerr << "Fatal Error: Unknown Exception!\n";
+        //return -2;
+    //}
   }//options.valid
   return 0;
 }
