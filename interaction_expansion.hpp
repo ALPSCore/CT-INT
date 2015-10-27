@@ -276,6 +276,7 @@ protected:
   void compute_Sl();
   void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();
+  void sanity_check();
   
   /*abstract virtual functions. Implement these for specific models.*/
   virtual double try_add()=0;

@@ -59,6 +59,8 @@ double InteractionExpansion::green0_spline(const creator &cdagger, const annihil
 ///Compute the bare green's function for a given flavor, site, and imaginary time.
 double InteractionExpansion::green0_spline(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const
 {
+  assert(delta_t<= beta);
+  assert(delta_t>=-beta);
   if(delta_t*delta_t < almost_zero){
     return bare_green_itime(0,site1, site2, flavor);
   } 
