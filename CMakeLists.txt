@@ -58,7 +58,7 @@ set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
        measurements.cpp
        model.cpp
        util.cpp
-       legendre.cpp legendre.h)
+       legendre.cpp legendre.h fastupdate_helper.h)
 add_executable(interaction main.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
 
 set (GTEST_SOURCE legendre.cpp)

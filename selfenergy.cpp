@@ -319,7 +319,7 @@ void InteractionExpansion::compute_W_itime()
     alps::numeric::matrix<double> M_g0_tauj(num_rows(M[z].matrix()),ntaupoints);
     alps::numeric::vector<double> g0_taui(num_rows(M[z].matrix()));
     for(unsigned int s2=0;s2<n_site;++s2){             //site loop - second site.
-      for(int j=0;j<ntaupoints;++j) { 
+      for(int j=0;j<ntaupoints;++j) {
         for(unsigned int i=0;i<num_cols(M[z].matrix());++i){ //G0_{s_p s_2}(tau_p - tau_2) where we set t2=0.
             g0_tauj(i,j) = green0_spline(M[z].creators()[i].t()-tau_2[j], z, M[z].creators()[i].s(), s2);
         }
@@ -331,9 +331,9 @@ void InteractionExpansion::compute_W_itime()
         for(unsigned int p=0;p<num_rows(M[z].matrix());++p){       //operator one
           double sgn=1;
           double delta_tau=M[z].creators()[p].t()-tau_2[j];
-          if(delta_tau<0){ 
-            sgn=-1; 
-            delta_tau+=beta; 
+          if(delta_tau<0){
+            sgn=-1;
+            delta_tau+=beta;
           }
           int bin=(int)(delta_tau/beta*n_self+0.5);
           site_t site_p=M[z].creators()[p].s();
@@ -523,16 +523,17 @@ void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardIn
 
 
 
-template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, const Y y0, const Y y1, const X x)
-{
-  return y0 + (x-x0)/(x1-x0)*(y1-y0);
-}
+//template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, const Y y0, const Y y1, const X x)
+//{
+  //return y0 + (x-x0)/(x1-x0)*(y1-y0);
+//}
 
 
 
 
 
-double green0_spline(const itime_green_function_t &green0, const itime_t delta_t, 
+/*
+double green0_spline(const itime_green_function_t &green0, const itime_t delta_t,
                                               const int s1, const int s2, const spin_t z, int n_tau, double beta)
 {
   double temperature=1./beta;
@@ -552,3 +553,4 @@ double green0_spline(const itime_green_function_t &green0, const itime_t delta_t
                                green0(time_index_2, s1,s2,z), delta_t+beta);
   }
 }
+*/

@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/auxiliary.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fastupdate.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/fastupdate_helper.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fouriertransform.C" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fouriertransform.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/gtest.cpp" isTestSource="false" />
