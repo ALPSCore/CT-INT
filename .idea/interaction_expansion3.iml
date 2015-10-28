@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/auxiliary.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fastupdate.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/fastupdate_formula.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fouriertransform.C" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fouriertransform.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/gtest.cpp" isTestSource="false" />
@@ -19,6 +20,8 @@
       <sourceFolder url="file://$MODULE_DIR$/main.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/measurements.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/model.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/multi_vertex_fastupdate.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/multi_vertex_fastupdate.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/observables.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/selfenergy.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/solver.cpp" isTestSource="false" />

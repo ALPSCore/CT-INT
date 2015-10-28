@@ -28,42 +28,35 @@
 *****************************************************************************/
 
 #include "interaction_expansion.hpp"
+#include <boost/math/special_functions/binomial.hpp>
 
-double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper)
+double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_t n_vertices_add=1)
 {
   //work array
   helper.clear();
 
-  //select a new vertex
-  double t = beta*random();
-  const size_t v_type = static_cast<size_t>(random()*Uijkl.n_vertex_type());
-  const vertex_definition<GTYPE> new_vertex = Uijkl.get_vertex(v_type);
-  const size_t rank = new_vertex.rank();
-  const size_t af_state = static_cast<size_t>(random()*new_vertex.num_af_states());
-  assert(rank==2);
+  //add vertices one by one
+  double prod_Uval = 1.0;
+  for (size_t iv=0; iv<n_vertices_add; ++iv) {
+    const double time = beta*random();
+    const size_t v_type = static_cast<size_t>(random()*Uijkl.n_vertex_type());
+    const vertex_definition<GTYPE> new_vertex_type = Uijkl.get_vertex(v_type);
+    const size_t rank = new_vertex_type.rank();
+    const size_t af_state = static_cast<size_t>(random()* new_vertex_type.num_af_states());
+    prod_Uval *= new_vertex_type.Uval();
+    assert(rank==2);
 
-  const double Uval = new_vertex.Uval();
-
-  std::vector<size_t> pos_c_in_smallM(rank);//remember where we insert creation operators in M matrices.
-  //"i_rank" stands for a pair of creation and annihilation operators
-  for (size_t i_rank=0; i_rank<rank; ++i_rank) {
-    const size_t flavor_rank = new_vertex.flavors()[i_rank];
-    pos_c_in_smallM[i_rank] = M[flavor_rank].creators().size();
-    assert(new_vertex.sites()[2*i_rank]==new_vertex.sites()[2*i_rank+1]);
-    M[flavor_rank].creators().push_back(creator(flavor_rank, new_vertex.sites()[2*i_rank], t, n_matsubara));
-    M[flavor_rank].annihilators().push_back(annihilator(flavor_rank, new_vertex.sites()[2*i_rank+1], t, n_matsubara));
-    M[flavor_rank].alpha().push_back(new_vertex.get_alpha(af_state, i_rank));
-    ++(helper.num_new_rows[flavor_rank]);
-  }
-
-  //keep track of vertex list
-  vertices_new.push_back(itime_vertex(v_type, af_state, pos_c_in_smallM));
-  {
-    spin_t flavor0 = 0;
-    spin_t flavor1 = 1;
-    size_t site = new_vertex.sites()[0];
-    vertices.push_back(vertex(flavor0, site, M[0].creators().size()-1, M[0].annihilators().size()-1,
-                              flavor1, site, M[1].creators().size()-1, M[1].annihilators().size()-1, Uval));
+    std::vector<size_t> pos_c_in_smallM(rank);//remember where we insert creation operators in M matrices.
+    for (size_t i_rank=0; i_rank<rank; ++i_rank) {
+      const size_t flavor_rank = new_vertex_type.flavors()[i_rank];
+      pos_c_in_smallM[i_rank] = M[flavor_rank].creators().size();
+      assert(new_vertex_type.sites()[2*i_rank]== new_vertex_type.sites()[2*i_rank+1]);//assume onsite U
+      M[flavor_rank].creators().push_back(creator(flavor_rank, new_vertex_type.sites()[2*i_rank], time, n_matsubara));
+      M[flavor_rank].annihilators().push_back(annihilator(flavor_rank, new_vertex_type.sites()[2*i_rank+1], time, n_matsubara));
+      M[flavor_rank].alpha().push_back(new_vertex_type.get_alpha(af_state, i_rank));
+      ++(helper.num_new_rows[flavor_rank]);
+    }
+    vertices_new.push_back(itime_vertex(v_type, af_state, pos_c_in_smallM));
   }
 
   //fast update for each flavor
@@ -72,27 +65,28 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper)
     if (helper.num_new_rows[flavor]==0) {
       continue;
     }
-    assert(helper.num_new_rows[flavor]==1);
-    lambda_prod *= fastupdate_up(flavor, true); // true means compute_only_weight
+    //assert(helper.num_new_rows[flavor]==1);
+    lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
   }
-  //std::cout << "debug " <<  -beta*Uval*Uijkl.n_vertex_type()/(vertices_new.size())*lambda_prod << std::endl;
-  return -beta*Uval*Uijkl.n_vertex_type()/(vertices_new.size())*lambda_prod;
+  //bit afraid of overlow. better to use log.
+  const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/boost::math::binomial_coefficient<double>(vertices_new.size(),n_vertices_add);
+  return rtmp*prod_Uval*lambda_prod;
 }
 
 
-void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper)
+void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add=1)
 {
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     //std::cout << " debug_add " << flavor << " " << helper.num_new_rows[flavor] << std::endl;
     if (helper.num_new_rows[flavor]>0) {
       assert(helper.num_new_rows[flavor]==1);
-      fastupdate_up(flavor,false);
+      fastupdate_up(flavor,false,1);
     }
   }
 }
 
 
-void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper)
+void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size_t n_vertices_add=1)
 {
   //get rid of the operators
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
@@ -103,7 +97,7 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper)
     }
   }
   //get rid of the vertex from vertex list
-  vertices.pop_back();
+  //vertices.pop_back();
   vertices_new.pop_back();
 }
 
@@ -128,7 +122,6 @@ double HubbardInteractionExpansion::try_remove(unsigned int vertex_nr, fastupdat
   assert(num_rows(M[0].matrix())==vertices_new.size());
   assert(Uijkl.n_vertex_type()==n_site);
   //swap vertices
-  std::swap(vertices[vertex_nr], vertices[vertices.size()-1]);
   std::swap(vertices_new[vertex_nr], vertices_new[vertices_new.size()-1]);
   return  -pert_order/(beta*onsite_U*Uijkl.n_vertex_type())*lambda_prod;
 }
@@ -150,7 +143,6 @@ void HubbardInteractionExpansion::perform_remove(unsigned int vertex_nr, fastupd
     }
   }
   //get rid of vertex list entries
-  vertices.pop_back();
   vertices_new.pop_back();
 }
 

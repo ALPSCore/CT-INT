@@ -31,6 +31,51 @@ TEST(LegendreMeasurement, Tnl)
     }
 }
 
+TEST(FastUpdate, BlockMatrixAdd)
+{
+    const size_t N = 2;
+    const size_t M = 1;
+
+    typedef alps::numeric::matrix<double> matrix_t;
+
+    matrix_t A(N,N,0), B(N,M,0), C(M,N,0), D(M,M,0), invA(N,N,0);
+    matrix_t E(N,N,0), F(N,M,0), G(M,N,0), H(M,M,0);
+    matrix_t BigMatrix(N+M, N+M, 0);
+    matrix_t invBigMatrix2(N+M, N+M, 0);
+
+    randomize_matrix(A, 100);//100 is a seed
+    randomize_matrix(B, 200);
+    randomize_matrix(C, 300);
+    randomize_matrix(D, 400);
+    invA = alps::numeric::inverse(A);
+
+    alps::numeric::copy_block(A,0,0,BigMatrix,0,0,N,N);
+    alps::numeric::copy_block(B,0,0,BigMatrix,0,N,N,M);
+    alps::numeric::copy_block(C,0,0,BigMatrix,N,0,M,N);
+    alps::numeric::copy_block(D,0,0,BigMatrix,N,N,M,M);
+
+    matrix_t invBigMatrix(alps::numeric::inverse(BigMatrix));
+
+    double det_rat = compute_inverse_matrix_up(B, C, D, invA, E, F, G, H);
+    ASSERT_TRUE(std::abs(det_rat-alps::numeric::determinant(BigMatrix)/alps::numeric::determinant(A))<1E-8);
+
+    alps::numeric::copy_block(E,0,0,invBigMatrix2,0,0,N,N);
+    alps::numeric::copy_block(F,0,0,invBigMatrix2,0,N,N,M);
+    alps::numeric::copy_block(G,0,0,invBigMatrix2,N,0,M,N);
+    alps::numeric::copy_block(H,0,0,invBigMatrix2,N,N,M,M);
+
+    ASSERT_TRUE(std::abs(det_rat-alps::numeric::determinant(BigMatrix)/alps::numeric::determinant(A)));
+    ASSERT_TRUE(alps::numeric::norm_square(invBigMatrix-invBigMatrix2)<1E-8);
+
+    det_rat = compute_det_ratio_up(B, C, D, invA);
+    ASSERT_TRUE(std::abs(det_rat-alps::numeric::determinant(BigMatrix)/alps::numeric::determinant(A))<1E-8);
+
+    det_rat = compute_inverse_matrix_up2(B, C, D, invA, invBigMatrix2);
+    ASSERT_TRUE(alps::numeric::norm_square(invBigMatrix-invBigMatrix2)<1E-8);
+
+    //std::cout << det_rat << std::endl;
+    //std::cout << alps::numeric::determinant(BigMatrix)/alps::numeric::determinant(A) << std::endl;
+}
 //template<class T>
 //class TypedFastUpdateTest : public testing::Test {};
 //typedef ::testing::Types<double, std::complex<double> > TestTypes;

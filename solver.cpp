@@ -39,23 +39,23 @@ void InteractionExpansion::interaction_expansion_step(void)
   static fastupdate_add_helper add_helper(n_flavors);
   static fastupdate_remove_helper remove_helper(n_flavors);
 
-  int pert_order=vertices.size();   //current order of perturbation series
+  int pert_order=vertices_new.size();   //current order of perturbation series
   double metropolis_weight=0.;
   static unsigned int i=0; ++i;
   if(random()<0.5){  //trying to ADD vertex
-    if(vertices.size()>=max_order) 
+    if(vertices_new.size()>=max_order)
       return; //we have already reached the highest perturbation order
-    metropolis_weight=try_add(add_helper);
+    metropolis_weight=try_add(add_helper,1);
     if(fabs(metropolis_weight)> random()){
       measurements["VertexInsertion"]<<1.;
-      perform_add(add_helper);
+      perform_add(add_helper,1);
       sign*=metropolis_weight<0?-1:1;
     }else{
       measurements["VertexInsertion"]<<0.;
-      reject_add(add_helper);
+      reject_add(add_helper,1);
     }
   }else{ // try to REMOVE a vertex
-    pert_order=vertices.size(); //choose a vertex
+    pert_order=vertices_new.size(); //choose a vertex
     if(pert_order < 1)
       return;     //we have an empty list or one with just one vertex
     //this might be the ideal place to do some cleanup, e.g. get rid of the roundoff errors and such.
@@ -70,7 +70,6 @@ void InteractionExpansion::interaction_expansion_step(void)
       reject_remove(remove_helper);
     }
   }//end REMOVE
-  assert(vertices.size()==vertices_new.size());
   //sanity check for onsite U
   M.sanity_check();
   {

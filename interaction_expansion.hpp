@@ -69,10 +69,11 @@ enum measurement_methods {
 typedef struct fastupdate_add_helper {
   fastupdate_add_helper(std::size_t num_flavors) : num_new_rows(num_flavors,0) {};
 
-  std::vector<std::size_t> num_new_rows;
-  void clear() {
+  void clear(size_t n_vertices_add=1) {
     std::fill(num_new_rows.begin(), num_new_rows.end(), 0);
   }
+
+  std::vector<std::size_t> num_new_rows;
 } fastupdate_add_helper;
 
 typedef struct fastupdate_remove_helper {
@@ -280,7 +281,7 @@ protected:
   void reset_perturbation_series(void);
   
   // in file fastupdate.cpp:
-  double fastupdate_up(const int operator_nr, bool compute_only_weight);
+  double fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
   double fastupdate_down(const int operator_nr, const int flavor, bool compute_only_weight);
   
   /*measurement functions*/
@@ -296,9 +297,9 @@ protected:
   void sanity_check();
   
   /*abstract virtual functions. Implement these for specific models.*/
-  virtual double try_add(fastupdate_add_helper&)=0;
-  virtual void perform_add(fastupdate_add_helper&)=0;
-  virtual void reject_add(fastupdate_add_helper&)=0;
+  virtual double try_add(fastupdate_add_helper&,size_t)=0;
+  virtual void perform_add(fastupdate_add_helper&,size_t)=0;
+  virtual void reject_add(fastupdate_add_helper&,size_t)=0;
   virtual double try_remove(unsigned int vertex_nr, fastupdate_remove_helper&)=0;
   virtual void perform_remove(unsigned int vertex_nr, fastupdate_remove_helper&)=0;
   virtual void reject_remove(fastupdate_remove_helper&)=0;
@@ -342,7 +343,7 @@ protected:
   std::vector<green_matrix> g0;
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
-  vertex_array vertices;
+  //vertex_array vertices;
   std::vector<itime_vertex> vertices_new;
   big_inverse_m_matrix M;
     //std::vector<inverse_m_matrix> M;
@@ -403,9 +404,9 @@ public:
   {
     if(n_flavors !=2){throw std::invalid_argument("you need a different model for n_flavors!=2.");}
   }
-  double try_add(fastupdate_add_helper&);
-  void perform_add(fastupdate_add_helper&);
-  void reject_add(fastupdate_add_helper&);
+  double try_add(fastupdate_add_helper&,size_t);
+  void perform_add(fastupdate_add_helper&,size_t);
+  void reject_add(fastupdate_add_helper&,size_t);
   double try_remove(unsigned int vertex_nr, fastupdate_remove_helper&);
   void perform_remove(unsigned int vertex_nr, fastupdate_remove_helper&);
   void reject_remove(fastupdate_remove_helper&);

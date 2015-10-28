@@ -126,8 +126,8 @@ void InteractionExpansion::update()
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     interaction_expansion_step();                
-    if(vertices.size()<max_order)
-      pert_hist[vertices.size()]++;
+    if(vertices_new.size()<max_order)
+      pert_hist[vertices_new.size()]++;
     if(step % recalc_period ==0) {
       //just for debug
       sanity_check();
@@ -170,7 +170,7 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
   //set the right dimensions:
   for(spin_t flavor=0;flavor<n_flavors;++flavor)
     M.push_back(inverse_m_matrix());
-  vertices.clear();
+  //vertices.clear();
   pert_hist.clear();
   //initialize ALPS observables
   initialize_observables();

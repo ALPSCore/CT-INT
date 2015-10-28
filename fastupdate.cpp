@@ -30,59 +30,53 @@
 #include "interaction_expansion.hpp"
 #include <boost/numeric/bindings/blas/level2/ger.hpp>
 
+#include <alps/numeric/matrix/algorithms.hpp>
+
+#include "fastupdate_formula.h"
+
+#include "util.h"
+
 /// @brief This function performs the InteractionExpansion update of adding one vertex to the set of vertices. If the 
 ///        Green's function for the measurement has to be tracked it calls the function that does that.
 /// @param vertex_nr specify which of the U n_up n_down you want to look at.
 /// @param compute_only_weight Do not perform the fastupdate, but only return the Mnn entry (1/lambda), which is used for the acceptance weight.
 /// @param track_green_matsubara Track Green function in Matsubara frequencies or imaginary time if required.
 
-double InteractionExpansion::fastupdate_up(const int flavor, bool compute_only_weight)
+double InteractionExpansion::fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add=1)
 {
   assert(num_rows(M[flavor].matrix()) == num_cols(M[flavor].matrix()));
   unsigned int noperators = num_rows(M[flavor].matrix());
-  //current size of M: number of vertices -1. We need to add the last vertex. 
-  //A pointer to the creator and annihilator is already stored in creators_ and annihilators_ at position M[flavor].size();
-  //double Green0_n_n=green0_spline(M[flavor].creators()[noperators],M[flavor].annihilators()[noperators]);
-  double Green0_n_n=green0_spline_new(M[flavor].annihilators()[noperators], M[flavor].creators()[noperators]);
-  alps::numeric::vector<double> Green0_n_j(noperators);
-  alps::numeric::vector<double> Green0_j_n(noperators);
-  alps::numeric::vector<double> lastcolumn(noperators);
-  alps::numeric::vector<double> lastrow(noperators);
-  //compute the Green's functions with interpolation
-  for(unsigned int i=0;i<noperators;++i){
-    Green0_n_j[i]=green0_spline_new(M[flavor].annihilators()[noperators], M[flavor].creators()[i]);
-    Green0_j_n[i]=green0_spline_new(M[flavor].annihilators()[i], M[flavor].creators()[noperators]);
+  //current size of M: number of vertices - n_vertices_add. We need to add the last vertex.
+  //A pointer to the creator and annihilator is already stored in creators_ and annihilators_
+  //at positions M[flavor].size() ... M[flavor].size()+n_vertices_add-1;
+  alps::numeric::matrix<GTYPE> Green0_n_n(n_vertices_add, n_vertices_add);
+  alps::numeric::matrix<GTYPE> Green0_n_j(n_vertices_add, noperators);
+  alps::numeric::matrix<GTYPE> Green0_j_n(noperators, n_vertices_add);
+  for(unsigned int i=0;i<noperators;++i) {
+    for (size_t iv=0; iv<n_vertices_add; ++iv) {
+      Green0_n_j(iv,i) = green0_spline_new(M[flavor].annihilators()[noperators+iv], M[flavor].creators()[i]);
+    }
   }
-  //compute the last row
-  if(noperators!=0)
-    gemv(M[flavor].matrix(),Green0_j_n,lastcolumn);
-  //compute lambda
-  double ip = (noperators==0?0:scalar_product(Green0_n_j, lastcolumn));
-  double lambda = Green0_n_n - ip + M[flavor].alpha()[noperators];
-  //return weight if we have nothing else to do
+  for(unsigned int i=0;i<noperators;++i){
+    for (size_t iv=0; iv<n_vertices_add; ++iv) {
+      Green0_j_n(i,iv) = green0_spline_new(M[flavor].annihilators()[i], M[flavor].creators()[noperators+iv]);
+    }
+  }
+  for (size_t iv2=0; iv2<n_vertices_add; ++iv2) {
+    for (size_t iv=0; iv<n_vertices_add; ++iv) {
+      Green0_n_n(iv, iv2) = green0_spline_new(M[flavor].annihilators()[noperators+iv], M[flavor].creators()[noperators+iv2]);
+    }
+  }
+
+  //B: Green0_j_n
+  //C: Green0_n_j
+  //D: Green0_n_n
+  //invA: M[flavor].matrix()
   if(compute_only_weight){
-    return lambda;
+    return compute_det_ratio_up(Green0_j_n, Green0_n_j, Green0_n_n, M[flavor].matrix());
+  } else {
+    return compute_inverse_matrix_up2(Green0_j_n, Green0_n_j, Green0_n_n, M[flavor].matrix(), M[flavor].matrix());
   }
-  //compute last column
-  if(noperators!=0)
-    gemv(transpose(M[flavor].matrix()), Green0_n_j, lastrow);
-  //compute norm of vector and mean for roundoff error check
-  if(noperators > 0){
-    lastrow    *= 1./lambda;
-    boost::numeric::bindings::blas::ger(1.0,lastcolumn,lastrow,M[flavor].matrix());
-    lastcolumn *= 1./lambda;
-    //std::cout<<lambda<<" "<<M[flavor]<<std::endl;
-  }
-  //add row and column to M
-  resize(M[flavor].matrix(), noperators+1, noperators+1);
-  for(unsigned int i=0;i<noperators;++i){
-    M[flavor].matrix()(i, noperators)=-lastcolumn[i];
-  }
-  for(unsigned int i=0;i<noperators;++i){
-    M[flavor].matrix()(noperators, i)=-lastrow[i];
-  }
-  M[flavor].matrix()(noperators, noperators)=1./lambda;
-  return lambda;
 }
 
 
