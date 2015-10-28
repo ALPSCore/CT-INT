@@ -89,39 +89,6 @@ void InteractionExpansion::reset_perturbation_series()
 {
   //static fastupdate_add_helper add_helper(n_flavors);
   big_inverse_m_matrix M2(M); //make a copy of M
-  /*
-  fastupdate_add_helper helper(n_flavors);
-  //std::vector<inverse_m_matrix> M2(M); //make a copy of M
-  vertex_array vertices_backup;
-  std::vector<itime_vertex> vertices_new_backup(vertices_new);
-  for(unsigned int i=0;i<vertices.size();++i){
-    vertices_backup.push_back(vertices[i]);
-  }
-  vertices.clear();
-  vertices_new.clear();
-  sign=1;//correct?
-  //throw std::runtime_error("CHECK SIGN!");
-  for(spin_t z=0;z<n_flavors;++z){
-    resize(M[z].matrix(),0,0);
-  }
-  green_matsubara = bare_green_matsubara;
-  green_itime     = bare_green_itime;
-  //recompute M from scratch
-  for(unsigned int i=0;i<vertices_backup.size();++i){
-    vertices.push_back(vertices_backup[i]);
-    vertices_new.push_back(vertices_new_backup[i]);
-    //throw std::runtime_error("SHOULD BE CHECK!");
-    perform_add(helper);
-    std::cout << " debug " << i << " " << M[0].matrix().num_rows() << " " << M[1].matrix().num_rows() << std::endl;
-  }
-
-  {
-    for (size_t flavor=0; flavor<n_flavors; ++flavor) {
-      std::cout << M[flavor].matrix().num_rows() << " " << M2[flavor].matrix().num_rows() << std::endl;
-      assert(M[flavor].matrix().num_rows()==M2[flavor].matrix().num_rows());
-    }
-  }
-   */
 
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     alps::numeric::matrix<GTYPE> G0(M[flavor].matrix());

@@ -181,6 +181,8 @@ class vertex_definition
 template<class T>
 class general_U_matrix {
   public:
+    typedef T value_type;
+
     general_U_matrix(const alps::Parameters &parms) :
             ns_(parms.value_or_default("SITES", 1)),
             nf_(parms.value_or_default("FLAVORS", 2))
@@ -244,11 +246,21 @@ class general_U_matrix {
 
  //to remember what vertices is on the imaginary time axis..
  typedef struct itime_vertex {
+ public:
    itime_vertex(size_t vertex_type, size_t af_state, std::vector<size_t> position_in_M)
            : vertex_type_(vertex_type),
              af_state_(af_state),
              position_in_M_(position_in_M) {}
 
+   size_t position_in_M(size_t idx) {
+     assert(idx<position_in_M_.size());
+     return position_in_M_[idx];
+   }
+
+   size_t af_state() { return af_state_; }
+   size_t vertex_type() {return vertex_type_;}
+
+ private:
    size_t vertex_type_, af_state_;
    std::vector<size_t> position_in_M_;
  } itime_vertex;

@@ -111,34 +111,44 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper)
 double HubbardInteractionExpansion::try_remove(unsigned int vertex_nr, fastupdate_remove_helper& helper)
 {
   //get weight
-  double lambda0 = fastupdate_down(vertex_nr, 0, true);  // true means compute_only_weight
-  double lambda1 = fastupdate_down(vertex_nr, 1, true);
+  helper.clear();
+  vertex_definition<GTYPE> vertex_def = Uijkl.get_vertex(vertices_new[vertex_nr].vertex_type());
+  for (size_t i_rank=0; i_rank<vertex_def.rank(); ++i_rank) {
+    const size_t flavor = vertex_def.flavors()[i_rank];
+    ++helper.num_removed_rows[flavor];
+  }
+  GTYPE lambda_prod = 1.0;
+  for (size_t flavor=0; flavor<n_flavors; ++flavor) {
+    assert(helper.num_removed_rows[flavor]<=1);
+    if (helper.num_removed_rows[flavor]==1) {
+      lambda_prod *= fastupdate_down(vertex_nr, flavor, true);  // true means compute_only_weight
+    }
+  }
   double pert_order=num_rows(M[0].matrix());
-  //double num_vertex_types=Uijkl.n_vertex_type();
-  //return weight
-  return  -pert_order/(beta*onsite_U*Uijkl.n_vertex_type())*lambda0*lambda1;
-  //get weight
-  //double lambda0 = fastupdate_down(vertex_nr, 0, true);  // true means compute_only_weight
-  //double lambda1 = fastupdate_down(vertex_nr, 1, true);
-  //double pert_order=num_rows(M[0].matrix());
-  //double num_vertex_types=n_site;
-  //return weight
-  //return  -pert_order/(beta*onsite_U*num_vertex_types)*lambda0*lambda1;
+  assert(num_rows(M[0].matrix())==vertices_new.size());
+  assert(Uijkl.n_vertex_type()==n_site);
+  //swap vertices
+  std::swap(vertices[vertex_nr], vertices[vertices.size()-1]);
+  std::swap(vertices_new[vertex_nr], vertices_new[vertices_new.size()-1]);
+  return  -pert_order/(beta*onsite_U*Uijkl.n_vertex_type())*lambda_prod;
 }
 
 
 void HubbardInteractionExpansion::perform_remove(unsigned int vertex_nr, fastupdate_remove_helper& helper)
 {
   //perform fastupdate down
-  fastupdate_down(vertex_nr, 0, false);  // false means really perform, not only compute weight
-  fastupdate_down(vertex_nr, 1, false);  // false means really perform, not only compute weight
-  //get rid of operators
-  M[0].creators().pop_back();
-  M[0].annihilators().pop_back();
-  M[0].alpha().pop_back();
-  M[1].creators().pop_back();
-  M[1].annihilators().pop_back();
-  M[1].alpha().pop_back();
+  for (size_t flavor=0; flavor<n_flavors; ++flavor) {
+    assert(helper.num_removed_rows[flavor]<=1);
+    if (helper.num_removed_rows[flavor]>0) {
+      assert(helper.num_removed_rows[flavor]==1);
+      //remove row and column
+      fastupdate_down(vertex_nr, flavor, false);  // false means really perform, not only compute weight
+      //get rid of operators
+      M[flavor].creators().pop_back();
+      M[flavor].annihilators().pop_back();
+      M[flavor].alpha().pop_back();
+    }
+  }
   //get rid of vertex list entries
   vertices.pop_back();
   vertices_new.pop_back();
