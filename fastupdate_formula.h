@@ -158,4 +158,89 @@ compute_inverse_matrix_up2(
     }
 }
 
+template<class T>
+T
+compute_det_ratio_down(
+        const size_t num_rows_cols_removed,
+        const std::vector<size_t>& rows_removed,
+        const std::vector<size_t>& cols_removed,
+        const alps::numeric::matrix<T>& invBigMat) {
+    using namespace alps::numeric;
+    typedef matrix<T> matrix_t;
+
+    const size_t NpM = num_rows(invBigMat);
+    const size_t M = num_rows_cols_removed;
+    assert(num_cols(invBigMat)==NpM);
+    assert(rows_removed.size()>=M);
+    assert(cols_removed.size()>=M);
+
+    matrix_t H(M,M);
+    for (size_t j=0; j<M; ++j) {
+        for (size_t i=0; i<M; ++i) {
+            H(i,j) = invBigMat(rows_removed[i], cols_removed[j]);
+        }
+    }
+    return determinant(H);
+}
+
+//Note: invBigMat will be shrinked.
+template<class T>
+void
+compute_inverse_matrix_down(
+    const size_t num_rows_cols_removed,
+    const std::vector<size_t>& rows_removed,
+    const std::vector<size_t>& cols_removed,
+    alps::numeric::matrix<T>& BigMat,
+    alps::numeric::matrix<T>& invBigMat
+    ) {
+    using namespace alps::numeric;
+    typedef matrix<T> matrix_t;
+
+    const size_t NpM = num_rows(invBigMat);
+    const size_t M = num_rows_cols_removed;
+    const size_t N = NpM-M;
+    assert(num_cols(invBigMat)==NpM);
+    assert(rows_removed.size()>=M);
+    assert(cols_removed.size()>=M);
+    assert(M>0);
+
+    if (M==0) {
+        throw std::logic_error("M should be larger than 0!");
+    }
+
+#ifndef NDEBUG
+    //make sure the indices are in ascending order.
+    for (size_t i=0; i<M-1; ++i) {
+        assert(cols_removed[i]<cols_removed[i+1]);
+        assert(rows_removed[i]<rows_removed[i+1]);
+    }
+#endif
+
+    //move rows and cols to be removed to the end.
+    for (size_t i=0; i<M; ++i) {
+        if(cols_removed[M-1-i]!=NpM-1-i) {
+           BigMat.swap_cols(cols_removed[M-1-i], NpM-1-i);
+           invBigMat.swap_cols(cols_removed[M-1-i], NpM-1-i);
+        }
+    }
+    for (size_t i=0; i<M; ++i) {
+        if (rows_removed[M-1-i]!=NpM-1-i) {
+            BigMat.swap_rows(rows_removed[M-1-i], NpM-1-i);
+            invBigMat.swap_rows(rows_removed[M-1-i], NpM-1-i);
+        }
+    }
+
+    matrix_t E(N,N), F(N,M), G(M,N), H(M,M);
+    copy_block(invBigMat,0,0,E,0,0,N,N);
+    copy_block(invBigMat,0,N,F,0,0,N,M);
+    copy_block(invBigMat,N,0,G,0,0,M,N);
+    copy_block(invBigMat,N,N,H,0,0,M,M);
+
+    matrix_t invH_G(M,N,0), F_invH_G(N,N,0);//one might reuse memories...
+    gemm(inverse(H), G, invH_G);
+    gemm(F, invH_G, F_invH_G);
+
+    invBigMat.resize(N,N);
+    invBigMat = E-F_invH_G;
+}
 #endif //IMPSOLVER_FASTUPDATE_FORMULA_H
