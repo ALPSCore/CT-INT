@@ -220,20 +220,43 @@ public:
   const std::vector<annihilator> &annihilators()const{ return annihilators_;}
   std::vector<double> &alpha(){ return alpha_;}
   const std::vector<double> &alpha() const{ return alpha_;}
-  size_t find_row_col(double time) {
+  std::vector<std::pair<vertex_t,size_t> > &vertex_info(){ return vertex_info_;}
+  const std::vector<std::pair<vertex_t,size_t> > &vertex_info() const{ return vertex_info_;}
+  int find_row_col(double time, vertex_t type, size_t i_rank) const {
     for(std::size_t i=0; i<creators_.size(); ++i) {
-      if (time==creators_[i].t()) {
+      if (time==creators_[i].t() && vertex_info_[i].first==type && vertex_info_[i].second==i_rank) {
         assert(annihilators_[i].t()==time);
         return i;
       }
     }
-    throw std::logic_error("You operator is missing!");
+    return -1;
+    //throw std::logic_error("Your operator is missing!");
   }
+   void sanity_check() const {
+     assert(num_rows(matrix_)==num_cols(matrix_));
+     assert(num_rows(matrix_)<=creators_.size());
+     assert(creators_.size()==annihilators_.size());
+     assert(creators_.size()==alpha_.size());
+     assert(creators_.size()==vertex_info_.size());
+   }
+   void swap_ops(size_t i1, size_t i2) {
+     std::swap(creators_[i1], creators_[i2]);
+     std::swap(annihilators_[i1], annihilators_[i2]);
+     std::swap(alpha_[i1], alpha_[i2]);
+     std::swap(vertex_info_[i1], vertex_info_[i2]);
+   }
+   void pop_back_op() {
+     creators_.pop_back();
+     annihilators_.pop_back();
+     alpha_.pop_back();
+     vertex_info_.pop_back();
+   }
 private:
   alps::numeric::matrix<double> matrix_;
   std::vector<creator> creators_;         //an array of creation operators c_dagger corresponding to the row of the matrix
   std::vector<annihilator> annihilators_; //an array of to annihilation operators c corresponding to the column of the matrix
   std::vector<double> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
+  std::vector<std::pair<vertex_t,size_t> > vertex_info_;
 };
 
 class big_inverse_m_matrix
@@ -252,12 +275,26 @@ public:
       return sub_matrices_.size();
     };
 
-    void sanity_check() const {
+    void sanity_check(const std::vector<itime_vertex>& itime_vertices) const {
 #ifndef NDEBUG
       for (spin_t flavor=0; flavor<size(); ++flavor) {
+        sub_matrices_[flavor].sanity_check();
         assert(sub_matrices_[flavor].creators().size()==sub_matrices_[flavor].annihilators().size());
         assert(sub_matrices_[flavor].creators().size()==num_rows(sub_matrices_[flavor].matrix()));
         assert(num_cols(sub_matrices_[flavor].matrix())==num_rows(sub_matrices_[flavor].matrix()));
+      }
+      for (size_t iv=0; iv<itime_vertices.size(); ++iv) {
+        const itime_vertex& v = itime_vertices[iv];
+        for (size_t i_rank = 0; i_rank < v.rank(); ++i_rank) {
+          int info = -1;
+          for (spin_t flavor=0; flavor<size(); ++flavor) {
+            info = sub_matrices_[flavor].find_row_col(v.time(), v.type(), i_rank);
+            if (info>=0) break;
+          }
+          if (info==-1) {
+            throw std::logic_error("Your operator is missing!");
+          }
+        }
       }
 #endif
     }
@@ -292,12 +329,9 @@ protected:
   
   /*green's function*/
   // in file spines.cpp
-  //double green0_spline(const creator &cdagger, const annihilator &c) const;
-  //double green0_spline(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
   double green0_spline_new(const annihilator &c, const creator &cdagger) const;
   double green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
-  //double green0_spline(const itime_t delta_t, const spin_t flavor) const;
-  
+
   /*the actual solver functions*/
   // in file solver.cpp
   void interaction_expansion_step(void);

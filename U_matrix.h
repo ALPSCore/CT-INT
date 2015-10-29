@@ -130,7 +130,8 @@ private:
   double mu_shift_;
 };
 
-//typedef size_t vertex_t;
+typedef size_t vertex_t;
+typedef size_t af_t;
 
 template<class T>
 class vertex_definition
@@ -247,18 +248,20 @@ class general_U_matrix {
  //to remember what vertices is on the imaginary time axis..
  typedef struct itime_vertex {
  public:
-   itime_vertex(size_t vertex_type, size_t af_state, double time)
+   itime_vertex(size_t vertex_type, size_t af_state, double time, size_t rank)
            : vertex_type_(vertex_type),
              af_state_(af_state),
-             time_(time) {}
+             time_(time),
+             rank_(rank) {}
 
-   size_t af_state() { return af_state_; }
-   size_t vertex_type() {return vertex_type_;}
-   size_t type() {return vertex_type_;}
-   double time() {return time_;}
+   size_t af_state() const { return af_state_; }
+   size_t vertex_type() const {return vertex_type_;}
+   size_t type() const {return vertex_type_;}
+   size_t rank() const {return rank_;}
+   double time() const {return time_;}
 
  private:
-   size_t vertex_type_, af_state_;
+   size_t vertex_type_, af_state_, rank_;
    double time_;
  } itime_vertex;
 

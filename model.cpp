@@ -46,17 +46,18 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_
     prod_Uval *= new_vertex_type.Uval();
     assert(rank==2);
 
-    std::vector<size_t> pos_c_in_smallM(rank);//remember where we insert creation operators in M matrices.
     for (size_t i_rank=0; i_rank<rank; ++i_rank) {
       const size_t flavor_rank = new_vertex_type.flavors()[i_rank];
-      pos_c_in_smallM[i_rank] = M[flavor_rank].creators().size();
       assert(new_vertex_type.sites()[2*i_rank]== new_vertex_type.sites()[2*i_rank+1]);//assume onsite U
+
       M[flavor_rank].creators().push_back(creator(flavor_rank, new_vertex_type.sites()[2*i_rank], time, n_matsubara));
       M[flavor_rank].annihilators().push_back(annihilator(flavor_rank, new_vertex_type.sites()[2*i_rank+1], time, n_matsubara));
       M[flavor_rank].alpha().push_back(new_vertex_type.get_alpha(af_state, i_rank));
+      M[flavor_rank].vertex_info().push_back(std::pair<vertex_t,size_t>(v_type,i_rank));
+
       ++(helper.num_new_rows[flavor_rank]);
     }
-    itime_vertices.push_back(itime_vertex(v_type, af_state, time));
+    itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank));
   }
 
   //fast update for each flavor
@@ -79,7 +80,7 @@ void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, siz
       fastupdate_up(flavor,false,helper.num_new_rows[flavor]);
     }
   }
-  M.sanity_check();
+  M.sanity_check(itime_vertices);
   //ssert(num_rows(M[0].matrix())== itime_vertices.size());
 }
 
@@ -89,15 +90,13 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size
   //get rid of the operators
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     for (int i=0; i<helper.num_new_rows[flavor]; ++i) {
-      M[flavor].creators().pop_back();
-      M[flavor].annihilators().pop_back();
-      M[flavor].alpha().pop_back();
+      M[flavor].pop_back_op();
     }
   }
   for(int i=0; i<n_vertices_add; ++i) {
     itime_vertices.pop_back();
   }
-  M.sanity_check();
+  M.sanity_check(itime_vertices);
 }
 
 
@@ -106,7 +105,7 @@ double HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertic
   //get weight
   //figure out and remember which rows (columns) are to be removed
   // lists of rows and cols will be sorted in ascending order
-  M.sanity_check();
+  M.sanity_check(itime_vertices);
   helper.clear();
   double prod_Uval = 1.0;
   for (size_t iv=0; iv<vertices_nr.size(); ++iv) {
@@ -114,8 +113,9 @@ double HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertic
     prod_Uval *= vertex_def.Uval();
     for (size_t i_rank=0; i_rank<vertex_def.rank(); ++i_rank) {
       const size_t flavor = vertex_def.flavors()[i_rank];
-      assert(M[flavor].find_row_col(itime_vertices[vertices_nr[iv]].time())<num_rows(M[flavor].matrix()));
-      helper.rows_cols_removed[flavor].push_back(M[flavor].find_row_col(itime_vertices[vertices_nr[iv]].time()));
+      int r = M[flavor].find_row_col(itime_vertices[vertices_nr[iv]].time(), itime_vertices[vertices_nr[iv]].type(), i_rank);
+      assert(r<num_rows(M[flavor].matrix()));
+      helper.rows_cols_removed[flavor].push_back(r);
     }
   }
   helper.sort_rows_cols();
@@ -141,19 +141,13 @@ void HubbardInteractionExpansion::perform_remove(const std::vector<size_t>& vert
       fastupdate_down(helper.rows_cols_removed[flavor], flavor, false);  // false means really perform, not only compute weight
       //get rid of operators
       for (int iop=0; iop<helper.rows_cols_removed[flavor].size(); ++iop) {
-        M[flavor].creators().pop_back();
-        M[flavor].annihilators().pop_back();
-        M[flavor].alpha().pop_back();
+        M[flavor].pop_back_op();
       }
     }
   }
   //get rid of vertex list entries. I know this is crapy.
-  for (size_t iv=0; iv<vertices_nr.size(); ++iv) {
-    std::vector<itime_vertex>::iterator it = itime_vertices.begin();
-    std::advance(it, vertices_nr[iv]);
-    itime_vertices.erase(it);
-  }
-  M.sanity_check();
+  remove_elements_from_vector(itime_vertices, vertices_nr);
+  M.sanity_check(itime_vertices);
 }
 
 

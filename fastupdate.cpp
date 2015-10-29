@@ -105,9 +105,7 @@ double InteractionExpansion::fastupdate_down(const std::vector<size_t>& rows_col
     for (size_t s=0; s<n_vertices_remove; ++s) {
       const size_t idx1 = rows_cols_swap_list[s].first;
       const size_t idx2 = rows_cols_swap_list[s].second;
-      swap(M[flavor].creators()[idx1],     M[flavor].creators()[idx2]);
-      swap(M[flavor].annihilators()[idx1], M[flavor].annihilators()[idx2]);
-      swap(M[flavor].alpha()[idx1],        M[flavor].alpha()[idx2]);
+      M[flavor].swap_ops(idx1, idx2);
     }
     return det_rat;
   }

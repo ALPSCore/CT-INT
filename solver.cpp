@@ -45,7 +45,7 @@ void InteractionExpansion::interaction_expansion_step(void)
   double metropolis_weight=0.;
   static unsigned int i=0; ++i;
   if(random()<0.5){  //trying to ADD vertex
-    M.sanity_check();
+    M.sanity_check(itime_vertices);
     if(itime_vertices.size()>=max_order)
       return; //we have already reached the highest perturbation order
     metropolis_weight=try_add(add_helper,nv_updated);
@@ -53,14 +53,14 @@ void InteractionExpansion::interaction_expansion_step(void)
       measurements["VertexInsertion"]<<1.;
       perform_add(add_helper,nv_updated);
       sign*=metropolis_weight<0?-1:1;
-      M.sanity_check();
+      M.sanity_check(itime_vertices);
     }else{
       measurements["VertexInsertion"]<<0.;
       reject_add(add_helper,nv_updated);
-      M.sanity_check();
+      M.sanity_check(itime_vertices);
     }
   }else{ // try to REMOVE a vertex
-    M.sanity_check();
+    M.sanity_check(itime_vertices);
     pert_order= itime_vertices.size();
     if(pert_order < 1) {
       return;     //we have an empty list or one with just one vertex
@@ -72,11 +72,11 @@ void InteractionExpansion::interaction_expansion_step(void)
       measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
       sign*=metropolis_weight<0?-1:1;
-      M.sanity_check();
+      M.sanity_check(itime_vertices);
     }else{
       measurements["VertexRemoval"]<<0.;
       reject_remove(remove_helper);
-      M.sanity_check();
+      M.sanity_check(itime_vertices);
     }
   }//end REMOVE
   weight=metropolis_weight;

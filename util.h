@@ -38,6 +38,23 @@ std::vector<size_t> pickup_a_few_numbers(size_t N, size_t n, R& random01) {
     return list;
 }
 
+
+//very crapy way to remove elements at given positions from a std::vector
+template<class T>
+void remove_elements_from_vector(std::vector<T>& vec, std::vector<size_t> elements_to_be_removed) {
+    size_t ipos = 0;
+    for(typename std::vector<T>::iterator it = vec.begin(); it != vec.end();) {
+        if(std::find(elements_to_be_removed.begin(), elements_to_be_removed.end(), ipos)!=elements_to_be_removed.end()) {
+            it = vec.erase(it);
+            ++ipos;
+        } else {
+            ++it;
+            ++ipos;
+        }
+    }
+}
+
+
 namespace alps {
     namespace numeric {
 

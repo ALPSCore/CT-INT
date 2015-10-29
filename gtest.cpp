@@ -133,11 +133,11 @@ TEST(FastUpdate, BlockMatrixRemove)
 
             //testing compute_det_ratio_down
             double det_rat = compute_det_ratio_down(M,rows_removed,invBigMatrix);
-            ASSERT_TRUE(std::abs(det_rat-alps::numeric::determinant(SmallMatrix)/alps::numeric::determinant(BigMatrix))) << "N=" << N << " M=" << M;
+            ASSERT_TRUE(std::abs(det_rat-alps::numeric::determinant(SmallMatrix)/alps::numeric::determinant(BigMatrix))<1E-8) << "N=" << N << " M=" << M;
 
             matrix_t invSmallMatrix2(invBigMatrix);
             double det_rat2 = compute_inverse_matrix_down(M,rows_removed,invSmallMatrix2, swap_list);
-            ASSERT_TRUE(std::abs(det_rat-det_rat2)) << "N=" << N << " M=" << M;
+            ASSERT_TRUE(std::abs(det_rat-det_rat2)<1E-8) << "N=" << N << " M=" << M;
 
             matrix_t SmallMatrix3(BigMatrix);
             for (size_t s=0; s<swap_list.size(); ++s) {
