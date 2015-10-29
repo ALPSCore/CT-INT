@@ -111,35 +111,6 @@ double InteractionExpansion::fastupdate_down(const std::vector<size_t>& rows_col
     }
     return det_rat;
   }
-  /*
-  if(compute_only_weight){
-    return M[flavor].matrix()(operator_nr,operator_nr);
-  }
-  //swap rows and colums of M <-> move selected vertex to the end.
-  for(unsigned int i=0;i<noperators;++i){
-    swap(M[flavor].matrix()(i,noperators-1), M[flavor].matrix()(i,operator_nr));
-  }
-  for(unsigned int i=0;i<noperators;++i){
-    swap(M[flavor].matrix()(noperators-1,i),M[flavor].matrix()(operator_nr,i));
-  }
-  //swap creator and annihilator
-  swap(M[flavor].creators()[operator_nr],     M[flavor].creators()[noperators-1]);
-  swap(M[flavor].annihilators()[operator_nr], M[flavor].annihilators()[noperators-1]);
-  swap(M[flavor].alpha()[operator_nr],        M[flavor].alpha()[noperators-1]);
-  double Mnn=M[flavor].matrix()(noperators-1,noperators-1);
-  //now perform fastupdate of M
-  vector<double> lastrow(noperators-1);
-  vector<double> lastcolumn(column_view<matrix<double> >(M[flavor].matrix(),noperators-1));
-  for(unsigned int j=0;j<noperators-1;++j){
-    lastrow[j]=M[flavor].matrix()(noperators-1, j);
-  }
-  if(noperators>1)
-    lastcolumn *= -1./Mnn;
-  resize(M[flavor].matrix(),noperators-1,noperators-1);  //lose the last row and last column, reduce size by one, but keep contents.
-  if(noperators>1)
-    boost::numeric::bindings::blas::ger(1.0,lastcolumn,lastrow,M[flavor].matrix());
-  return Mnn;  //the determinant ratio det D_{k-1}/det D_{k}
-  */
 }
 
 

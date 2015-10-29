@@ -171,10 +171,14 @@ compute_det_ratio_down(
     const size_t M = num_rows_cols_removed;
     assert(num_cols(invBigMat)==NpM);
     assert(rows_cols_removed.size()>=M);
+    assert(M>0);
 
     matrix_t H(M,M);
     for (size_t j=0; j<M; ++j) {
         for (size_t i=0; i<M; ++i) {
+            //std::cout << " Debug "  << rows_cols_removed[i] << " " << M << " " << NpM << std::endl;
+            assert(rows_cols_removed[i]<NpM);
+            assert(rows_cols_removed[j]<NpM);
             H(i,j) = invBigMat(rows_cols_removed[i], rows_cols_removed[j]);
         }
     }

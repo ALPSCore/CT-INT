@@ -56,19 +56,18 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_
       M[flavor_rank].alpha().push_back(new_vertex_type.get_alpha(af_state, i_rank));
       ++(helper.num_new_rows[flavor_rank]);
     }
-    vertices_new.push_back(itime_vertex(v_type, af_state, time));
+    itime_vertices.push_back(itime_vertex(v_type, af_state, time));
   }
 
   //fast update for each flavor
   double lambda_prod = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    if (helper.num_new_rows[flavor]==0) {
-      continue;
+    if (helper.num_new_rows[flavor]>0) {
+      lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
     }
-    lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
   }
-  //bit afraid of overlow. better to use log.
-  const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/boost::math::binomial_coefficient<double>(vertices_new.size(),n_vertices_add);
+  const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)
+                      /boost::math::binomial_coefficient<double>(itime_vertices.size(),n_vertices_add);
   return rtmp*prod_Uval*lambda_prod;
 }
 
@@ -77,11 +76,11 @@ void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, siz
 {
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     if (helper.num_new_rows[flavor]>0) {
-      assert(helper.num_new_rows[flavor]==1);
-      fastupdate_up(flavor,false,1);
+      fastupdate_up(flavor,false,helper.num_new_rows[flavor]);
     }
   }
-  assert(num_rows(M[0].matrix())==vertices_new.size());
+  M.sanity_check();
+  //ssert(num_rows(M[0].matrix())== itime_vertices.size());
 }
 
 
@@ -95,58 +94,66 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size
       M[flavor].alpha().pop_back();
     }
   }
-  //get rid of the vertex from vertex list
-  //vertices.pop_back();
-  vertices_new.pop_back();
-  assert(num_rows(M[0].matrix())==vertices_new.size());
+  for(int i=0; i<n_vertices_add; ++i) {
+    itime_vertices.pop_back();
+  }
+  M.sanity_check();
 }
 
 
-double HubbardInteractionExpansion::try_remove(unsigned int vertex_nr, fastupdate_remove_helper& helper)
+double HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //get weight
+  //figure out and remember which rows (columns) are to be removed
+  // lists of rows and cols will be sorted in ascending order
+  M.sanity_check();
   helper.clear();
-  vertex_definition<GTYPE> vertex_def = Uijkl.get_vertex(vertices_new[vertex_nr].vertex_type());
-  for (size_t i_rank=0; i_rank<vertex_def.rank(); ++i_rank) {
-    const size_t flavor = vertex_def.flavors()[i_rank];
-    //figure out and remember which rows (columns) are to be removed
-    helper.rows_cols_removed[flavor].push_back(M[flavor].find_row_col(vertices_new[vertex_nr].time()));
+  double prod_Uval = 1.0;
+  for (size_t iv=0; iv<vertices_nr.size(); ++iv) {
+    vertex_definition<GTYPE> vertex_def = Uijkl.get_vertex(itime_vertices[vertices_nr[iv]].type());
+    prod_Uval *= vertex_def.Uval();
+    for (size_t i_rank=0; i_rank<vertex_def.rank(); ++i_rank) {
+      const size_t flavor = vertex_def.flavors()[i_rank];
+      assert(M[flavor].find_row_col(itime_vertices[vertices_nr[iv]].time())<num_rows(M[flavor].matrix()));
+      helper.rows_cols_removed[flavor].push_back(M[flavor].find_row_col(itime_vertices[vertices_nr[iv]].time()));
+    }
   }
-  GTYPE lambda_prod = 1.0;
-  //sort lists of rows and cols to be removed in ascending order
   helper.sort_rows_cols();
+
+  GTYPE lambda_prod = 1.0;
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
     if (helper.rows_cols_removed[flavor].size()>0) {
       lambda_prod *= fastupdate_down(helper.rows_cols_removed[flavor], flavor, true);  // true means compute_only_weight
     }
   }
-  double pert_order=num_rows(M[0].matrix());
-  assert(num_rows(M[0].matrix())==vertices_new.size());
-  assert(Uijkl.n_vertex_type()==n_site);
-  //std::swap(vertices_new[vertex_nr], vertices_new[vertices_new.size()-1]);
-  return  -pert_order/(beta*onsite_U*Uijkl.n_vertex_type())*lambda_prod;
+  double r1 = boost::math::binomial_coefficient<double>(itime_vertices.size(),vertices_nr.size());
+  double r2 = pow(-beta*Uijkl.n_vertex_type()*prod_Uval,(double)vertices_nr.size());
+  return (r1/r2)*lambda_prod;
 }
 
 
-void HubbardInteractionExpansion::perform_remove(unsigned int vertex_nr, fastupdate_remove_helper& helper)
+void HubbardInteractionExpansion::perform_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //perform fastupdate down
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
     if (helper.rows_cols_removed[flavor].size()>0) {
-      //remove row and column
+      //remove rows and columns
       fastupdate_down(helper.rows_cols_removed[flavor], flavor, false);  // false means really perform, not only compute weight
       //get rid of operators
-      M[flavor].creators().pop_back();
-      M[flavor].annihilators().pop_back();
-      M[flavor].alpha().pop_back();
+      for (int iop=0; iop<helper.rows_cols_removed[flavor].size(); ++iop) {
+        M[flavor].creators().pop_back();
+        M[flavor].annihilators().pop_back();
+        M[flavor].alpha().pop_back();
+      }
     }
   }
-  //get rid of vertex list entries
-  {
-    std::vector<itime_vertex>::iterator it = vertices_new.begin();
-    std::advance(it, vertex_nr);
-    vertices_new.erase(it);//could be costly..
+  //get rid of vertex list entries. I know this is crapy.
+  for (size_t iv=0; iv<vertices_nr.size(); ++iv) {
+    std::vector<itime_vertex>::iterator it = itime_vertices.begin();
+    std::advance(it, vertices_nr[iv]);
+    itime_vertices.erase(it);
   }
+  M.sanity_check();
 }
 
 

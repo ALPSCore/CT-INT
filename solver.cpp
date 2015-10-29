@@ -39,51 +39,46 @@ void InteractionExpansion::interaction_expansion_step(void)
   static fastupdate_add_helper add_helper(n_flavors);
   static fastupdate_remove_helper remove_helper(n_flavors);
 
-  int pert_order=vertices_new.size();   //current order of perturbation series
+  size_t nv_updated = (size_t) (random()*n_multi_vertex_update)+1;
+
+  int pert_order= itime_vertices.size();   //current order of perturbation series
   double metropolis_weight=0.;
   static unsigned int i=0; ++i;
   if(random()<0.5){  //trying to ADD vertex
-    if(vertices_new.size()>=max_order)
+    M.sanity_check();
+    if(itime_vertices.size()>=max_order)
       return; //we have already reached the highest perturbation order
-    metropolis_weight=try_add(add_helper,1);
+    metropolis_weight=try_add(add_helper,nv_updated);
     if(fabs(metropolis_weight)> random()){
       measurements["VertexInsertion"]<<1.;
-      perform_add(add_helper,1);
+      perform_add(add_helper,nv_updated);
       sign*=metropolis_weight<0?-1:1;
-      assert(num_rows(M[0].matrix())==vertices_new.size());
+      M.sanity_check();
     }else{
       measurements["VertexInsertion"]<<0.;
-      reject_add(add_helper,1);
-      assert(num_rows(M[0].matrix())==vertices_new.size());
+      reject_add(add_helper,nv_updated);
+      M.sanity_check();
     }
   }else{ // try to REMOVE a vertex
-    pert_order=vertices_new.size(); //choose a vertex
+    M.sanity_check();
+    pert_order= itime_vertices.size();
     if(pert_order < 1) {
       return;     //we have an empty list or one with just one vertex
     }
-    //this might be the ideal place to do some cleanup, e.g. get rid of the roundoff errors and such.
-    int vertex_nr=(int)(random() * pert_order);
-    metropolis_weight=try_remove(vertex_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
+    //choose vertices to be removed
+    const std::vector<size_t> vertices_nr = pickup_a_few_numbers(pert_order, nv_updated, random);
+    metropolis_weight=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
     if(fabs(metropolis_weight)> random()){ //do the actual update
       measurements["VertexRemoval"]<<1.;
-      perform_remove(vertex_nr, remove_helper);
+      perform_remove(vertices_nr, remove_helper);
       sign*=metropolis_weight<0?-1:1;
+      M.sanity_check();
     }else{
       measurements["VertexRemoval"]<<0.;
       reject_remove(remove_helper);
+      M.sanity_check();
     }
   }//end REMOVE
-
-  /**** sanity check for onsite U ******/
-  M.sanity_check();
-  {
-    size_t Nv = 0;
-    for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-      Nv += M[flavor].creators().size();
-    }
-    assert(2*vertices_new.size()==Nv);
-  }
-
   weight=metropolis_weight;
 }
 

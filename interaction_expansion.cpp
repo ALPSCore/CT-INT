@@ -76,7 +76,8 @@ bare_green_matsubara(n_matsubara,n_site, n_flavors),
 bare_green_itime(n_tau+1, n_site, n_flavors),
 green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
-legendre_transformer(n_matsubara,n_legendre)
+legendre_transformer(n_matsubara,n_legendre),
+n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -126,8 +127,8 @@ void InteractionExpansion::update()
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     interaction_expansion_step();                
-    if(vertices_new.size()<max_order)
-      pert_hist[vertices_new.size()]++;
+    if(itime_vertices.size()<max_order)
+      pert_hist[itime_vertices.size()]++;
     if(step % recalc_period ==0) {
       //just for debug
       sanity_check();

@@ -253,9 +253,13 @@ public:
     };
 
     void sanity_check() const {
+#ifndef NDEBUG
       for (spin_t flavor=0; flavor<size(); ++flavor) {
         assert(sub_matrices_[flavor].creators().size()==sub_matrices_[flavor].annihilators().size());
+        assert(sub_matrices_[flavor].creators().size()==num_rows(sub_matrices_[flavor].matrix()));
+        assert(num_cols(sub_matrices_[flavor].matrix())==num_rows(sub_matrices_[flavor].matrix()));
       }
+#endif
     }
 private:
     std::vector<inverse_m_matrix> sub_matrices_;
@@ -319,8 +323,8 @@ protected:
   virtual double try_add(fastupdate_add_helper&,size_t)=0;
   virtual void perform_add(fastupdate_add_helper&,size_t)=0;
   virtual void reject_add(fastupdate_add_helper&,size_t)=0;
-  virtual double try_remove(unsigned int vertex_nr, fastupdate_remove_helper&)=0;
-  virtual void perform_remove(unsigned int vertex_nr, fastupdate_remove_helper&)=0;
+  virtual double try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
+  virtual void perform_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
   virtual void reject_remove(fastupdate_remove_helper&)=0;
   
   /*private member variables, constant throughout the simulation*/
@@ -336,7 +340,8 @@ protected:
   const boost::uint64_t mc_steps;                        
   const unsigned long therm_steps;                
   const double max_time_in_seconds;
-  
+  const size_t n_multi_vertex_update;
+
   const double beta;                                
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
   const double onsite_U;                        
@@ -363,9 +368,8 @@ protected:
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
   //vertex_array vertices;
-  std::vector<itime_vertex> vertices_new;
+  std::vector<itime_vertex> itime_vertices;
   big_inverse_m_matrix M;
-    //std::vector<inverse_m_matrix> M;
 
   double weight;
   double sign;
@@ -426,8 +430,8 @@ public:
   double try_add(fastupdate_add_helper&,size_t);
   void perform_add(fastupdate_add_helper&,size_t);
   void reject_add(fastupdate_add_helper&,size_t);
-  double try_remove(unsigned int vertex_nr, fastupdate_remove_helper&);
-  void perform_remove(unsigned int vertex_nr, fastupdate_remove_helper&);
+  double try_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
+  void perform_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
   void reject_remove(fastupdate_remove_helper&);
 };
 
