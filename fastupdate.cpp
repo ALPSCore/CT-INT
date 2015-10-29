@@ -86,25 +86,18 @@ double InteractionExpansion::fastupdate_up(const int flavor, bool compute_only_w
 
 ///Fastupdate formulas, remove order by one (remove a vertex). If necessary
 ///also take track of the Green's function.
-double InteractionExpansion::fastupdate_down(const int operator_nr, const int flavor, bool compute_only_weight, size_t n_vertices_remove=1)
+double InteractionExpansion::fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight)
 {
   using std::swap;
   using alps::numeric::column_view;
   using alps::numeric::vector;
   using alps::numeric::matrix;
   assert(num_rows(M[flavor].matrix()) == num_cols(M[flavor].matrix()));
-  //unsigned int noperators=num_rows(M[flavor].matrix());  //how many operators do we have in total?
-
-  //debug
-  std::vector<size_t> rows_cols_removed(n_vertices_remove);
-  rows_cols_removed.push_back(operator_nr);
+  const size_t n_vertices_remove = rows_cols_removed.size();
 
   if(compute_only_weight) {
     return compute_det_ratio_down(n_vertices_remove, rows_cols_removed, M[flavor].matrix());
   } else {
-    /*** DEBUG ***/
-    //const double det_old = 1/determinant(M[flavor].matrix());
-
     std::vector<std::pair<size_t,size_t> > rows_cols_swap_list;
     double det_rat = compute_inverse_matrix_down(n_vertices_remove,rows_cols_removed,M[flavor].matrix(),rows_cols_swap_list);
 
@@ -116,12 +109,6 @@ double InteractionExpansion::fastupdate_down(const int operator_nr, const int fl
       swap(M[flavor].annihilators()[idx1], M[flavor].annihilators()[idx2]);
       swap(M[flavor].alpha()[idx1],        M[flavor].alpha()[idx2]);
     }
-
-    /*** DEBUG ***/
-    //const double det_new = 1/determinant(M[flavor].matrix());
-    //std::cout << "det_rat" << det_rat << std::endl;
-    //assert(std::abs(det_new/det_old-det_rat)<1E-8);
-
     return det_rat;
   }
   /*

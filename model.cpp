@@ -56,7 +56,7 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_
       M[flavor_rank].alpha().push_back(new_vertex_type.get_alpha(af_state, i_rank));
       ++(helper.num_new_rows[flavor_rank]);
     }
-    vertices_new.push_back(itime_vertex(v_type, af_state, pos_c_in_smallM));
+    vertices_new.push_back(itime_vertex(v_type, af_state, time));
   }
 
   //fast update for each flavor
@@ -109,19 +109,20 @@ double HubbardInteractionExpansion::try_remove(unsigned int vertex_nr, fastupdat
   vertex_definition<GTYPE> vertex_def = Uijkl.get_vertex(vertices_new[vertex_nr].vertex_type());
   for (size_t i_rank=0; i_rank<vertex_def.rank(); ++i_rank) {
     const size_t flavor = vertex_def.flavors()[i_rank];
-    ++helper.num_removed_rows[flavor];
+    //figure out and remember which rows (columns) are to be removed
+    helper.rows_cols_removed[flavor].push_back(M[flavor].find_row_col(vertices_new[vertex_nr].time()));
   }
   GTYPE lambda_prod = 1.0;
+  //sort lists of rows and cols to be removed in ascending order
+  helper.sort_rows_cols();
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
-    assert(helper.num_removed_rows[flavor]<=1);
-    if (helper.num_removed_rows[flavor]==1) {
-      lambda_prod *= fastupdate_down(vertex_nr, flavor, true, 1);  // true means compute_only_weight
+    if (helper.rows_cols_removed[flavor].size()>0) {
+      lambda_prod *= fastupdate_down(helper.rows_cols_removed[flavor], flavor, true);  // true means compute_only_weight
     }
   }
   double pert_order=num_rows(M[0].matrix());
   assert(num_rows(M[0].matrix())==vertices_new.size());
   assert(Uijkl.n_vertex_type()==n_site);
-  //swap vertices
   //std::swap(vertices_new[vertex_nr], vertices_new[vertices_new.size()-1]);
   return  -pert_order/(beta*onsite_U*Uijkl.n_vertex_type())*lambda_prod;
 }
@@ -131,11 +132,9 @@ void HubbardInteractionExpansion::perform_remove(unsigned int vertex_nr, fastupd
 {
   //perform fastupdate down
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
-    assert(helper.num_removed_rows[flavor]<=1);
-    if (helper.num_removed_rows[flavor]>0) {
-      assert(helper.num_removed_rows[flavor]==1);
+    if (helper.rows_cols_removed[flavor].size()>0) {
       //remove row and column
-      fastupdate_down(vertex_nr, flavor, false,1);  // false means really perform, not only compute weight
+      fastupdate_down(helper.rows_cols_removed[flavor], flavor, false);  // false means really perform, not only compute weight
       //get rid of operators
       M[flavor].creators().pop_back();
       M[flavor].annihilators().pop_back();

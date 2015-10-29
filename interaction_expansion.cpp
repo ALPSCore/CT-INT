@@ -221,7 +221,6 @@ void InteractionExpansion::sanity_check() {
       }
       throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
-    //std::cout << " OK " << OK << std::endl;
   }
 }
 

@@ -212,6 +212,22 @@ compute_inverse_matrix_down(
 #endif
 
     //move rows and cols to be removed to the end.
+    /*
+    std::vector<size_t> new_index(NpM);
+    {
+        std::vector<int> mark(NpM, 0);
+        //put 1 on rows to be removed
+        for (size_t i=0; i<M; ++i) {
+            mark[rows_cols_removed[i]] = 1;
+        }
+        int pos_remain = 0;
+        int pos_removed = N;
+        for (size_t i=0; i<NpM; ++i) {
+
+        }
+    }
+     */
+
     swap_list.resize(M);
     for (size_t i=0; i<M; ++i) {
         if(rows_cols_removed[M-1-i]!=NpM-1-i) {

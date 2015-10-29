@@ -77,11 +77,21 @@ typedef struct fastupdate_add_helper {
 } fastupdate_add_helper;
 
 typedef struct fastupdate_remove_helper {
-    fastupdate_remove_helper(std::size_t num_flavors) : num_removed_rows(num_flavors,0) {};
+    fastupdate_remove_helper(std::size_t num_flavors)
+            //: num_removed_rows(num_flavors,0), rows_cols_removed(num_flavors) {};
+      : rows_cols_removed(num_flavors) {};
 
-    std::vector<std::size_t> num_removed_rows;
+    std::vector<std::vector<size_t> > rows_cols_removed;
+
+    void sort_rows_cols() {
+      for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
+        std::sort(rows_cols_removed[flavor].begin(),rows_cols_removed[flavor].end());
+      }
+    }
     void clear() {
-      std::fill(num_removed_rows.begin(), num_removed_rows.end(), 0);
+      for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
+        rows_cols_removed[flavor].resize(0);
+      }
     }
 } fastupdate_remove_helper;
 
@@ -210,6 +220,15 @@ public:
   const std::vector<annihilator> &annihilators()const{ return annihilators_;}
   std::vector<double> &alpha(){ return alpha_;}
   const std::vector<double> &alpha() const{ return alpha_;}
+  size_t find_row_col(double time) {
+    for(std::size_t i=0; i<creators_.size(); ++i) {
+      if (time==creators_[i].t()) {
+        assert(annihilators_[i].t()==time);
+        return i;
+      }
+    }
+    throw std::logic_error("You operator is missing!");
+  }
 private:
   alps::numeric::matrix<double> matrix_;
   std::vector<creator> creators_;         //an array of creation operators c_dagger corresponding to the row of the matrix
@@ -282,7 +301,7 @@ protected:
   
   // in file fastupdate.cpp:
   double fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
-  double fastupdate_down(const int operator_nr, const int flavor, bool compute_only_weight, size_t n_vertices_remove);
+  double fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight);
   
   /*measurement functions*/
   // in file measurements.cpp

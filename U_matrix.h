@@ -247,10 +247,10 @@ class general_U_matrix {
  //to remember what vertices is on the imaginary time axis..
  typedef struct itime_vertex {
  public:
-   itime_vertex(size_t vertex_type, size_t af_state, std::vector<size_t> position_in_M)
+   itime_vertex(size_t vertex_type, size_t af_state, double time)
            : vertex_type_(vertex_type),
              af_state_(af_state),
-             position_in_M_(position_in_M) {}
+             time_(time) {}
 
    //size_t position_in_M(size_t idx) {
      //assert(idx<position_in_M_.size());
@@ -259,10 +259,12 @@ class general_U_matrix {
 
    size_t af_state() { return af_state_; }
    size_t vertex_type() {return vertex_type_;}
+   double time() {return time_;}
 
  private:
    size_t vertex_type_, af_state_;
-   std::vector<size_t> position_in_M_;
+   double time_;
+   //std::vector<size_t> position_in_M_;
  } itime_vertex;
 
 std::ostream &operator<<(std::ostream &os, const U_matrix &U);
