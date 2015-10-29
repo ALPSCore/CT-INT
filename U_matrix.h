@@ -252,10 +252,10 @@ class general_U_matrix {
              af_state_(af_state),
              position_in_M_(position_in_M) {}
 
-   size_t position_in_M(size_t idx) {
-     assert(idx<position_in_M_.size());
-     return position_in_M_[idx];
-   }
+   //size_t position_in_M(size_t idx) {
+     //assert(idx<position_in_M_.size());
+     //return position_in_M_[idx];
+   //}
 
    size_t af_state() { return af_state_; }
    size_t vertex_type() {return vertex_type_;}

@@ -50,16 +50,17 @@ void InteractionExpansion::interaction_expansion_step(void)
       measurements["VertexInsertion"]<<1.;
       perform_add(add_helper,1);
       sign*=metropolis_weight<0?-1:1;
-      //DEBUG
-      //sanity_check();
+      assert(num_rows(M[0].matrix())==vertices_new.size());
     }else{
       measurements["VertexInsertion"]<<0.;
       reject_add(add_helper,1);
+      assert(num_rows(M[0].matrix())==vertices_new.size());
     }
   }else{ // try to REMOVE a vertex
     pert_order=vertices_new.size(); //choose a vertex
-    if(pert_order < 1)
+    if(pert_order < 1) {
       return;     //we have an empty list or one with just one vertex
+    }
     //this might be the ideal place to do some cleanup, e.g. get rid of the roundoff errors and such.
     int vertex_nr=(int)(random() * pert_order);
     metropolis_weight=try_remove(vertex_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
@@ -72,7 +73,8 @@ void InteractionExpansion::interaction_expansion_step(void)
       reject_remove(remove_helper);
     }
   }//end REMOVE
-  //sanity check for onsite U
+
+  /**** sanity check for onsite U ******/
   M.sanity_check();
   {
     size_t Nv = 0;
@@ -81,6 +83,7 @@ void InteractionExpansion::interaction_expansion_step(void)
     }
     assert(2*vertices_new.size()==Nv);
   }
+
   weight=metropolis_weight;
 }
 
@@ -118,6 +121,7 @@ void InteractionExpansion::reset_perturbation_series()
         if(std::abs(diff)>max_diff) max_diff=std::abs(diff);
       }
     }
+    //std::cout << "debug: max_diff = " << max_diff << std::endl;
     if(max_diff > 1.e-8)
       std::cout<<"WARNING: roundoff errors in flavor: "<<z<<" max diff "<<max_diff<<std::endl;
   }

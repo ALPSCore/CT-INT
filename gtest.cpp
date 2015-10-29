@@ -93,9 +93,9 @@ TEST(FastUpdate, BlockMatrixRemove)
 {
     std::vector<size_t> N_list, M_list;
     //N_list.push_back(0);
-    N_list.push_back(2);
+    N_list.push_back(10);
     //M_list.push_back(10);
-    M_list.push_back(1);
+    M_list.push_back(10);
 
     for (size_t n=0; n<N_list.size(); ++n) {
         for (size_t m=0; m<M_list.size(); ++m) {
@@ -106,81 +106,46 @@ TEST(FastUpdate, BlockMatrixRemove)
 
             matrix_t BigMatrix(N+M, N+M, 0), invBigMatrix(N+M, N+M, 0);
             matrix_t SmallMatrix(N,N,0), invSmallMatrix(N,N,0);
+            std::vector<std::pair<size_t,size_t> > swap_list;
 
             randomize_matrix(BigMatrix, 100);//100 is a seed
             invBigMatrix = inverse(BigMatrix);
 
             //which rows and cols are to be removed
-            std::vector<size_t> rows_removed(N+M), cols_removed(N+M);
-            std::vector<size_t> rows_remain(N), cols_remain(N);
+            std::vector<size_t> rows_removed(N+M);
+            std::vector<size_t> rows_remain(N);
             for (size_t i=0; i<N+M; ++i) {
                 rows_removed[i] = i;
-                cols_removed[i] = i;
             }
             std::random_shuffle(rows_removed.begin(), rows_removed.end());
-            std::random_shuffle(cols_removed.begin(), cols_removed.end());
             for (size_t i=0; i<N; ++i) {
                 rows_remain[i] = rows_removed[i+M];
-                cols_remain[i] = cols_removed[i+M];
             }
             rows_removed.resize(M);
-            cols_removed.resize(M);
             std::sort(rows_removed.begin(), rows_removed.end());
-            std::sort(cols_removed.begin(), cols_removed.end());
             std::sort(rows_remain.begin(), rows_remain.end());
-            std::sort(cols_remain.begin(), cols_remain.end());
-
-            //std::cout << "debug " << rows_removed << std::endl;
-            //std::cout << "debug " << rows_remain << std::endl;
-            //std::cout << "debug " << cols_removed << std::endl;
-            //std::cout << "debug " << cols_remain << std::endl;
-            for (size_t i=0; i<M; ++i) {
-                std::cout << "removed " << rows_removed[i] << " " << cols_removed[i] << std::endl;
-            }
-            for (size_t i=0; i<N; ++i) {
-                std::cout << "remain " << rows_remain[i] << " " << cols_remain[i] << std::endl;
-            }
-
-            //for debug
-            /*
-            for (size_t i=0; i<M; ++i) {
-                rows_removed[i] = N+i;
-                cols_removed[i] = N+i;
-            }
-            for (size_t i=0; i<N; ++i) {
-                rows_remain[i] = i;
-                cols_remain[i] = i;
-            }
-             */
 
             for (size_t j=0; j<N; ++j) {
                 for (size_t i=0; i<N; ++i) {
-                    SmallMatrix(i,j) = BigMatrix(rows_remain[i], cols_remain[j]);
+                    SmallMatrix(i,j) = BigMatrix(rows_remain[i], rows_remain[j]);
                 }
             }
-
-            //invSmallMatrix = inverse(SmallMatrix);
 
             //testing compute_det_ratio_down
-            double det_rat = compute_det_ratio_down(M,rows_removed,cols_removed,invBigMatrix);
+            double det_rat = compute_det_ratio_down(M,rows_removed,invBigMatrix);
             ASSERT_TRUE(std::abs(det_rat-alps::numeric::determinant(SmallMatrix)/alps::numeric::determinant(BigMatrix))) << "N=" << N << " M=" << M;
 
-            matrix_t invSmallMatrix2(invBigMatrix), SmallMatrix2(BigMatrix);
-            compute_inverse_matrix_down(M,rows_removed,cols_removed,SmallMatrix2,invSmallMatrix2);
-            SmallMatrix2.resize(N,N);
-            /*
-            for (size_t j=0; j<N+M; ++j) {
-                for (size_t i=0; i<N+M; ++i) {
-                    std::cout << " (i,j) = " << i << " " << j << " " << BigMatrix(i,j) << std::endl;
-                }
+            matrix_t invSmallMatrix2(invBigMatrix);
+            double det_rat2 = compute_inverse_matrix_down(M,rows_removed,invSmallMatrix2, swap_list);
+            ASSERT_TRUE(std::abs(det_rat-det_rat2)) << "N=" << N << " M=" << M;
+
+            matrix_t SmallMatrix3(BigMatrix);
+            for (size_t s=0; s<swap_list.size(); ++s) {
+                SmallMatrix3.swap_cols(swap_list[s].first, swap_list[s].second);
+                SmallMatrix3.swap_rows(swap_list[s].first, swap_list[s].second);
             }
-            for (size_t j=0; j<N; ++j) {
-                for (size_t i=0; i<N; ++i) {
-                    std::cout << " (i,j) = " << i << " " << j << " " << SmallMatrix2(i,j) << " " << SmallMatrix(i,j) << std::endl;
-                }
-            }
-            */
-            ASSERT_TRUE(alps::numeric::norm_square(inverse(SmallMatrix2)-invSmallMatrix2)<1E-8) << "N=" << N << " M=" << M;
+            SmallMatrix3.resize(N,N);
+            ASSERT_TRUE(alps::numeric::norm_square(inverse(SmallMatrix3)-invSmallMatrix2)<1E-8) << "N=" << N << " M=" << M;
         }
     }
 }

@@ -282,7 +282,7 @@ protected:
   
   // in file fastupdate.cpp:
   double fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
-  double fastupdate_down(const int operator_nr, const int flavor, bool compute_only_weight);
+  double fastupdate_down(const int operator_nr, const int flavor, bool compute_only_weight, size_t n_vertices_remove);
   
   /*measurement functions*/
   // in file measurements.cpp

@@ -81,6 +81,7 @@ void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, siz
       fastupdate_up(flavor,false,1);
     }
   }
+  assert(num_rows(M[0].matrix())==vertices_new.size());
 }
 
 
@@ -97,6 +98,7 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size
   //get rid of the vertex from vertex list
   //vertices.pop_back();
   vertices_new.pop_back();
+  assert(num_rows(M[0].matrix())==vertices_new.size());
 }
 
 
@@ -113,14 +115,14 @@ double HubbardInteractionExpansion::try_remove(unsigned int vertex_nr, fastupdat
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
     assert(helper.num_removed_rows[flavor]<=1);
     if (helper.num_removed_rows[flavor]==1) {
-      lambda_prod *= fastupdate_down(vertex_nr, flavor, true);  // true means compute_only_weight
+      lambda_prod *= fastupdate_down(vertex_nr, flavor, true, 1);  // true means compute_only_weight
     }
   }
   double pert_order=num_rows(M[0].matrix());
   assert(num_rows(M[0].matrix())==vertices_new.size());
   assert(Uijkl.n_vertex_type()==n_site);
   //swap vertices
-  std::swap(vertices_new[vertex_nr], vertices_new[vertices_new.size()-1]);
+  //std::swap(vertices_new[vertex_nr], vertices_new[vertices_new.size()-1]);
   return  -pert_order/(beta*onsite_U*Uijkl.n_vertex_type())*lambda_prod;
 }
 
@@ -133,7 +135,7 @@ void HubbardInteractionExpansion::perform_remove(unsigned int vertex_nr, fastupd
     if (helper.num_removed_rows[flavor]>0) {
       assert(helper.num_removed_rows[flavor]==1);
       //remove row and column
-      fastupdate_down(vertex_nr, flavor, false);  // false means really perform, not only compute weight
+      fastupdate_down(vertex_nr, flavor, false,1);  // false means really perform, not only compute weight
       //get rid of operators
       M[flavor].creators().pop_back();
       M[flavor].annihilators().pop_back();
@@ -141,7 +143,11 @@ void HubbardInteractionExpansion::perform_remove(unsigned int vertex_nr, fastupd
     }
   }
   //get rid of vertex list entries
-  vertices_new.pop_back();
+  {
+    std::vector<itime_vertex>::iterator it = vertices_new.begin();
+    std::advance(it, vertex_nr);
+    vertices_new.erase(it);//could be costly..
+  }
 }
 
 
