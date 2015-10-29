@@ -28,6 +28,10 @@ namespace alps {
             std::vector<int> ipiv(num_rows(M));
             const size_t N = num_rows(M);
 
+            if (N==0) {
+                return 1.0;
+            }
+
             int info = boost::numeric::bindings::lapack::getrf(M, ipiv);
             if (info != 0)
                 throw std::runtime_error("Error in GETRF !");

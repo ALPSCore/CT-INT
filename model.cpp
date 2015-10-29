@@ -65,7 +65,6 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_
     if (helper.num_new_rows[flavor]==0) {
       continue;
     }
-    //assert(helper.num_new_rows[flavor]==1);
     lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
   }
   //bit afraid of overlow. better to use log.
@@ -77,7 +76,6 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_
 void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add=1)
 {
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    //std::cout << " debug_add " << flavor << " " << helper.num_new_rows[flavor] << std::endl;
     if (helper.num_new_rows[flavor]>0) {
       assert(helper.num_new_rows[flavor]==1);
       fastupdate_up(flavor,false,1);

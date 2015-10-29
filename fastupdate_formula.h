@@ -20,14 +20,22 @@ compute_det_ratio_up(
     const size_t N = num_rows(invA);
     const size_t M = num_rows(D);
 
+    assert(M>0);
+
     assert(num_rows(invA)==num_cols(invA));
+    assert(num_rows(B)==N && num_cols(B)==M);
+    assert(num_rows(C)==M && num_cols(C)==N);
+    assert(num_rows(D)==M && num_cols(D)==M);
 
-    //compute H
-    matrix_t C_invA(M,N,0.0), C_invA_B(M,M,0.0);
-    gemm(C, invA, C_invA);
-    gemm(C_invA, B, C_invA_B);
-
-    return determinant(D-C_invA_B);
+    if (N==0) {
+        return determinant(D);
+    } else {
+        //compute H
+        matrix_t C_invA(M,N,0.0), C_invA_B(M,M,0.0);
+        gemm(C, invA, C_invA);
+        gemm(C_invA, B, C_invA_B);
+        return determinant(D-C_invA_B);
+    }
 }
 
 template<class T>
@@ -43,35 +51,53 @@ compute_inverse_matrix_up(
     const size_t N = num_rows(invA);
     const size_t M = num_rows(D);
 
-    assert(num_rows(invA)==num_cols(invA));
+    assert(M>0);
 
-    //fill E, F, G by zero for safety
-    std::fill(E.get_values().begin(), E.get_values().end(),0);
-    std::fill(F.get_values().begin(), F.get_values().end(),0);
-    std::fill(G.get_values().begin(), G.get_values().end(),0);
+    assert(num_rows(invA)==num_cols(invA));
+    assert(num_rows(B)==N && num_cols(B)==M);
+    assert(num_rows(C)==M && num_cols(C)==N);
+    assert(num_rows(D)==M && num_cols(D)==M);
 
     //compute H
-    matrix_t C_invA(M,N,0.0), C_invA_B(M,M,0.0);
-    gemm(C, invA, C_invA);
-    gemm(C_invA, B, C_invA_B);
-    H = inverse(D-C_invA_B);
+    if (N==0) {
+        H = inverse(D);
+        E.resize(0,0);
+        F.resize(0,M);
+        G.resize(M,0);
 
-    //compute G
-    gemm(H,C_invA,G);
-    G *= -1.;
+        return 1./determinant(H);
+    } else {
+        E.resize(N,N);
+        F.resize(N,M);
+        G.resize(M,N);
 
-    //compute F
-    matrix_t invA_B(N, M, 0);
-    gemm(invA, B, invA_B);
-    gemm(invA_B, H, F);
-    F *= -1.0;
+        //fill E, F, G by zero for safety
+        std::fill(E.get_values().begin(), E.get_values().end(),0);
+        std::fill(F.get_values().begin(), F.get_values().end(),0);
+        std::fill(G.get_values().begin(), G.get_values().end(),0);
 
-    //compute E
-    gemm(invA_B, G, E);
-    E *= -1;
-    E += invA;
+        matrix_t C_invA(M, N, 0.0), C_invA_B(M, M, 0.0);
+        gemm(C, invA, C_invA);
+        gemm(C_invA, B, C_invA_B);
+        H = inverse(D - C_invA_B);
 
-    return 1./determinant(H);
+        //compute G
+        gemm(H, C_invA, G);
+        G *= -1.;
+
+        //compute F
+        matrix_t invA_B(N, M, 0);
+        gemm(invA, B, invA_B);
+        gemm(invA_B, H, F);
+        F *= -1.0;
+
+        //compute E
+        gemm(invA_B, G, E);
+        E *= -1;
+        E += invA;
+
+        return 1./determinant(H);
+    }
 }
 
 //Note: invA and invBigMat can point to the same matrix object.
@@ -88,38 +114,48 @@ compute_inverse_matrix_up2(
     const size_t N = num_rows(invA);
     const size_t M = num_rows(D);
 
+    assert(M>0);
+
     assert(num_rows(invA)==num_cols(invA));
+    assert(num_rows(B)==N && num_cols(B)==M);
+    assert(num_rows(C)==M && num_cols(C)==N);
+    assert(num_rows(D)==M && num_cols(D)==M);
 
-    matrix_t E(N,N,0), F(N,M,0), G(M,N,0), H(M,M,0);
+    if (N==0) {
+        invBigMat = inverse(D);
+        return determinant(D);
+    } else {
+        matrix_t E(N, N, 0), F(N, M, 0), G(M, N, 0), H(M, M, 0);
 
-    //compute H
-    matrix_t C_invA(M,N,0.0), C_invA_B(M,M,0.0);
-    gemm(C, invA, C_invA);
-    gemm(C_invA, B, C_invA_B);
-    H = inverse(D-C_invA_B);
+        //compute H
+        matrix_t C_invA(M, N, 0.0), C_invA_B(M, M, 0.0);
+        gemm(C, invA, C_invA);
+        gemm(C_invA, B, C_invA_B);
+        H = inverse(D - C_invA_B);
 
-    //compute G
-    gemm(H,C_invA,G);
-    G *= -1.;
+        //compute G
+        gemm(H, C_invA, G);
+        G *= -1.;
 
-    //compute F
-    matrix_t invA_B(N, M, 0);
-    gemm(invA, B, invA_B);
-    gemm(invA_B, H, F);
-    F *= -1.0;
+        //compute F
+        matrix_t invA_B(N, M, 0);
+        gemm(invA, B, invA_B);
+        gemm(invA_B, H, F);
+        F *= -1.0;
 
-    //compute E
-    gemm(invA_B, G, E);
-    E *= -1;
-    E += invA;
+        //compute E
+        gemm(invA_B, G, E);
+        E *= -1;
+        E += invA;
 
-    resize(invBigMat, N+M, N+M);
-    copy_block(E,0,0,invBigMat,0,0,N,N);
-    copy_block(F,0,0,invBigMat,0,N,N,M);
-    copy_block(G,0,0,invBigMat,N,0,M,N);
-    copy_block(H,0,0,invBigMat,N,N,M,M);
+        resize(invBigMat, N + M, N + M);
+        copy_block(E, 0, 0, invBigMat, 0, 0, N, N);
+        copy_block(F, 0, 0, invBigMat, 0, N, N, M);
+        copy_block(G, 0, 0, invBigMat, N, 0, M, N);
+        copy_block(H, 0, 0, invBigMat, N, N, M, M);
 
-    return 1./determinant(H);
+        return 1. / determinant(H);
+    }
 }
 
 #endif //IMPSOLVER_FASTUPDATE_FORMULA_H

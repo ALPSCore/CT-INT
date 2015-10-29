@@ -50,6 +50,8 @@ void InteractionExpansion::interaction_expansion_step(void)
       measurements["VertexInsertion"]<<1.;
       perform_add(add_helper,1);
       sign*=metropolis_weight<0?-1:1;
+      //DEBUG
+      //sanity_check();
     }else{
       measurements["VertexInsertion"]<<0.;
       reject_add(add_helper,1);

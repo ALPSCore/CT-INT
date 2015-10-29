@@ -207,6 +207,18 @@ void InteractionExpansion::sanity_check() {
       }
     }
     if (!OK) {
+      std::cout << "flavor=" << flavor << std::endl;
+      std::cout << "Nv=" << Nv << std::endl;
+      for (size_t q=0; q<Nv; ++q) {
+        for (size_t p=0; p<Nv; ++p) {
+          std::cout << " p, q = " << p << " " << q << " " << G0(p,q) << std::endl;
+        }
+      }
+      for (size_t q=0; q<Nv; ++q) {
+        for (size_t p=0; p<Nv; ++p) {
+          std::cout << " p, q = " << p << " " << q << " " << M[flavor].matrix()(p,q) << std::endl;
+        }
+      }
       throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
     //std::cout << " OK " << OK << std::endl;
