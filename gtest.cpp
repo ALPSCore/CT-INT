@@ -96,6 +96,8 @@ TEST(FastUpdate, BlockMatrixRemove)
     N_list.push_back(10);
     //M_list.push_back(10);
     M_list.push_back(10);
+    M_list.push_back(20);
+    M_list.push_back(30);
 
     for (size_t n=0; n<N_list.size(); ++n) {
         for (size_t m=0; m<M_list.size(); ++m) {
@@ -105,7 +107,7 @@ TEST(FastUpdate, BlockMatrixRemove)
             typedef alps::numeric::matrix<double> matrix_t;
 
             matrix_t BigMatrix(N+M, N+M, 0), invBigMatrix(N+M, N+M, 0);
-            matrix_t SmallMatrix(N,N,0), invSmallMatrix(N,N,0);
+            matrix_t SmallMatrix(N,N,0);
             std::vector<std::pair<size_t,size_t> > swap_list;
 
             randomize_matrix(BigMatrix, 100);//100 is a seed

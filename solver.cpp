@@ -62,7 +62,7 @@ void InteractionExpansion::interaction_expansion_step(void)
   }else{ // try to REMOVE a vertex
     M.sanity_check(itime_vertices);
     pert_order= itime_vertices.size();
-    if(pert_order < 1) {
+    if(pert_order < nv_updated) {
       return;     //we have an empty list or one with just one vertex
     }
     //choose vertices to be removed
@@ -120,5 +120,9 @@ void InteractionExpansion::reset_perturbation_series()
     if(max_diff > 1.e-8)
       std::cout<<"WARNING: roundoff errors in flavor: "<<z<<" max diff "<<max_diff<<std::endl;
   }
+
+#ifndef NDEBUG
+  //recompute weight
+#endif
 }
 

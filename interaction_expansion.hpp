@@ -256,7 +256,7 @@ private:
   std::vector<creator> creators_;         //an array of creation operators c_dagger corresponding to the row of the matrix
   std::vector<annihilator> annihilators_; //an array of to annihilation operators c corresponding to the column of the matrix
   std::vector<double> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
-  std::vector<std::pair<vertex_t,size_t> > vertex_info_;
+  std::vector<std::pair<vertex_t,size_t> > vertex_info_; // an array of pairs which remember from which type of vertex operators come from. (type of vertex and the position in the vertex)
 };
 
 class big_inverse_m_matrix
@@ -277,25 +277,33 @@ public:
 
     void sanity_check(const std::vector<itime_vertex>& itime_vertices) const {
 #ifndef NDEBUG
+      size_t num_tot_rows = 0;
       for (spin_t flavor=0; flavor<size(); ++flavor) {
         sub_matrices_[flavor].sanity_check();
         assert(sub_matrices_[flavor].creators().size()==sub_matrices_[flavor].annihilators().size());
         assert(sub_matrices_[flavor].creators().size()==num_rows(sub_matrices_[flavor].matrix()));
         assert(num_cols(sub_matrices_[flavor].matrix())==num_rows(sub_matrices_[flavor].matrix()));
+        num_tot_rows += num_rows(sub_matrices_[flavor].matrix());
       }
+      size_t num_tot_rows2 = 0;
       for (size_t iv=0; iv<itime_vertices.size(); ++iv) {
         const itime_vertex& v = itime_vertices[iv];
+        num_tot_rows2 += v.rank();
         for (size_t i_rank = 0; i_rank < v.rank(); ++i_rank) {
-          int info = -1;
+          bool found = false;
           for (spin_t flavor=0; flavor<size(); ++flavor) {
-            info = sub_matrices_[flavor].find_row_col(v.time(), v.type(), i_rank);
-            if (info>=0) break;
+            int info = sub_matrices_[flavor].find_row_col(v.time(), v.type(), i_rank);
+            if (info>=0) {
+              found = true;
+              break;
+            }
           }
-          if (info==-1) {
+          if (!found) {
             throw std::logic_error("Your operator is missing!");
           }
         }
       }
+      assert(num_tot_rows==num_tot_rows2);
 #endif
     }
 private:
@@ -352,7 +360,7 @@ protected:
   void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();
   void sanity_check();
-  
+
   /*abstract virtual functions. Implement these for specific models.*/
   virtual double try_add(fastupdate_add_helper&,size_t)=0;
   virtual void perform_add(fastupdate_add_helper&,size_t)=0;

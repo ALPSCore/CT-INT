@@ -127,8 +127,8 @@ double HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertic
     }
   }
   double r1 = boost::math::binomial_coefficient<double>(itime_vertices.size(),vertices_nr.size());
-  double r2 = pow(-beta*Uijkl.n_vertex_type()*prod_Uval,(double)vertices_nr.size());
-  return (r1/r2)*lambda_prod;
+  double r2 = pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size());
+  return (r1/r2)*lambda_prod/prod_Uval;
 }
 
 

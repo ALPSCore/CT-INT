@@ -131,7 +131,9 @@ void InteractionExpansion::update()
       pert_hist[itime_vertices.size()]++;
     if(step % recalc_period ==0) {
       //just for debug
+#ifndef NDEBUG
       sanity_check();
+#endif
       reset_perturbation_series();
     }
   }
@@ -181,6 +183,7 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
 
 
 void InteractionExpansion::sanity_check() {
+  //recompute M
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     alps::numeric::matrix<GTYPE> tmp(M[flavor].matrix()), G0(M[flavor].matrix());
     std::fill(tmp.get_values().begin(), tmp.get_values().end(), 0);
@@ -223,6 +226,9 @@ void InteractionExpansion::sanity_check() {
       throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
   }
+
+  //recompute sign etc.
+
 }
 
 

@@ -203,6 +203,11 @@ compute_inverse_matrix_down(
     assert(num_cols(invBigMat)==NpM);
     assert(rows_cols_removed.size()>=M);
     assert(M>0);
+    assert(NpM>=M);
+
+    if (NpM<M) {
+        throw std::logic_error("N should not be negative!");
+    }
 
     if (M==0) {
         throw std::logic_error("M should be larger than 0!");
