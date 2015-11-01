@@ -210,7 +210,7 @@ void InteractionExpansion::compute_Sl() {
         //interpolate G0
         for (unsigned int site1=0; site1<n_site; ++site1) {
           for (unsigned int site2=0; site2<n_site; ++site2) {
-            g0_c(site1, site2) = green0_spline_new(time_c_shifted[p],z,site1,site2);//CHECK!
+            g0_c(site1, site2) = green0_spline_new(time_c_shifted[p],z,site1,site2);//CHECK THE TREATMENT OF EQUAL-TIME MEASUREMENT
           }
         }
 
@@ -264,7 +264,7 @@ void InteractionExpansion::measure_densities()
     alps::numeric::vector<double> g0_taui(Nv);
     for (unsigned int s=0;s<n_site;++s) {             
       for (unsigned int j=0;j<Nv;++j)
-        g0_tauj[j] = green0_spline_new(M[z].annihilators()[j].t()-tau, z, M[z].annihilators()[j].s(), s);
+        g0_tauj[j] = green0_spline_new(M[z].annihilators()[j].t()-tau, z, M[z].annihilators()[j].s(), s);//CHECK THE TREATMENT OF EQUAL-TIME Green's function
       for (unsigned int i=0;i<Nv;++i)
         g0_taui[i] = green0_spline_new(tau-M[z].creators()[i].t(),z, s, M[z].creators()[i].s());
       if (num_rows(M[z].matrix())>0)

@@ -81,6 +81,26 @@ double InteractionExpansion::green0_spline(const itime_t delta_t, const spin_t f
 */
 
 
+//with correct treatment of equal-time Green's function
+double InteractionExpansion::green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const
+{
+  const annihilator& c = M[flavor].annihilators()[c_pos];
+  const creator& cdagger = M[flavor].creators()[cdagger_pos];
+
+  if (c.t()!=cdagger.t()) {
+    itime_t delta_t=c.t()-cdagger.t();
+    site_t site1 = c.s();
+    site_t site2 = cdagger.s();
+    return green0_spline_new(delta_t, flavor, site1, site2);
+  } else {//take care of the ambiguity of the equal-time Green's fuction. Appreciate the ordering of the creation and annihilation operators in the vertex
+    itime_t delta_t=c.t()-cdagger.t();
+    site_t site1 = c.s();
+    site_t site2 = cdagger.s();
+    itime_t time_shift = (M[flavor].vertex_info()[c_pos].second<M[flavor].vertex_info()[cdagger_pos].second) ? beta*1E-10 : -beta*1E-10;
+    return green0_spline_new(delta_t+time_shift, flavor, site1, site2);
+  }
+}
+
 ///Compute the Green's function G0 (the BARE) green's function between two points
 double InteractionExpansion::green0_spline_new(const annihilator &c, const creator &cdagger) const
 {
@@ -104,8 +124,11 @@ double InteractionExpansion::green0_spline_new(const itime_t delta_t, const spin
 {
   assert(delta_t<= beta);
   assert(delta_t>=-beta);
-  if(delta_t*delta_t < almost_zero){
+  if(delta_t*delta_t < almost_zero && delta_t>0){
     return bare_green_itime(0, site1, site2, flavor);
+  }
+  else if(delta_t*delta_t < almost_zero && delta_t<0){
+    return -bare_green_itime(n_tau, site1, site2, flavor);
   }
   else if(delta_t>0){
     int time_index_1 = (int)(delta_t*n_tau*temperature);

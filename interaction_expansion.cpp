@@ -196,12 +196,12 @@ void InteractionExpansion::sanity_check() {
     const size_t Nv = M[flavor].matrix().num_rows();
     for (size_t q=0; q<Nv; ++q) {
       for (size_t p=0; p<Nv; ++p) {
-        G0(p, q) = green0_spline_new(M[flavor].annihilators()[p], M[flavor].creators()[q]);
+        G0(p, q) = green0_spline_for_M(flavor, p, q);
       }
     }
     for (size_t p=0; p<Nv; ++p) {
       //std::cout << "debug " << p << " " << M[flavor].alpha()[p] << " " << G0(p,p) << std::endl;
-      G0(p, p) += M[flavor].alpha()[p];
+      G0(p, p) -= M[flavor].alpha()[p];
     }
 
     gemm(G0, M[flavor].matrix(), tmp);

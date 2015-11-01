@@ -54,21 +54,21 @@ double InteractionExpansion::fastupdate_up(const int flavor, bool compute_only_w
   alps::numeric::matrix<GTYPE> Green0_j_n(noperators, n_vertices_add);
   for(unsigned int i=0;i<noperators;++i) {
     for (size_t iv=0; iv<n_vertices_add; ++iv) {
-      Green0_n_j(iv,i) = green0_spline_new(M[flavor].annihilators()[noperators+iv], M[flavor].creators()[i]);
+      Green0_n_j(iv,i) = green0_spline_for_M(flavor, noperators+iv, i);
     }
   }
   for(unsigned int i=0;i<noperators;++i){
     for (size_t iv=0; iv<n_vertices_add; ++iv) {
-      Green0_j_n(i,iv) = green0_spline_new(M[flavor].annihilators()[i], M[flavor].creators()[noperators+iv]);
+      Green0_j_n(i,iv) = green0_spline_for_M(flavor, i, noperators+iv);
     }
   }
   for (size_t iv2=0; iv2<n_vertices_add; ++iv2) {
     for (size_t iv=0; iv<n_vertices_add; ++iv) {
-      Green0_n_n(iv, iv2) = green0_spline_new(M[flavor].annihilators()[noperators+iv], M[flavor].creators()[noperators+iv2]);
+      Green0_n_n(iv, iv2) = green0_spline_for_M(flavor, noperators+iv, noperators+iv2);
     }
   }
   for (size_t iv=0; iv<n_vertices_add; ++iv) {
-    Green0_n_n(iv, iv) += M[flavor].alpha()[noperators+iv];
+    Green0_n_n(iv, iv) -= M[flavor].alpha()[noperators+iv];
   }
 
   //B: Green0_j_n

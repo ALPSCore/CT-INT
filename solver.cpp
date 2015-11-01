@@ -124,11 +124,11 @@ void InteractionExpansion::reset_perturbation_series()
       //construct G0 matrix
       for (size_t q=0; q<Nv; ++q) {
         for (size_t p=0; p<Nv; ++p) {
-          G0(p, q) = green0_spline_new(M[flavor].annihilators()[p], M[flavor].creators()[q]);
+          G0(p, q) = green0_spline_for_M(flavor, p, q);
         }
       }
       for (size_t p=0; p<Nv; ++p) {
-        G0(p, p) += M[flavor].alpha()[p];
+        G0(p, p) -= M[flavor].alpha()[p];
       }
       M[flavor].matrix() = alps::numeric::inverse(G0);
     }
