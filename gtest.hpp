@@ -1,4 +1,5 @@
 #include <boost/random.hpp>
+#include <boost/math/special_functions/binomial.hpp>
 
 #include <alps/numeric/matrix.hpp>
 #include <alps/numeric/matrix/algorithms.hpp>

@@ -20,6 +20,9 @@ template<typename T> T myconj(T val);
 //template<class MAT, class SCALAR>
 //inline void invert(MAT & A, SCALAR & det);
 
+//return permutation P(N, k)
+double permutation(size_t N, size_t k);
+
 template<class R>
 std::vector<size_t> pickup_a_few_numbers(size_t N, size_t n, R& random01) {
     std::vector<size_t> flag(N,0), list(n);
@@ -27,7 +30,7 @@ std::vector<size_t> pickup_a_few_numbers(size_t N, size_t n, R& random01) {
     for (size_t i=0; i<n; ++i) {
         size_t itmp = 0;
         while(true) {
-            itmp = std::min((size_t)(random01()*N),N-1);
+            itmp = static_cast<size_t>(random01()*N);
             if (flag[itmp]==0) {
                 break;
             }

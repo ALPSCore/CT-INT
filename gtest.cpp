@@ -151,3 +151,16 @@ TEST(FastUpdate, BlockMatrixRemove)
         }
     }
 }
+
+TEST(Boost, Binomial) {
+    const size_t k = 2;
+    for (size_t N=k; N<10; ++N) {
+        const double tmp = boost::math::binomial_coefficient<double>(N,k);
+        ASSERT_TRUE(std::abs(tmp-0.5*N*(N-1.0))<1E-8);
+    }
+}
+
+TEST(MyUtil, permutation) {
+    assert(permutation(3,1)==3);
+    assert(permutation(3,2)==6);
+}

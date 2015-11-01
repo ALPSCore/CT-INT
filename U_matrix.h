@@ -265,6 +265,8 @@ class general_U_matrix {
    double time_;
  } itime_vertex;
 
+std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
+
 std::ostream &operator<<(std::ostream &os, const U_matrix &U);
 //U_MATRIX_H
 #endif 

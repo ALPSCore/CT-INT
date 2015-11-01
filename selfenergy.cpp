@@ -101,6 +101,10 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
   for (size_t z=0; z<n_flavors; ++z) {
     const size_t Nv = num_rows(M[z].matrix());
 
+    if (Nv==0) {
+      continue;
+    }
+
     for(size_t p=0;p<Nv;++p) {
       M[z].creators()[p].compute_exp(n_matsubara, -1);
     }

@@ -26,6 +26,15 @@ std::complex<double> myconj(std::complex<double> val) {
     return std::conj(val);
 }
 
+double permutation(size_t N, size_t k) {
+    assert(k>0);
+    double r=1.0;
+    for(size_t i=N-k+1; i<=N; ++i) {
+        r *= static_cast<double>(i);
+    }
+    return r;
+}
+
 /*
 template<>
 inline void invert<dense_matrix,double>(dense_matrix & A, double & det) {

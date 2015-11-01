@@ -61,9 +61,9 @@ therm_steps((unsigned int)parms["THERMALIZATION"]),
 max_time_in_seconds(parms["MAX_TIME"] | 86400),
 beta((double)parms["BETA"]),                        
 temperature(1./beta),
-onsite_U((double)parms["U"]),                        
-alpha((double)parms["ALPHA"]),
-U(alps::make_deprecated_parameters(parms)),
+//onsite_U((double)parms["U"]),
+//alpha((double)parms["ALPHA"]),
+//U(alps::make_deprecated_parameters(parms)),
 Uijkl(alps::make_deprecated_parameters(parms)),
 recalc_period(parms["RECALC_PERIOD"] | 5000),
 //measurement_period(parms["MEASUREMENT_PERIOD"] | (parms["N_MEAS"] | 200)),
@@ -108,9 +108,9 @@ n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1)
   //initialize the simulation variables
   initialize_simulation(parms);
   if(node==0) {print(std::cout);}
-  vertex_histograms=new simple_hist *[n_flavors*n_flavors];
+  vertex_histograms=new simple_hist *[n_flavors];
   vertex_histogram_size=100;
-  for(unsigned int i=0;i<n_flavors*n_flavors;++i){
+  for(unsigned int i=0;i<n_flavors;++i){
     vertex_histograms[i]=new simple_hist(vertex_histogram_size);
   }
   c_or_cdagger::initialize_simulation(parms);
@@ -126,7 +126,8 @@ void InteractionExpansion::update()
   //std::cout << "step " << step << std::endl;
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
-    interaction_expansion_step();                
+    interaction_expansion_step();
+    //sanity_check();
     if(itime_vertices.size()<max_order)
       pert_hist[itime_vertices.size()]++;
     if(step % recalc_period ==0) {
@@ -185,6 +186,9 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
 void InteractionExpansion::sanity_check() {
   //recompute M
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    if (num_rows(M[flavor].matrix())==0) {
+      continue;
+    }
     alps::numeric::matrix<GTYPE> tmp(M[flavor].matrix()), G0(M[flavor].matrix());
     std::fill(tmp.get_values().begin(), tmp.get_values().end(), 0);
     std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
@@ -196,6 +200,7 @@ void InteractionExpansion::sanity_check() {
       }
     }
     for (size_t p=0; p<Nv; ++p) {
+      //std::cout << "debug " << p << " " << M[flavor].alpha()[p] << " " << G0(p,p) << std::endl;
       G0(p, p) += M[flavor].alpha()[p];
     }
 

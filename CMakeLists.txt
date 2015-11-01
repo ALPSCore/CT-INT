@@ -58,10 +58,10 @@ set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
        measurements.cpp
        model.cpp
        util.cpp
-       legendre.cpp legendre.h multi_vertex_fastupdate.cpp multi_vertex_fastupdate.h fastupdate_formula.h)
+       legendre.cpp legendre.h multi_vertex_fastupdate.cpp multi_vertex_fastupdate.h fastupdate_formula.h U_matrix.cpp)
 add_executable(interaction main.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
 
-set (GTEST_SOURCE legendre.cpp)
+set (GTEST_SOURCE legendre.cpp util.cpp)
 add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTEST_SOURCE})
 
 #libraries

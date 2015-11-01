@@ -3,6 +3,8 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/U_matrix.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/U_matrix.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/auxiliary.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fastupdate.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fastupdate_formula.h" isTestSource="false" />

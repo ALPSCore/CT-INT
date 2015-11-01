@@ -32,12 +32,14 @@
 
 #include <boost/multi_array.hpp>
 #include <boost/timer/timer.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
 
 #include <alps/alea.h>
 #include <alps/numeric/matrix.hpp>
+#include <alps/numeric/matrix/algorithms.hpp>
 
 #include <cmath>
 #include "green_function.h"
@@ -67,19 +69,19 @@ enum measurement_methods {
 
 
 typedef struct fastupdate_add_helper {
-  fastupdate_add_helper(std::size_t num_flavors) : num_new_rows(num_flavors,0) {};
+  fastupdate_add_helper(std::size_t num_flavors) : num_new_rows(num_flavors,0), det_rat_(0) {};
 
   void clear(size_t n_vertices_add=1) {
     std::fill(num_new_rows.begin(), num_new_rows.end(), 0);
   }
 
   std::vector<std::size_t> num_new_rows;
+  double det_rat_;
 } fastupdate_add_helper;
 
 typedef struct fastupdate_remove_helper {
     fastupdate_remove_helper(std::size_t num_flavors)
-            //: num_removed_rows(num_flavors,0), rows_cols_removed(num_flavors) {};
-      : rows_cols_removed(num_flavors) {};
+      : rows_cols_removed(num_flavors), det_rat_(0) {};
 
     std::vector<std::vector<size_t> > rows_cols_removed;
 
@@ -93,6 +95,7 @@ typedef struct fastupdate_remove_helper {
         rows_cols_removed[flavor].resize(0);
       }
     }
+    double det_rat_;
 } fastupdate_remove_helper;
 
 
@@ -105,6 +108,12 @@ public:
   unsigned long &operator[](unsigned int n){return hist_[n];}
   const unsigned long &operator[](unsigned int n) const{return hist_[n];}
   unsigned int size() const{return hist_.size();}
+
+  void count(size_t k) {
+    if (k<size()) {
+      ++hist_[k];
+    }
+  }
   
   unsigned int max_index() const
   { 
@@ -156,6 +165,15 @@ public:
     for(unsigned int i=0;i<hist_.size();++i){
       hist_[i]=0;
     }
+  }
+
+  std::valarray<double> to_valarray() {
+    std::valarray<double> tmparray(hist_.size());
+    for (size_t i=0; i<hist_.size(); ++i) {
+      tmparray[i] = hist_[i];
+      //std::cout << "i " << i << " " << tmparray[i] << std::endl;
+    }
+    return tmparray;
   }
 
 private:
@@ -212,6 +230,7 @@ private:
 class inverse_m_matrix
 {
 public:
+  typedef double value_type;
   alps::numeric::matrix<double> &matrix() { return matrix_;}
   alps::numeric::matrix<double> const &matrix() const { return matrix_;}
   std::vector<creator> &creators(){ return creators_;}
@@ -306,6 +325,14 @@ public:
       assert(num_tot_rows==num_tot_rows2);
 #endif
     }
+
+    inverse_m_matrix::value_type determinant() {
+      inverse_m_matrix::value_type det=1.0;
+      for (spin_t flavor=0; flavor<size(); ++flavor) {
+        det *= alps::numeric::determinant(sub_matrices_[flavor].matrix());
+      }
+      return det;
+    }
 private:
     std::vector<inverse_m_matrix> sub_matrices_;
 };
@@ -362,10 +389,10 @@ protected:
   void sanity_check();
 
   /*abstract virtual functions. Implement these for specific models.*/
-  virtual double try_add(fastupdate_add_helper&,size_t)=0;
+  virtual std::pair<double,double> try_add(fastupdate_add_helper&,size_t)=0;
   virtual void perform_add(fastupdate_add_helper&,size_t)=0;
   virtual void reject_add(fastupdate_add_helper&,size_t)=0;
-  virtual double try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
+  virtual std::pair<double,double> try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
   virtual void perform_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
   virtual void reject_remove(fastupdate_remove_helper&)=0;
   
@@ -386,9 +413,6 @@ protected:
 
   const double beta;                                
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
-  const double onsite_U;                        
-  const double alpha;                                
-  const U_matrix U;
   const general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
   
   
@@ -440,27 +464,6 @@ std::ostream& operator << (std::ostream &os, const vertex &v);
 std::ostream& operator << (std::ostream &os, const c_or_cdagger &c);
 std::ostream& operator << (std::ostream& os, const simple_hist &h);
 
-/*
-
-
-//Use this for the most simple single site Hubbard model.
-class HalfFillingHubbardInteractionExpansion: public InteractionExpansion{
-public:
-  HalfFillingHubbardInteractionExpansion(const alps::params& p, int rank)
-    :InteractionExpansion(p, rank)
-  {
-    if(n_flavors !=1){throw std::invalid_argument("you need a different model for n_flavors!=1.");}
-  }
-  double try_add();
-  void perform_add();
-  void reject_add();
-  double try_remove(unsigned int vertex_nr);
-  void perform_remove(unsigned int vertex_nr);
-  void reject_remove();
-};
-*/
-
-
 
 class HubbardInteractionExpansion: public InteractionExpansion{
 public:
@@ -469,31 +472,13 @@ public:
   {
     if(n_flavors !=2){throw std::invalid_argument("you need a different model for n_flavors!=2.");}
   }
-  double try_add(fastupdate_add_helper&,size_t);
+  std::pair<double,double> try_add(fastupdate_add_helper&,size_t);
   void perform_add(fastupdate_add_helper&,size_t);
   void reject_add(fastupdate_add_helper&,size_t);
-  double try_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
+  std::pair<double,double> try_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
   void perform_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
   void reject_remove(fastupdate_remove_helper&);
 };
 
-
-/*
-//Use this for multiple bands where you have terms Un_i n_j
-class MultiBandDensityHubbardInteractionExpansion: public InteractionExpansion{
-public:
-  MultiBandDensityHubbardInteractionExpansion(const alps::params& p, int rank)
-    :InteractionExpansion(p, rank)
-  {
-    if(n_site !=1){throw std::invalid_argument("you need a different model for n_site!=1.");}
-  }
-  
-  double try_add();
-  void perform_add();
-  void reject_add();
-  double try_remove(unsigned int vertex_nr);
-  void perform_remove(unsigned int vertex_nr);
-  void reject_remove();
-};*/
 
 #endif

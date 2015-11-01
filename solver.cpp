@@ -41,45 +41,68 @@ void InteractionExpansion::interaction_expansion_step(void)
 
   size_t nv_updated = (size_t) (random()*n_multi_vertex_update)+1;
 
-  int pert_order= itime_vertices.size();   //current order of perturbation series
+//#ifndef NDEBUG
+  /***** VERY EXPENSIVE TEST *****/
+  //double det_updated = 1/M.determinant();
+//#endif
+
+  const int pert_order= itime_vertices.size();   //current order of perturbation series
   double metropolis_weight=0.;
+  double det_rat=0;
   static unsigned int i=0; ++i;
   if(random()<0.5){  //trying to ADD vertex
     M.sanity_check(itime_vertices);
     if(itime_vertices.size()>=max_order)
       return; //we have already reached the highest perturbation order
-    metropolis_weight=try_add(add_helper,nv_updated);
+    boost::tie(metropolis_weight,det_rat)=try_add(add_helper,nv_updated);
     if(fabs(metropolis_weight)> random()){
       measurements["VertexInsertion"]<<1.;
       perform_add(add_helper,nv_updated);
       sign*=metropolis_weight<0?-1:1;
+      //std::cout << "debug: ins accepted"<<nv_updated<<std::endl;
+      //std::cout << "det_rat "<< det_rat <<std::endl;
+//#ifndef NDEBUG
+      //det_updated*=det_rat;
+//#endif
       M.sanity_check(itime_vertices);
     }else{
       measurements["VertexInsertion"]<<0.;
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
+      //std::cout << "debug: ins rejected"<<std::endl;
     }
   }else{ // try to REMOVE a vertex
     M.sanity_check(itime_vertices);
-    pert_order= itime_vertices.size();
+    //pert_order= itime_vertices.size();
     if(pert_order < nv_updated) {
-      return;     //we have an empty list or one with just one vertex
+      return;
     }
     //choose vertices to be removed
     const std::vector<size_t> vertices_nr = pickup_a_few_numbers(pert_order, nv_updated, random);
-    metropolis_weight=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
+    boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
     if(fabs(metropolis_weight)> random()){ //do the actual update
       measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
       sign*=metropolis_weight<0?-1:1;
+//#ifndef NDEBUG
+      //det_updated*=det_rat;
+//#endif
+      //std::cout << "debug: rem accepted"<<std::endl;
       M.sanity_check(itime_vertices);
     }else{
       measurements["VertexRemoval"]<<0.;
       reject_remove(remove_helper);
       M.sanity_check(itime_vertices);
+      //std::cout << "debug: rem rejected"<<std::endl;
     }
   }//end REMOVE
+//#ifndef NDEBUG
+  //assert(std::abs(det_updated-1/M.determinant())<1E-8);
+//#endif
   weight=metropolis_weight;
+  for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    vertex_histograms[flavor]->count(num_rows(M[flavor].matrix()));
+  }
 }
 
 ///Every now and then we have to recreate M from scratch to avoid roundoff
@@ -95,17 +118,20 @@ void InteractionExpansion::reset_perturbation_series()
 
     const size_t Nv = M[flavor].matrix().num_rows();
 
-    //construct G0 matrix
-    for (size_t q=0; q<Nv; ++q) {
-      for (size_t p=0; p<Nv; ++p) {
-        G0(p, q) = green0_spline_new(M[flavor].annihilators()[p], M[flavor].creators()[q]);
+    if (Nv==0) {
+      M[flavor].matrix() = alps::numeric::matrix<GTYPE>(0,0);
+    } else {
+      //construct G0 matrix
+      for (size_t q=0; q<Nv; ++q) {
+        for (size_t p=0; p<Nv; ++p) {
+          G0(p, q) = green0_spline_new(M[flavor].annihilators()[p], M[flavor].creators()[q]);
+        }
       }
+      for (size_t p=0; p<Nv; ++p) {
+        G0(p, p) += M[flavor].alpha()[p];
+      }
+      M[flavor].matrix() = alps::numeric::inverse(G0);
     }
-    for (size_t p=0; p<Nv; ++p) {
-      G0(p, p) += M[flavor].alpha()[p];
-    }
-
-    M[flavor].matrix() = alps::numeric::inverse(G0);
   }
 
   for(unsigned int z=0;z<M2.size();++z){

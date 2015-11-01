@@ -28,9 +28,8 @@
 *****************************************************************************/
 
 #include "interaction_expansion.hpp"
-#include <boost/math/special_functions/binomial.hpp>
 
-double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_t n_vertices_add=1)
+std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
   //work array
   helper.clear();
@@ -44,11 +43,9 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_
     const size_t rank = new_vertex_type.rank();
     const size_t af_state = static_cast<size_t>(random()* new_vertex_type.num_af_states());
     prod_Uval *= new_vertex_type.Uval();
-    assert(rank==2);
 
     for (size_t i_rank=0; i_rank<rank; ++i_rank) {
       const size_t flavor_rank = new_vertex_type.flavors()[i_rank];
-      assert(new_vertex_type.sites()[2*i_rank]== new_vertex_type.sites()[2*i_rank+1]);//assume onsite U
 
       M[flavor_rank].creators().push_back(creator(flavor_rank, new_vertex_type.sites()[2*i_rank], time, n_matsubara));
       M[flavor_rank].annihilators().push_back(annihilator(flavor_rank, new_vertex_type.sites()[2*i_rank+1], time, n_matsubara));
@@ -58,6 +55,10 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_
       ++(helper.num_new_rows[flavor_rank]);
     }
     itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank));
+    //std::cout << "iv " << iv << " " << itime_vertex(v_type, af_state, time, rank);
+    //std::cout << " alpha0 " << new_vertex_type.get_alpha(af_state, 0);
+    //std::cout << " alpha1 " << new_vertex_type.get_alpha(af_state, 1);
+    //std::cout << std::endl;
   }
 
   //fast update for each flavor
@@ -67,25 +68,26 @@ double HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_
       lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
     }
   }
-  const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)
-                      /boost::math::binomial_coefficient<double>(itime_vertices.size(),n_vertices_add);
-  return rtmp*prod_Uval*lambda_prod;
+  const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/permutation(itime_vertices.size(),n_vertices_add);
+  helper.det_rat_ = lambda_prod;
+  return std::pair<double,double>(rtmp*prod_Uval*lambda_prod, lambda_prod);
 }
 
 
-void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add=1)
+void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
+  double det_rat = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     if (helper.num_new_rows[flavor]>0) {
-      fastupdate_up(flavor,false,helper.num_new_rows[flavor]);
+      det_rat *= fastupdate_up(flavor,false,helper.num_new_rows[flavor]);
     }
   }
+  assert(std::abs(det_rat/helper.det_rat_-1)<1E-8);
   M.sanity_check(itime_vertices);
-  //ssert(num_rows(M[0].matrix())== itime_vertices.size());
 }
 
 
-void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size_t n_vertices_add=1)
+void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
   //get rid of the operators
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
@@ -100,11 +102,12 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size
 }
 
 
-double HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
+std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //get weight
   //figure out and remember which rows (columns) are to be removed
   // lists of rows and cols will be sorted in ascending order
+  const size_t nv_old = itime_vertices.size();
   M.sanity_check(itime_vertices);
   helper.clear();
   double prod_Uval = 1.0;
@@ -126,26 +129,31 @@ double HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertic
       lambda_prod *= fastupdate_down(helper.rows_cols_removed[flavor], flavor, true);  // true means compute_only_weight
     }
   }
-  double r1 = boost::math::binomial_coefficient<double>(itime_vertices.size(),vertices_nr.size());
+  helper.det_rat_ = lambda_prod;
+  assert(itime_vertices.size()==nv_old);
+  helper.det_rat_ = lambda_prod;
+  double r1 = permutation(itime_vertices.size(),vertices_nr.size());
   double r2 = pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size());
-  return (r1/r2)*lambda_prod/prod_Uval;
+  return std::pair<double,double>((r1/r2)*lambda_prod/prod_Uval,lambda_prod);
 }
 
 
 void HubbardInteractionExpansion::perform_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //perform fastupdate down
+  double det_rat = 1.0;
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
     if (helper.rows_cols_removed[flavor].size()>0) {
       //remove rows and columns
-      fastupdate_down(helper.rows_cols_removed[flavor], flavor, false);  // false means really perform, not only compute weight
+      det_rat *= fastupdate_down(helper.rows_cols_removed[flavor], flavor, false);  // false means really perform, not only compute weight
       //get rid of operators
       for (int iop=0; iop<helper.rows_cols_removed[flavor].size(); ++iop) {
         M[flavor].pop_back_op();
       }
     }
   }
-  //get rid of vertex list entries. I know this is crapy.
+  assert(std::abs(det_rat/helper.det_rat_-1)<1E-8);
+  //get rid of vertex list entries.
   remove_elements_from_vector(itime_vertices, vertices_nr);
   M.sanity_check(itime_vertices);
 }
