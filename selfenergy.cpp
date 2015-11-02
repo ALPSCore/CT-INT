@@ -101,6 +101,10 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
   for (size_t z=0; z<n_flavors; ++z) {
     const size_t Nv = num_rows(M[z].matrix());
 
+    if (Nv==0) {
+      continue;
+    }
+
     for(size_t p=0;p<Nv;++p) {
       M[z].creators()[p].compute_exp(n_matsubara, -1);
     }
@@ -206,7 +210,7 @@ void InteractionExpansion::compute_Sl() {
         //interpolate G0
         for (unsigned int site1=0; site1<n_site; ++site1) {
           for (unsigned int site2=0; site2<n_site; ++site2) {
-            g0_c(site1, site2) = green0_spline_new(time_c_shifted[p],z,site1,site2);//CHECK!
+            g0_c(site1, site2) = green0_spline_new(time_c_shifted[p],z,site1,site2);//CHECK THE TREATMENT OF EQUAL-TIME MEASUREMENT
           }
         }
 
@@ -260,7 +264,7 @@ void InteractionExpansion::measure_densities()
     alps::numeric::vector<double> g0_taui(Nv);
     for (unsigned int s=0;s<n_site;++s) {             
       for (unsigned int j=0;j<Nv;++j)
-        g0_tauj[j] = green0_spline_new(M[z].annihilators()[j].t()-tau, z, M[z].annihilators()[j].s(), s);
+        g0_tauj[j] = green0_spline_new(M[z].annihilators()[j].t()-tau, z, M[z].annihilators()[j].s(), s);//CHECK THE TREATMENT OF EQUAL-TIME Green's function
       for (unsigned int i=0;i<Nv;++i)
         g0_taui[i] = green0_spline_new(tau-M[z].creators()[i].t(),z, s, M[z].creators()[i].s());
       if (num_rows(M[z].matrix())>0)
@@ -428,50 +432,3 @@ double green0_spline(const itime_green_function_t &green0, const itime_t delta_t
                                               const int s1, const int s2, const spin_t z, int n_tau, double beta);
 
 
-/*
-void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardInteractionExpansion>::type &results,
-                                                                       itime_green_function_t &green_result,
-                                                                       const itime_green_function_t &green0,
-                                                                       const double &beta, const int n_site,
-                                                                       const int n_flavors, const int n_tau, const int n_self)
-{
-  std::cout<<"evaluating self energy measurement: itime, real space."<<std::endl;
-  clock_t time0=clock();
-  clock_t time1=clock();
-  std::cout<<"evaluate of SE measurement took: "<<(time1-time0)/(double)CLOCKS_PER_SEC<<std::endl;
-}
- */
-
-
-
-//template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, const Y y0, const Y y1, const X x)
-//{
-  //return y0 + (x-x0)/(x1-x0)*(y1-y0);
-//}
-
-
-
-
-
-/*
-double green0_spline(const itime_green_function_t &green0, const itime_t delta_t, 
-                                              const int s1, const int s2, const spin_t z, int n_tau, double beta)
-{
-  double temperature=1./beta;
-  double almost_zero=1.e-12;
-  double n_tau_inv=1./n_tau;
-  if(delta_t*delta_t < almost_zero){
-    return green0(0,s1,s2,z);
-  } else if(delta_t>0){
-    int time_index_1 = (int)(delta_t*n_tau*temperature);
-    int time_index_2 = time_index_1+1;
-    return linear_interpolate((double)time_index_1*beta*n_tau_inv, (double)time_index_2*beta*n_tau_inv,green0(time_index_1,s1,s2,z),
-                              green0(time_index_2,s1,s2,z),delta_t);
-  } else{
-    int time_index_1 = (int)((beta+delta_t)*n_tau*temperature);
-    int time_index_2 = time_index_1+1;
-    return -linear_interpolate((double)time_index_1*beta*n_tau_inv, (double)time_index_2*beta*n_tau_inv, green0(time_index_1,s1,s2,z),
-                               green0(time_index_2, s1,s2,z), delta_t+beta);
-  }
-}
-*/

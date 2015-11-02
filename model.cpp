@@ -29,241 +29,138 @@
 
 #include "interaction_expansion.hpp"
 
-
-double HubbardInteractionExpansion::try_add()
+std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
-  assert(n_flavors==2);
-  double t = beta*random(); 
-  //double abs_w = beta*onsite_U*n_site; // onsite_U is const
-  double abs_w = onsite_U; // onsite_U is const
-  unsigned int site = (int)(random()*n_site);
-  double alpha0 = random()<0.5?alpha:1-alpha;
-  double alpha1 = 1 - alpha0;
-  spin_t flavor0=0;
-  spin_t flavor1=1;
+  //work array
+  helper.clear();
 
-  M[0].creators().push_back(creator(flavor0, site, t, n_matsubara));
-  M[0].annihilators().push_back(annihilator(flavor0, site, t, n_matsubara));
-  M[0].alpha().push_back(alpha0); //symmetrized version
+  //add vertices one by one
+  double prod_Uval = 1.0;
+  for (size_t iv=0; iv<n_vertices_add; ++iv) {
+    const double time = beta*random();
+    const size_t v_type = static_cast<size_t>(random()*Uijkl.n_vertex_type());
+    const vertex_definition<GTYPE> new_vertex_type = Uijkl.get_vertex(v_type);
+    const size_t rank = new_vertex_type.rank();
+    const size_t af_state = static_cast<size_t>(random()* new_vertex_type.num_af_states());
+    prod_Uval *= new_vertex_type.Uval();
 
-  M[1].creators().push_back(creator(flavor1, site, t, n_matsubara));
-  M[1].annihilators().push_back(annihilator(flavor1, site, t,n_matsubara));
-  M[1].alpha().push_back(alpha1); //symmetrized version
-  //keep track of vertex list
-  vertices.push_back(vertex(flavor0, site, M[0].creators().size()-1, M[0].annihilators().size()-1, 
-                        flavor1, site, M[1].creators().size()-1, M[1].annihilators().size()-1, abs_w)); 
-  //perform fastupdate up for weight
-  double lambda0=fastupdate_up(flavor0, true); // true means compute_only_weight
-  double lambda1=fastupdate_up(flavor1, true);
-  double num_vertex_types=n_site;
-  double metropolis_weight=-beta*abs_w*num_vertex_types/(vertices.size())*lambda0*lambda1;
-  //return weight
-  return metropolis_weight;
+    for (size_t i_rank=0; i_rank<rank; ++i_rank) {
+      const size_t flavor_rank = new_vertex_type.flavors()[i_rank];
+
+      M[flavor_rank].creators().push_back(creator(flavor_rank, new_vertex_type.sites()[2*i_rank], time, n_matsubara));
+      M[flavor_rank].annihilators().push_back(annihilator(flavor_rank, new_vertex_type.sites()[2*i_rank+1], time, n_matsubara));
+      M[flavor_rank].alpha().push_back(new_vertex_type.get_alpha(af_state, i_rank));
+      M[flavor_rank].vertex_info().push_back(std::pair<vertex_t,size_t>(v_type,i_rank));
+
+      ++(helper.num_new_rows[flavor_rank]);
+    }
+    itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank));
+    //std::cout << "iv " << iv << " " << itime_vertex(v_type, af_state, time, rank);
+    //std::cout << " alpha0 " << new_vertex_type.get_alpha(af_state, 0);
+    //std::cout << " alpha1 " << new_vertex_type.get_alpha(af_state, 1);
+    //std::cout << std::endl;
+  }
+
+  //fast update for each flavor
+  double lambda_prod = 1.0;
+  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    if (helper.num_new_rows[flavor]>0) {
+      lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
+    }
+  }
+  const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/permutation(itime_vertices.size(),n_vertices_add);
+  helper.det_rat_ = lambda_prod;
+  return std::pair<double,double>(rtmp*prod_Uval*lambda_prod, lambda_prod);
 }
 
 
-void HubbardInteractionExpansion::perform_add()
+void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
-  //perform the fastupdate up move
-  fastupdate_up(0,false);
-  fastupdate_up(1,false);
+  double det_rat = 1.0;
+  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    if (helper.num_new_rows[flavor]>0) {
+      det_rat *= fastupdate_up(flavor,false,helper.num_new_rows[flavor]);
+    }
+  }
+  assert(std::abs(det_rat/helper.det_rat_-1)<1E-8);
+  M.sanity_check(itime_vertices);
 }
 
 
-void HubbardInteractionExpansion::reject_add()
+void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
   //get rid of the operators
-  M[0].creators().pop_back();
-  M[0].annihilators().pop_back();
-  M[0].alpha().pop_back();
-  M[1].creators().pop_back();
-  M[1].annihilators().pop_back();
-  M[1].alpha().pop_back();
-  //get rid of the vertex from vertex list
-  vertices.pop_back();
+  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    for (int i=0; i<helper.num_new_rows[flavor]; ++i) {
+      M[flavor].pop_back_op();
+    }
+  }
+  for(int i=0; i<n_vertices_add; ++i) {
+    itime_vertices.pop_back();
+  }
+  M.sanity_check(itime_vertices);
 }
 
 
-double HubbardInteractionExpansion::try_remove(unsigned int vertex_nr)
+std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //get weight
-  double lambda0 = fastupdate_down(vertex_nr, 0, true);  // true means compute_only_weight
-  double lambda1 = fastupdate_down(vertex_nr, 1, true);  
-  double pert_order=num_rows(M[0].matrix());
-  double num_vertex_types=n_site;
-  //return weight
-  return  -pert_order/(beta*onsite_U*num_vertex_types)*lambda0*lambda1;
+  //figure out and remember which rows (columns) are to be removed
+  // lists of rows and cols will be sorted in ascending order
+  const size_t nv_old = itime_vertices.size();
+  M.sanity_check(itime_vertices);
+  helper.clear();
+  double prod_Uval = 1.0;
+  for (size_t iv=0; iv<vertices_nr.size(); ++iv) {
+    vertex_definition<GTYPE> vertex_def = Uijkl.get_vertex(itime_vertices[vertices_nr[iv]].type());
+    prod_Uval *= vertex_def.Uval();
+    for (size_t i_rank=0; i_rank<vertex_def.rank(); ++i_rank) {
+      const size_t flavor = vertex_def.flavors()[i_rank];
+      int r = M[flavor].find_row_col(itime_vertices[vertices_nr[iv]].time(), itime_vertices[vertices_nr[iv]].type(), i_rank);
+      assert(r<num_rows(M[flavor].matrix()));
+      helper.rows_cols_removed[flavor].push_back(r);
+    }
+  }
+  helper.sort_rows_cols();
+
+  GTYPE lambda_prod = 1.0;
+  for (size_t flavor=0; flavor<n_flavors; ++flavor) {
+    if (helper.rows_cols_removed[flavor].size()>0) {
+      lambda_prod *= fastupdate_down(helper.rows_cols_removed[flavor], flavor, true);  // true means compute_only_weight
+    }
+  }
+  helper.det_rat_ = lambda_prod;
+  assert(itime_vertices.size()==nv_old);
+  helper.det_rat_ = lambda_prod;
+  double r1 = permutation(itime_vertices.size(),vertices_nr.size());
+  double r2 = pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size());
+  return std::pair<double,double>((r1/r2)*lambda_prod/prod_Uval,lambda_prod);
 }
 
 
-void HubbardInteractionExpansion::perform_remove(unsigned int vertex_nr)
+void HubbardInteractionExpansion::perform_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //perform fastupdate down
-  fastupdate_down(vertex_nr, 0, false);  // false means really perform, not only compute weight
-  fastupdate_down(vertex_nr, 1, false);  // false means really perform, not only compute weight
-  //get rid of operators
-  M[0].creators().pop_back();
-  M[0].annihilators().pop_back();
-  M[0].alpha().pop_back();
-  M[1].creators().pop_back();
-  M[1].annihilators().pop_back();
-  M[1].alpha().pop_back();
-  //get rid of vertex list entries
-  vertices.pop_back();
+  double det_rat = 1.0;
+  for (size_t flavor=0; flavor<n_flavors; ++flavor) {
+    if (helper.rows_cols_removed[flavor].size()>0) {
+      //remove rows and columns
+      det_rat *= fastupdate_down(helper.rows_cols_removed[flavor], flavor, false);  // false means really perform, not only compute weight
+      //get rid of operators
+      for (int iop=0; iop<helper.rows_cols_removed[flavor].size(); ++iop) {
+        M[flavor].pop_back_op();
+      }
+    }
+  }
+  assert(std::abs(det_rat/helper.det_rat_-1)<1E-8);
+  //get rid of vertex list entries.
+  remove_elements_from_vector(itime_vertices, vertices_nr);
+  M.sanity_check(itime_vertices);
 }
 
 
-void HubbardInteractionExpansion::reject_remove()
+void HubbardInteractionExpansion::reject_remove(fastupdate_remove_helper& helper)
 {
   //do nothing
   return;
 }
-
-/*
-
-//A term U n_i n_j of the series expansion. i != j.  E.g. for
-//orbitals with G0(c_i, c_j)=0.
-double MultiBandDensityHubbardInteractionExpansion::try_add()
-{
-  assert(n_site==1 && n_flavors >1);
-  spin_t flavor1=(spin_t)(random()*n_flavors);
-  spin_t flavor2;
-
-  do{ flavor2=(spin_t)(random()*n_flavors);
-  } while (U(flavor1, flavor2)==0);
-
-  double t=beta*random();
-
-  double abs_w=beta*U(flavor1, flavor2)/2;
-  double alpha1 = random()<0.5 ? alpha : 1-alpha;
-  double alpha2 = 1-alpha1;
-  site_t site1=0;
-  site_t site2=0;
-  M[flavor1].creators().    push_back(creator(flavor1,site1,t, n_matsubara));
-  M[flavor1].annihilators().push_back(annihilator(flavor1,site1,t,n_matsubara));
-  M[flavor1].alpha().       push_back(alpha1); //symmetrized version
-  M[flavor2].creators().    push_back(creator(flavor2,site2,t, n_matsubara));
-  M[flavor2].annihilators().push_back(annihilator(flavor2,site2,t,n_matsubara));
-  M[flavor2].alpha().       push_back(alpha2); //symmetrized version
-  
-  vertices.push_back(vertex(flavor1, site1, M[flavor1].creators().size()-1, M[flavor1].annihilators().size()-1, 
-                flavor2, site2, M[flavor2].creators().size()-1, M[flavor2].annihilators().size()-1, abs_w));
-  
-  double lambda1=fastupdate_up(flavor1, true);
-  double lambda2=fastupdate_up(flavor2, true);
-  double sym_factor = U.n_nonzero();
-  //minus sign because we're not working with down holes but down electrons -> everything picks up a minus sign.
-  double metropolis_weight=-abs_w*sym_factor/(vertices.size())*lambda1*lambda2;
-  return metropolis_weight;
-}
-
-
-void MultiBandDensityHubbardInteractionExpansion::perform_add()
-{    
-  //find flavors
-  spin_t flavor1=vertices.back().flavor1();
-  spin_t flavor2=vertices.back().flavor2();
-  //perform the fastupdate up move
-  fastupdate_up(flavor1,false);
-  fastupdate_up(flavor2,false);
-}
-
-
-void MultiBandDensityHubbardInteractionExpansion::reject_add()
-{
-  //find flavors
-  spin_t flavor1=vertices.back().flavor1();
-  spin_t flavor2=vertices.back().flavor2();
-  //get rid of the operators
-  M[flavor1].creators().pop_back();
-  M[flavor1].annihilators().pop_back();
-  M[flavor1].alpha().pop_back();
-  M[flavor2].creators().pop_back();
-  M[flavor2].annihilators().pop_back();
-  M[flavor2].alpha().pop_back();
-  //get rid of the vertex from vertex list
-  vertices.pop_back();
-}
-
-
-double MultiBandDensityHubbardInteractionExpansion::try_remove(unsigned int vertex_nr)
-{
-  spin_t flavor1=vertices[vertex_nr].flavor1();
-  spin_t flavor2=vertices[vertex_nr].flavor2();
-  if(flavor1==flavor2) {throw std::logic_error("bug: flavor1 and flavor2 are equal, we'd require a two vertex removal move for that!");}
-  //find operator positions in that flavor
-  unsigned int operator_nr_1=vertices[vertex_nr].c_dagger_1();
-  unsigned int operator_nr_2=vertices[vertex_nr].c_dagger_2();
-  //get weight
-  double abs_w=vertices[vertex_nr].abs_w();
-  double lambda_1 = fastupdate_down(operator_nr_1, flavor1, true);
-  double lambda_2 = fastupdate_down(operator_nr_2, flavor2, true);
-  double pert_order=vertices.size();
-  
-  double sym_factor = U.n_nonzero();
-  double metropolis_weight = -pert_order/abs_w/sym_factor*lambda_1*lambda_2;
-
-  return  metropolis_weight; 
-}
-
-
-void MultiBandDensityHubbardInteractionExpansion::perform_remove(unsigned int vertex_nr)
-{
-  //find flavors
-  spin_t flavor1=vertices[vertex_nr].flavor1();
-  spin_t flavor2=vertices[vertex_nr].flavor2();
-  //find operator positions in that flavor
-  unsigned int operator_nr_1=vertices[vertex_nr].c_dagger_1();
-  unsigned int operator_nr_2=vertices[vertex_nr].c_dagger_2();
-  //perform fastupdate down
-  fastupdate_down(operator_nr_1, flavor1, false);
-  fastupdate_down(operator_nr_2, flavor2, false);
-  //take care of vertex list
-  for(int i=vertices.size()-1;i>=0;--i){
-    //this operator pointed to the last row/column of M[flavor1], which has just been moved to vertex_nr.
-    if(vertices[i].flavor1()==flavor1 && vertices[i].c_dagger_1()==num_rows(M[flavor1].matrix())){ 
-      vertices[i].c_dagger_1()=operator_nr_1;
-      vertices[i].c_1()=operator_nr_1;
-      break;
-    }
-    if(vertices[i].flavor2()==flavor1 && vertices[i].c_dagger_2()==num_rows(M[flavor1].matrix())){
-      vertices[i].c_dagger_2()=operator_nr_1;
-      vertices[i].c_2()=operator_nr_1;
-      break;
-    }
-  }
-  for(int i=vertices.size()-1;i>=0;--i){
-    if(vertices[i].flavor1()==flavor2 && vertices[i].c_dagger_1()==num_rows(M[flavor2].matrix())){
-      vertices[i].c_dagger_1()=operator_nr_2;
-      vertices[i].c_1()=operator_nr_2;
-      break;
-    }
-    if(vertices[i].flavor2()==flavor2 && vertices[i].c_dagger_2()==num_rows(M[flavor2].matrix())){
-      vertices[i].c_dagger_2()=operator_nr_2;
-      vertices[i].c_2()=operator_nr_2;
-      break;
-    }
-  }
-  vertices[vertex_nr]=vertices.back();
-
-  //get rid of operators
-  M[flavor1].creators().pop_back();
-  M[flavor1].annihilators().pop_back();
-  M[flavor1].alpha().pop_back();
-  M[flavor2].creators().pop_back();
-  M[flavor2].annihilators().pop_back();
-  M[flavor2].alpha().pop_back();
-  //get rid of vertex list entries
-  vertices.pop_back();
-
-}
-
-
-void MultiBandDensityHubbardInteractionExpansion::reject_remove()
-{
-  //do nothing
-  return;
-}
-
-
-*/

@@ -35,6 +35,7 @@
 #include "boost/multi_array.hpp"
 
 #include "types.h"
+#include "util.h"
 #include "alps/parameter.h"
 
 //Data structure for repulsion for density density bands.
@@ -129,77 +130,152 @@ private:
   double mu_shift_;
 };
 
+typedef size_t vertex_t;
+typedef size_t af_t;
+
+template<class T>
+class vertex_definition
+ {
+ public:
+    vertex_definition(size_t rank, size_t num_af_states, std::vector<spin_t>& flavors, std::vector<site_t>& sites, T Uval, boost::multi_array<T,2>& alpha_af_rank)
+            : rank_(rank), num_af_states_(num_af_states), flavors_(flavors), sites_(sites), Uval_(Uval), alpha_af_rank_(alpha_af_rank) {
+      assert(flavors_.size()==rank);
+      assert(sites.size()==2*rank);
+      assert(alpha_af_rank_.shape()[0]==num_af_states_);
+      assert(alpha_af_rank_.shape()[1]==rank);
+    };
+
+    const std::vector<spin_t>& flavors() const {
+      return flavors_;
+    };
+
+    const std::vector<site_t>& sites() const {
+      return sites_;
+    };
+
+    double Uval() const {
+      return Uval_;
+    }
+
+    size_t rank() const {
+      return rank_;
+    }
+
+    size_t num_af_states() const {
+      return num_af_states_;
+    }
+
+    T get_alpha(size_t af_state, size_t idx_rank) const {
+      return alpha_af_rank_[af_state][idx_rank];
+    }
+
+ private:
+    size_t rank_;
+    std::vector<spin_t> flavors_;
+    std::vector<site_t> sites_;
+    size_t num_af_states_;
+    T Uval_;
+    boost::multi_array<T,2> alpha_af_rank_;//first index addresses af spin state, second one addresses (cdagger c)
+ };
+
 //Data structure for general two-body interactions for a multi-orbital cluster impurity problem
 template<class T>
-class general_U_matrix{
+class general_U_matrix {
   public:
-    //types
+    typedef T value_type;
+
     general_U_matrix(const alps::Parameters &parms) :
             ns_(parms.value_or_default("SITES", 1)),
-            nf_(parms.value_or_default("FLAVORS", 2)),
-            num_nonzero_(0)
+            nf_(parms.value_or_default("FLAVORS", 2))
     {
-      if (!parms["GENERAL_U_MATRIX_FILE"]) {
+      if (!parms.defined("GENERAL_U_MATRIX_FILE")) {
         throw std::runtime_error("Error: GENERAL_U_MATRIX_FILE is not defined!");
       }
       std::string ufilename(parms["GENERAL_U_MATRIX_FILE"]);
       std::ifstream ifs(ufilename.c_str());
+      size_t num_non_zero_;
       ifs >> num_nonzero_;
-      Uval_.resize(num_nonzero_);
-      site_indices_.resize(boost::extents(num_nonzero_,4));
-      flavor_indices_.resize(boost::extents(num_nonzero_,4));
-      alpha_.resize(boost::extents(num_nonzero_,2,2));
-      for (unsigned int inz=0; inz<num_nonzero_; ++inz) {
-        ifs >> Uval_[inz]
-          >> site_indices_[inz,0] >> flavor_indices_[inz,0] //i, sigma^I
-          >> site_indices_[inz,1] >> flavor_indices_[inz,1] //j, sigma^J
-          >> site_indices_[inz,2] >> flavor_indices_[inz,2] //k, sigma^K
-          >> site_indices_[inz,3] >> flavor_indices_[inz,3] //l, sigma^L
-          >> alpha_[inz,0,0] >> alpha_[inz,0,1] // alpha_{ij,s=+1}, alpha_{kl, s=+1}
-          >> alpha_[inz,1,0] >> alpha_[inz,1,1]; // alpha_{ij,s=-1}, alpha_{kl, s=-1}
+
+      //temporary
+      size_t rank, num_af_states;
+      T Uval_;
+      std::complex<double> Uval_cmplx;
+      std::vector<site_t> site_indices_;//site indices (ijkl)
+      std::vector<spin_t> flavor_indices_;//flavor indices for c^dagger c
+      boost::multi_array<T,2> alpha_;//the first index is auxially spin, the second denotes (ij) or (kl).
+      boost::multi_array<std::complex<double>,2> alpha_cmplx;//tempolary
+
+      for (unsigned int idx=0; idx<num_nonzero_; ++idx) {
+        size_t itmp;
+        ifs >> itmp >> rank >> num_af_states >> Uval_cmplx;
+        Uval_ = mycast<T>(Uval_cmplx);
+        assert(itmp==idx);
+        assert(rank==2);
+        assert(num_af_states==2);
+
+        site_indices_.resize(2*rank);
+        flavor_indices_.resize(rank);
+        alpha_.resize(boost::extents[num_af_states][rank]);
+        alpha_cmplx.resize(boost::extents[num_af_states][rank]);
+
+        for (size_t i_op=0; i_op<2*rank; ++i_op) {
+          ifs >> site_indices_[i_op];//i, j, k, l
+        }
+        for (size_t i_rank=0; i_rank<rank; ++i_rank) {
+          ifs >> flavor_indices_[i_rank];
+        }
+        for (size_t i_rank=0; i_rank<rank; ++i_rank) {
+          for (size_t iaf=0; iaf<num_af_states; ++iaf) {
+            //ifs >> alpha_[iaf][i_rank];
+            ifs >> alpha_cmplx[iaf][i_rank];
+            //std::cout << " i_rank, i_af " << alpha_cmplx[iaf][i_rank] << std::endl;
+          }
+        }
+        for (size_t i_rank=0; i_rank<rank; ++i_rank) {
+          for (size_t iaf = 0; iaf < num_af_states; ++iaf) {
+              alpha_[iaf][i_rank] = mycast<T>(static_cast<std::complex<double> >(alpha_cmplx[iaf][i_rank]));
+          }
+        }
+
+        vertex_list.push_back(vertex_definition<T>(rank, num_af_states, flavor_indices_, site_indices_, Uval_, alpha_));
       }
     }
 
-    ~U_matrix(){ }
-
-    inline int n_nonzero() const{return num_nonzero_;}
+    size_t n_vertex_type() const{return vertex_list.size();}
     spin_t nf()const {return nf_;}
     spin_t ns()const {return ns_;}
 
-    T operator()(unsigned int idx_non_zero) {
-      assert(idx_non_zero<num_nonzero_);
-      return Uval_[idx_non_zero];
+    const vertex_definition<T>& get_vertex(size_t vertex_idx) const {
+      assert(vertex_idx<n_vertex_type());
+      return vertex_list[vertex_idx];
     }
-
-    boost::tuple<int,int,int,int>
-    site_indices(unsigned int idx_non_zero) {
-      assert(idx_non_zero<num_nonzero_);
-      return boost::tuple<int,int,int,int>(
-              site_indices_[idx_non_zero][0],
-              site_indices_[idx_non_zero][1],
-              site_indices_[idx_non_zero][2],
-              site_indices_[idx_non_zero][3]
-      );
-    };
-
-    boost::tuple<spin_t,spin_t,spin_t,spin_t>
-    flavor_indices(unsigned int idx_non_zero) {
-      assert(idx_non_zero<num_nonzero_);
-      return boost::tuple<spin_t,spin_t,spin_t,spin_t>(
-              flavor_indices_[idx_non_zero][0],
-              flavor_indices_[idx_non_zero][1],
-              flavor_indices_[idx_non_zero][2],
-              flavor_indices_[idx_non_zero][3]
-      );
-    };
 
   private:
     unsigned int ns_, nf_, num_nonzero_;
-    std::vector<T> Uval_;
-    boost::multi_array<int,2> site_indices_;//site indices (ijkl)
-    boost::multi_array<spin_t,2> flavor_indices_;//flavor indices (sigma^I, sigma^J, sigma^K, sigma^L)
-    boost::multi_array<T,3> alpha_;//the first index is the index of non-zero interaction terms, the second index is auxially spin, the third denotes (ij) or (kl).
+    std::vector<vertex_definition<T> > vertex_list;
  };
+
+ //to remember what vertices is on the imaginary time axis..
+ typedef struct itime_vertex {
+ public:
+   itime_vertex(size_t vertex_type, size_t af_state, double time, size_t rank)
+           : vertex_type_(vertex_type),
+             af_state_(af_state),
+             time_(time),
+             rank_(rank) {}
+
+   size_t af_state() const { return af_state_; }
+   size_t vertex_type() const {return vertex_type_;}
+   size_t type() const {return vertex_type_;}
+   size_t rank() const {return rank_;}
+   double time() const {return time_;}
+
+ private:
+   size_t vertex_type_, af_state_, rank_;
+   double time_;
+ } itime_vertex;
+
+std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
 
 std::ostream &operator<<(std::ostream &os, const U_matrix &U);
 //U_MATRIX_H

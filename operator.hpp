@@ -40,7 +40,7 @@ extern "C" void vrda_sincos_(const int *n, const double *a, double *s, double *c
 
 
 /*creation and annihilation operator class*/
-typedef class c_or_cdagger   //represents a creation operator or an annihilation operator
+class c_or_cdagger   //represents a creation operator or an annihilation operator
 { 
 public:
   c_or_cdagger( const spin_t z,const site_t s, const itime_t t, const frequency_t n_matsubara)

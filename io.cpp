@@ -81,8 +81,9 @@ void InteractionExpansion::print(std::ostream &os){
   os<<"n_tau: "<<n_tau<<"\tmc steps: "<<mc_steps
     <<"\ttherm steps: "<<therm_steps<<std::endl;
   
-  os<<"beta: "<<beta<<"\talpha: "<<alpha<<"\tU: "<<onsite_U<<std::endl;
-  
+  //os<<"beta: "<<beta<<"\talpha: "<<alpha<<"\tU: "<<onsite_U<<std::endl;
+  os<<"beta: "<<beta<<std::endl;
+
   os<<"recalc period: "<<recalc_period<<"\tmeasurement period: "<< measurement_period
     <<"\tconvergence period: "<< convergence_check_period<<std::endl;
   os<<"almost zero: "<<almost_zero<<std::endl;

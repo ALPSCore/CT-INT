@@ -62,6 +62,8 @@ enum  {up=0, down=1} ;
 ///addressing type for site indices (cluster)
 typedef unsigned int site_t;
 ///addressing type for spin indices
+typedef unsigned int nop_t;
+///addressing type for a combined object of c^dagger c
 typedef unsigned int spin_t;
 ///type of imaginary time values
 typedef double itime_t;

@@ -32,11 +32,15 @@
 
 #include <boost/multi_array.hpp>
 #include <boost/timer/timer.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
 
 #include <alps/alea.h>
+#include <alps/numeric/matrix.hpp>
+#include <alps/numeric/matrix/algorithms.hpp>
+
 #include <cmath>
 #include "green_function.h"
 #include "alps_solver.h"
@@ -64,6 +68,36 @@ enum measurement_methods {
 };
 
 
+typedef struct fastupdate_add_helper {
+  fastupdate_add_helper(std::size_t num_flavors) : num_new_rows(num_flavors,0), det_rat_(0) {};
+
+  void clear(size_t n_vertices_add=1) {
+    std::fill(num_new_rows.begin(), num_new_rows.end(), 0);
+  }
+
+  std::vector<std::size_t> num_new_rows;
+  double det_rat_;
+} fastupdate_add_helper;
+
+typedef struct fastupdate_remove_helper {
+    fastupdate_remove_helper(std::size_t num_flavors)
+      : rows_cols_removed(num_flavors), det_rat_(0) {};
+
+    std::vector<std::vector<size_t> > rows_cols_removed;
+
+    void sort_rows_cols() {
+      for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
+        std::sort(rows_cols_removed[flavor].begin(),rows_cols_removed[flavor].end());
+      }
+    }
+    void clear() {
+      for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
+        rows_cols_removed[flavor].resize(0);
+      }
+    }
+    double det_rat_;
+} fastupdate_remove_helper;
+
 
 class histogram
 {
@@ -74,6 +108,12 @@ public:
   unsigned long &operator[](unsigned int n){return hist_[n];}
   const unsigned long &operator[](unsigned int n) const{return hist_[n];}
   unsigned int size() const{return hist_.size();}
+
+  void count(size_t k) {
+    if (k<size()) {
+      ++hist_[k];
+    }
+  }
   
   unsigned int max_index() const
   { 
@@ -125,6 +165,15 @@ public:
     for(unsigned int i=0;i<hist_.size();++i){
       hist_[i]=0;
     }
+  }
+
+  std::valarray<double> to_valarray() {
+    std::valarray<double> tmparray(hist_.size());
+    for (size_t i=0; i<hist_.size(); ++i) {
+      tmparray[i] = hist_[i];
+      //std::cout << "i " << i << " " << tmparray[i] << std::endl;
+    }
+    return tmparray;
   }
 
 private:
@@ -181,6 +230,7 @@ private:
 class inverse_m_matrix
 {
 public:
+  typedef double value_type;
   alps::numeric::matrix<double> &matrix() { return matrix_;}
   alps::numeric::matrix<double> const &matrix() const { return matrix_;}
   std::vector<creator> &creators(){ return creators_;}
@@ -189,14 +239,108 @@ public:
   const std::vector<annihilator> &annihilators()const{ return annihilators_;}
   std::vector<double> &alpha(){ return alpha_;}
   const std::vector<double> &alpha() const{ return alpha_;}
+  std::vector<std::pair<vertex_t,size_t> > &vertex_info(){ return vertex_info_;}
+  const std::vector<std::pair<vertex_t,size_t> > &vertex_info() const{ return vertex_info_;}
+  int find_row_col(double time, vertex_t type, size_t i_rank) const {
+    for(std::size_t i=0; i<creators_.size(); ++i) {
+      if (time==creators_[i].t() && vertex_info_[i].first==type && vertex_info_[i].second==i_rank) {
+        assert(annihilators_[i].t()==time);
+        return i;
+      }
+    }
+    return -1;
+    //throw std::logic_error("Your operator is missing!");
+  }
+   void sanity_check() const {
+     assert(num_rows(matrix_)==num_cols(matrix_));
+     assert(num_rows(matrix_)<=creators_.size());
+     assert(creators_.size()==annihilators_.size());
+     assert(creators_.size()==alpha_.size());
+     assert(creators_.size()==vertex_info_.size());
+   }
+   void swap_ops(size_t i1, size_t i2) {
+     std::swap(creators_[i1], creators_[i2]);
+     std::swap(annihilators_[i1], annihilators_[i2]);
+     std::swap(alpha_[i1], alpha_[i2]);
+     std::swap(vertex_info_[i1], vertex_info_[i2]);
+   }
+   void pop_back_op() {
+     creators_.pop_back();
+     annihilators_.pop_back();
+     alpha_.pop_back();
+     vertex_info_.pop_back();
+   }
 private:
   alps::numeric::matrix<double> matrix_;
   std::vector<creator> creators_;         //an array of creation operators c_dagger corresponding to the row of the matrix
   std::vector<annihilator> annihilators_; //an array of to annihilation operators c corresponding to the column of the matrix
   std::vector<double> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
+  std::vector<std::pair<vertex_t,size_t> > vertex_info_; // an array of pairs which remember from which type of vertex operators come from. (type of vertex and the position in the vertex)
 };
 
+class big_inverse_m_matrix
+{
+public:
+    void push_back(const inverse_m_matrix& new_one) {
+      sub_matrices_.push_back(new_one);
+    }
 
+    inverse_m_matrix& operator[](size_t flavor) {
+      assert(flavor<sub_matrices_.size());
+      return sub_matrices_[flavor];
+    }
+
+    const inverse_m_matrix& operator[](size_t flavor) const {
+      assert(flavor<sub_matrices_.size());
+      return sub_matrices_[flavor];
+    }
+
+    size_t size() const {
+      return sub_matrices_.size();
+    };
+
+    void sanity_check(const std::vector<itime_vertex>& itime_vertices) const {
+#ifndef NDEBUG
+      size_t num_tot_rows = 0;
+      for (spin_t flavor=0; flavor<size(); ++flavor) {
+        sub_matrices_[flavor].sanity_check();
+        assert(sub_matrices_[flavor].creators().size()==sub_matrices_[flavor].annihilators().size());
+        assert(sub_matrices_[flavor].creators().size()==num_rows(sub_matrices_[flavor].matrix()));
+        assert(num_cols(sub_matrices_[flavor].matrix())==num_rows(sub_matrices_[flavor].matrix()));
+        num_tot_rows += num_rows(sub_matrices_[flavor].matrix());
+      }
+      size_t num_tot_rows2 = 0;
+      for (size_t iv=0; iv<itime_vertices.size(); ++iv) {
+        const itime_vertex& v = itime_vertices[iv];
+        num_tot_rows2 += v.rank();
+        for (size_t i_rank = 0; i_rank < v.rank(); ++i_rank) {
+          bool found = false;
+          for (spin_t flavor=0; flavor<size(); ++flavor) {
+            int info = sub_matrices_[flavor].find_row_col(v.time(), v.type(), i_rank);
+            if (info>=0) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            throw std::logic_error("Your operator is missing!");
+          }
+        }
+      }
+      assert(num_tot_rows==num_tot_rows2);
+#endif
+    }
+
+    inverse_m_matrix::value_type determinant() {
+      inverse_m_matrix::value_type det=1.0;
+      for (spin_t flavor=0; flavor<size(); ++flavor) {
+        det *= alps::numeric::determinant(sub_matrices_[flavor].matrix());
+      }
+      return det;
+    }
+private:
+    std::vector<inverse_m_matrix> sub_matrices_;
+};
 
 class InteractionExpansion: public alps::mcbase
 {
@@ -225,20 +369,18 @@ protected:
   
   /*green's function*/
   // in file spines.cpp
-  //double green0_spline(const creator &cdagger, const annihilator &c) const;
-  //double green0_spline(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
-  double green0_spline_new(const annihilator &c, const creator &cdagger) const;
+  double green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const;//with correct treatment of equal-time Green's function
+  //double green0_spline_new(const annihilator &c, const creator &cdagger) const;
   double green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
-  //double green0_spline(const itime_t delta_t, const spin_t flavor) const;
-  
+
   /*the actual solver functions*/
   // in file solver.cpp
   void interaction_expansion_step(void);
   void reset_perturbation_series(void);
   
   // in file fastupdate.cpp:
-  double fastupdate_up(const int operator_nr, bool compute_only_weight);
-  double fastupdate_down(const int operator_nr, const int flavor, bool compute_only_weight);
+  double fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
+  double fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight);
   
   /*measurement functions*/
   // in file measurements.cpp
@@ -251,14 +393,14 @@ protected:
   void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();
   void sanity_check();
-  
+
   /*abstract virtual functions. Implement these for specific models.*/
-  virtual double try_add()=0;
-  virtual void perform_add()=0;
-  virtual void reject_add()=0;
-  virtual double try_remove(unsigned int vertex_nr)=0;
-  virtual void perform_remove(unsigned int vertex_nr)=0;
-  virtual void reject_remove()=0;
+  virtual std::pair<double,double> try_add(fastupdate_add_helper&,size_t)=0;
+  virtual void perform_add(fastupdate_add_helper&,size_t)=0;
+  virtual void reject_add(fastupdate_add_helper&,size_t)=0;
+  virtual std::pair<double,double> try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
+  virtual void perform_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
+  virtual void reject_remove(fastupdate_remove_helper&)=0;
   
   /*private member variables, constant throughout the simulation*/
   const unsigned int max_order;                        
@@ -273,12 +415,11 @@ protected:
   const boost::uint64_t mc_steps;                        
   const unsigned long therm_steps;                
   const double max_time_in_seconds;
-  
+  const size_t n_multi_vertex_update;
+
   const double beta;                                
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
-  const double onsite_U;                        
-  const double alpha;                                
-  const U_matrix U;
+  const general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
   
   
   const unsigned int recalc_period;                
@@ -298,9 +439,10 @@ protected:
   std::vector<green_matrix> g0;
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
-  vertex_array vertices;
-  std::vector<inverse_m_matrix> M;
-    
+  //vertex_array vertices;
+  std::vector<itime_vertex> itime_vertices;
+  big_inverse_m_matrix M;
+
   double weight;
   double sign;
   unsigned int measurement_method;
@@ -328,27 +470,6 @@ std::ostream& operator << (std::ostream &os, const vertex &v);
 std::ostream& operator << (std::ostream &os, const c_or_cdagger &c);
 std::ostream& operator << (std::ostream& os, const simple_hist &h);
 
-/*
-
-
-//Use this for the most simple single site Hubbard model.
-class HalfFillingHubbardInteractionExpansion: public InteractionExpansion{
-public:
-  HalfFillingHubbardInteractionExpansion(const alps::params& p, int rank)
-    :InteractionExpansion(p, rank)
-  {
-    if(n_flavors !=1){throw std::invalid_argument("you need a different model for n_flavors!=1.");}
-  }
-  double try_add();
-  void perform_add();
-  void reject_add();
-  double try_remove(unsigned int vertex_nr);
-  void perform_remove(unsigned int vertex_nr);
-  void reject_remove();
-};
-*/
-
-
 
 class HubbardInteractionExpansion: public InteractionExpansion{
 public:
@@ -357,31 +478,13 @@ public:
   {
     if(n_flavors !=2){throw std::invalid_argument("you need a different model for n_flavors!=2.");}
   }
-  double try_add();
-  void perform_add();
-  void reject_add();
-  double try_remove(unsigned int vertex_nr);
-  void perform_remove(unsigned int vertex_nr);
-  void reject_remove();
+  std::pair<double,double> try_add(fastupdate_add_helper&,size_t);
+  void perform_add(fastupdate_add_helper&,size_t);
+  void reject_add(fastupdate_add_helper&,size_t);
+  std::pair<double,double> try_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
+  void perform_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
+  void reject_remove(fastupdate_remove_helper&);
 };
 
-
-/*
-//Use this for multiple bands where you have terms Un_i n_j
-class MultiBandDensityHubbardInteractionExpansion: public InteractionExpansion{
-public:
-  MultiBandDensityHubbardInteractionExpansion(const alps::params& p, int rank)
-    :InteractionExpansion(p, rank)
-  {
-    if(n_site !=1){throw std::invalid_argument("you need a different model for n_site!=1.");}
-  }
-  
-  double try_add();
-  void perform_add();
-  void reject_add();
-  double try_remove(unsigned int vertex_nr);
-  void perform_remove(unsigned int vertex_nr);
-  void reject_remove();
-};*/
 
 #endif

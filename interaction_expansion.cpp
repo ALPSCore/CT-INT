@@ -61,9 +61,10 @@ therm_steps((unsigned int)parms["THERMALIZATION"]),
 max_time_in_seconds(parms["MAX_TIME"] | 86400),
 beta((double)parms["BETA"]),                        
 temperature(1./beta),
-onsite_U((double)parms["U"]),                        
-alpha((double)parms["ALPHA"]),
-U(alps::make_deprecated_parameters(parms)),                         
+//onsite_U((double)parms["U"]),
+//alpha((double)parms["ALPHA"]),
+//U(alps::make_deprecated_parameters(parms)),
+Uijkl(alps::make_deprecated_parameters(parms)),
 recalc_period(parms["RECALC_PERIOD"] | 5000),
 //measurement_period(parms["MEASUREMENT_PERIOD"] | (parms["N_MEAS"] | 200)),
 measurement_period(parms["MEASUREMENT_PERIOD"] | 500*n_flavors*n_site),
@@ -75,7 +76,8 @@ bare_green_matsubara(n_matsubara,n_site, n_flavors),
 bare_green_itime(n_tau+1, n_site, n_flavors),
 green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
-legendre_transformer(n_matsubara,n_legendre)
+legendre_transformer(n_matsubara,n_legendre),
+n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -106,9 +108,9 @@ legendre_transformer(n_matsubara,n_legendre)
   //initialize the simulation variables
   initialize_simulation(parms);
   if(node==0) {print(std::cout);}
-  vertex_histograms=new simple_hist *[n_flavors*n_flavors];
+  vertex_histograms=new simple_hist *[n_flavors];
   vertex_histogram_size=100;
-  for(unsigned int i=0;i<n_flavors*n_flavors;++i){
+  for(unsigned int i=0;i<n_flavors;++i){
     vertex_histograms[i]=new simple_hist(vertex_histogram_size);
   }
   c_or_cdagger::initialize_simulation(parms);
@@ -124,11 +126,15 @@ void InteractionExpansion::update()
   //std::cout << "step " << step << std::endl;
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
-    interaction_expansion_step();                
-    if(vertices.size()<max_order)
-      pert_hist[vertices.size()]++;
+    interaction_expansion_step();
+    //sanity_check();
+    if(itime_vertices.size()<max_order)
+      pert_hist[itime_vertices.size()]++;
     if(step % recalc_period ==0) {
+      //just for debug
+#ifndef NDEBUG
       sanity_check();
+#endif
       reset_perturbation_series();
     }
   }
@@ -168,7 +174,7 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
   //set the right dimensions:
   for(spin_t flavor=0;flavor<n_flavors;++flavor)
     M.push_back(inverse_m_matrix());
-  vertices.clear();
+  //vertices.clear();
   pert_hist.clear();
   //initialize ALPS observables
   initialize_observables();
@@ -178,7 +184,11 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
 
 
 void InteractionExpansion::sanity_check() {
+  //recompute M
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    if (num_rows(M[flavor].matrix())==0) {
+      continue;
+    }
     alps::numeric::matrix<GTYPE> tmp(M[flavor].matrix()), G0(M[flavor].matrix());
     std::fill(tmp.get_values().begin(), tmp.get_values().end(), 0);
     std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
@@ -186,11 +196,12 @@ void InteractionExpansion::sanity_check() {
     const size_t Nv = M[flavor].matrix().num_rows();
     for (size_t q=0; q<Nv; ++q) {
       for (size_t p=0; p<Nv; ++p) {
-        G0(p, q) = green0_spline_new(M[flavor].annihilators()[p], M[flavor].creators()[q]);
+        G0(p, q) = green0_spline_for_M(flavor, p, q);
       }
     }
     for (size_t p=0; p<Nv; ++p) {
-      G0(p, p) += M[flavor].alpha()[p];
+      //std::cout << "debug " << p << " " << M[flavor].alpha()[p] << " " << G0(p,p) << std::endl;
+      G0(p, p) -= M[flavor].alpha()[p];
     }
 
     gemm(G0, M[flavor].matrix(), tmp);
@@ -205,9 +216,24 @@ void InteractionExpansion::sanity_check() {
       }
     }
     if (!OK) {
+      std::cout << "flavor=" << flavor << std::endl;
+      std::cout << "Nv=" << Nv << std::endl;
+      for (size_t q=0; q<Nv; ++q) {
+        for (size_t p=0; p<Nv; ++p) {
+          std::cout << " p, q = " << p << " " << q << " " << G0(p,q) << std::endl;
+        }
+      }
+      for (size_t q=0; q<Nv; ++q) {
+        for (size_t p=0; p<Nv; ++p) {
+          std::cout << " p, q = " << p << " " << q << " " << M[flavor].matrix()(p,q) << std::endl;
+        }
+      }
       throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
   }
+
+  //recompute sign etc.
+
 }
 
 

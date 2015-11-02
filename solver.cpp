@@ -29,66 +29,111 @@
 
 #include "interaction_expansion.hpp"
 
+#include <alps/numeric/matrix/algorithms.hpp>
+
 ///The basic updates for the InteractionExpansion algorithm: adding and removing vertices.
 ///This is the heart of InteractionExpansion's code.
 void InteractionExpansion::interaction_expansion_step(void)
 {
-  int pert_order=vertices.size();   //current order of perturbation series
+  //temp work memory
+  static fastupdate_add_helper add_helper(n_flavors);
+  static fastupdate_remove_helper remove_helper(n_flavors);
+
+  size_t nv_updated = (size_t) (random()*n_multi_vertex_update)+1;
+
+//#ifndef NDEBUG
+  /***** VERY EXPENSIVE TEST *****/
+  //double det_updated = 1/M.determinant();
+//#endif
+
+  const int pert_order= itime_vertices.size();   //current order of perturbation series
   double metropolis_weight=0.;
-  //double oldsign=sign;
-  static unsigned int i=0; ++i;    
+  double det_rat=0;
+  static unsigned int i=0; ++i;
   if(random()<0.5){  //trying to ADD vertex
-    if(vertices.size()>=max_order) 
+    M.sanity_check(itime_vertices);
+    if(itime_vertices.size()>=max_order)
       return; //we have already reached the highest perturbation order
-    metropolis_weight=try_add();
+    boost::tie(metropolis_weight,det_rat)=try_add(add_helper,nv_updated);
     if(fabs(metropolis_weight)> random()){
       measurements["VertexInsertion"]<<1.;
-      perform_add();
+      perform_add(add_helper,nv_updated);
       sign*=metropolis_weight<0?-1:1;
+      //std::cout << "debug: ins accepted"<<nv_updated<<std::endl;
+      //std::cout << "det_rat "<< det_rat <<std::endl;
+//#ifndef NDEBUG
+      //det_updated*=det_rat;
+//#endif
+      M.sanity_check(itime_vertices);
     }else{
       measurements["VertexInsertion"]<<0.;
-      reject_add();
+      reject_add(add_helper,nv_updated);
+      M.sanity_check(itime_vertices);
+      //std::cout << "debug: ins rejected"<<std::endl;
     }
   }else{ // try to REMOVE a vertex
-    pert_order=vertices.size(); //choose a vertex
-    if(pert_order < 1)
-      return;     //we have an empty list or one with just one vertex
-    //this might be the ideal place to do some cleanup, e.g. get rid of the roundoff errors and such.
-    int vertex_nr=(int)(random() * pert_order);
-    metropolis_weight=try_remove(vertex_nr); //get the determinant ratio. don't perform fastupdate yet
+    M.sanity_check(itime_vertices);
+    //pert_order= itime_vertices.size();
+    if(pert_order < nv_updated) {
+      return;
+    }
+    //choose vertices to be removed
+    const std::vector<size_t> vertices_nr = pickup_a_few_numbers(pert_order, nv_updated, random);
+    boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
     if(fabs(metropolis_weight)> random()){ //do the actual update
       measurements["VertexRemoval"]<<1.;
-      perform_remove(vertex_nr);
+      perform_remove(vertices_nr, remove_helper);
       sign*=metropolis_weight<0?-1:1;
+//#ifndef NDEBUG
+      //det_updated*=det_rat;
+//#endif
+      //std::cout << "debug: rem accepted"<<std::endl;
+      M.sanity_check(itime_vertices);
     }else{
       measurements["VertexRemoval"]<<0.;
-      reject_remove();
+      reject_remove(remove_helper);
+      M.sanity_check(itime_vertices);
+      //std::cout << "debug: rem rejected"<<std::endl;
     }
   }//end REMOVE
+//#ifndef NDEBUG
+  //assert(std::abs(det_updated-1/M.determinant())<1E-8);
+//#endif
   weight=metropolis_weight;
+  for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    vertex_histograms[flavor]->count(num_rows(M[flavor].matrix()));
+  }
 }
 
 ///Every now and then we have to recreate M from scratch to avoid roundoff
 ///error. This is done by iserting the vertices starting from zero.
 void InteractionExpansion::reset_perturbation_series()
 {
-  std::vector<inverse_m_matrix> M2(M); //make a copy of M
-  vertex_array vertices_backup;
-  for(unsigned int i=0;i<vertices.size();++i){
-    vertices_backup.push_back(vertices[i]);
+  //static fastupdate_add_helper add_helper(n_flavors);
+  big_inverse_m_matrix M2(M); //make a copy of M
+
+  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    alps::numeric::matrix<GTYPE> G0(M[flavor].matrix());
+    std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
+
+    const size_t Nv = M[flavor].matrix().num_rows();
+
+    if (Nv==0) {
+      M[flavor].matrix() = alps::numeric::matrix<GTYPE>(0,0);
+    } else {
+      //construct G0 matrix
+      for (size_t q=0; q<Nv; ++q) {
+        for (size_t p=0; p<Nv; ++p) {
+          G0(p, q) = green0_spline_for_M(flavor, p, q);
+        }
+      }
+      for (size_t p=0; p<Nv; ++p) {
+        G0(p, p) -= M[flavor].alpha()[p];
+      }
+      M[flavor].matrix() = alps::numeric::inverse(G0);
+    }
   }
-  vertices.clear();
-  sign=1;
-  for(spin_t z=0;z<n_flavors;++z){
-    resize(M[z].matrix(),0,0);
-  }
-  green_matsubara = bare_green_matsubara;
-  green_itime     = bare_green_itime;
-  //recompute M from scratch
-  for(unsigned int i=0;i<vertices_backup.size();++i){
-    vertices.push_back(vertices_backup[i]);
-    perform_add();
-  }
+
   for(unsigned int z=0;z<M2.size();++z){
     double max_diff=0;
     for(unsigned int j=0;j<num_cols(M2[z].matrix());++j){
@@ -97,8 +142,13 @@ void InteractionExpansion::reset_perturbation_series()
         if(std::abs(diff)>max_diff) max_diff=std::abs(diff);
       }
     }
+    //std::cout << "debug: max_diff = " << max_diff << std::endl;
     if(max_diff > 1.e-8)
       std::cout<<"WARNING: roundoff errors in flavor: "<<z<<" max diff "<<max_diff<<std::endl;
   }
+
+#ifndef NDEBUG
+  //recompute weight
+#endif
 }
 

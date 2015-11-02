@@ -151,12 +151,18 @@ void InteractionExpansion::initialize_observables(void)
   measurements << alps::accumulator::RealObservable("MeasurementTime");
   measurements << alps::accumulator::RealObservable("UpdateTime");
   measurements << alps::accumulator::RealObservable("RecomputeTime");
+  measurements << alps::accumulator::SimpleRealObservable("VertexHistogram");
 #else
   measurements << alps::ngs::RealObservable("VertexInsertion");
   measurements << alps::ngs::RealObservable("VertexRemoval");
   measurements << alps::ngs::SimpleRealVectorObservable("MeasurementTimeMsec");
   measurements << alps::ngs::RealObservable("UpdateTimeMsec");
   measurements << alps::ngs::RealObservable("RecomputeTime");
+  for(spin_t flavor=0;flavor<n_flavors;++flavor) {
+      std::stringstream tmp;
+      tmp<<"VertexHistogram_"<<flavor;
+      measurements << alps::ngs::SimpleRealVectorObservable(tmp.str().c_str());
+  }
 #endif
   measurements.reset(true);
 }
@@ -190,8 +196,15 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
 
   std::valarray<double> pert_order(n_flavors);
   for(unsigned int i=0;i<n_flavors;++i) { 
-      assert(num_rows(M[i].matrix()) == num_cols(M[i].matrix()));
+    assert(num_rows(M[i].matrix()) == num_cols(M[i].matrix()));
     pert_order[i]=num_rows(M[i].matrix());
   }
   measurements["PertOrder"] << pert_order;
+
+  for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
+      std::stringstream tmp;
+      tmp<<"VertexHistogram_"<<flavor;
+      measurements[tmp.str().c_str()] << vertex_histograms[flavor]->to_valarray();
+      vertex_histograms[flavor]->clear();
+  }
 }
