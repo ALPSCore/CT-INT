@@ -370,7 +370,7 @@ protected:
   /*green's function*/
   // in file spines.cpp
   double green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const;//with correct treatment of equal-time Green's function
-  double green0_spline_new(const annihilator &c, const creator &cdagger) const;
+  //double green0_spline_new(const annihilator &c, const creator &cdagger) const;
   double green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
 
   /*the actual solver functions*/

@@ -199,21 +199,24 @@ class general_U_matrix {
       //temporary
       size_t rank, num_af_states;
       T Uval_;
+      std::complex<double> Uval_cmplx;
       std::vector<site_t> site_indices_;//site indices (ijkl)
       std::vector<spin_t> flavor_indices_;//flavor indices for c^dagger c
       boost::multi_array<T,2> alpha_;//the first index is auxially spin, the second denotes (ij) or (kl).
+      boost::multi_array<std::complex<double>,2> alpha_cmplx;//tempolary
 
       for (unsigned int idx=0; idx<num_nonzero_; ++idx) {
         size_t itmp;
-        ifs >> itmp >> rank >> num_af_states >> Uval_;
+        ifs >> itmp >> rank >> num_af_states >> Uval_cmplx;
+        Uval_ = mycast<T>(Uval_cmplx);
         assert(itmp==idx);
         assert(rank==2);
         assert(num_af_states==2);
-        //std::cout << "debug " << itmp << " " << rank << " " << num_af_states << std::endl;
 
         site_indices_.resize(2*rank);
         flavor_indices_.resize(rank);
         alpha_.resize(boost::extents[num_af_states][rank]);
+        alpha_cmplx.resize(boost::extents[num_af_states][rank]);
 
         for (size_t i_op=0; i_op<2*rank; ++i_op) {
           ifs >> site_indices_[i_op];//i, j, k, l
@@ -223,7 +226,14 @@ class general_U_matrix {
         }
         for (size_t i_rank=0; i_rank<rank; ++i_rank) {
           for (size_t iaf=0; iaf<num_af_states; ++iaf) {
-            ifs >> alpha_[iaf][i_rank];
+            //ifs >> alpha_[iaf][i_rank];
+            ifs >> alpha_cmplx[iaf][i_rank];
+            //std::cout << " i_rank, i_af " << alpha_cmplx[iaf][i_rank] << std::endl;
+          }
+        }
+        for (size_t i_rank=0; i_rank<rank; ++i_rank) {
+          for (size_t iaf = 0; iaf < num_af_states; ++iaf) {
+              alpha_[iaf][i_rank] = mycast<T>(static_cast<std::complex<double> >(alpha_cmplx[iaf][i_rank]));
           }
         }
 

@@ -38,50 +38,9 @@ template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, c
   return y0 + (x-x0)/(x1-x0)*(y1-y0);
 }
 
-/*
-///Compute the Green's function G0 (the BARE) green's function between two points
-double InteractionExpansion::green0_spline(const creator &cdagger, const annihilator &c) const
-{
-  //for the M matrix we need the bare temporal Green's function. 
-  //For the dressed frequency GF we need the bare frequency GF.
-  //here we get the bare temporal GF, interpolated, as needed for the M matrix.
-  //we will receive this as an input into our solver later.
-  spin_t flavor;
-  if((flavor=cdagger.flavor()) != c.flavor()){
-    return 0; //the delta in spin space.
-  }
-  itime_t delta_t=cdagger.t()-c.t();
-  site_t site1 = cdagger.s();
-  site_t site2 = c.s();
-  return green0_spline(delta_t, flavor, site1, site2);  
-}
-
-
-///Compute the bare green's function for a given flavor, site, and imaginary time.
-double InteractionExpansion::green0_spline(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const
-{
-  if(delta_t*delta_t < almost_zero){
-    return bare_green_itime(0,site1, site2, flavor);
-  } 
-  else if(delta_t>0){
-    int time_index_1 = (int)(delta_t*n_tau*temperature);
-    int time_index_2 = time_index_1+1;
-    return linear_interpolate((double)time_index_1*beta*n_tau_inv, (double)time_index_2*beta*n_tau_inv,
-                              bare_green_itime(time_index_1,site1, site2, flavor),
-                              bare_green_itime(time_index_2,site1, site2, flavor),delta_t);
-  } 
-  else{
-    int time_index_1 = (int)(delta_t*n_tau*temperature+n_tau);
-    int time_index_2 = time_index_1+1;
-    return -linear_interpolate((double)time_index_1*beta*n_tau_inv, (double)time_index_2*beta*n_tau_inv,
-                               bare_green_itime(time_index_1,site1,site2,flavor),
-                               bare_green_itime(time_index_2,site1,site2,flavor),delta_t+beta);
-  }
-}
-*/
-
-
 //with correct treatment of equal-time Green's function
+//take care of the ambiguity of the equal-time Green's function.
+//We appreciate the ordering of the creation and annihilation operators in the vertex.
 double InteractionExpansion::green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const
 {
   const annihilator& c = M[flavor].annihilators()[c_pos];
@@ -92,7 +51,7 @@ double InteractionExpansion::green0_spline_for_M(const spin_t flavor, size_t c_p
     site_t site1 = c.s();
     site_t site2 = cdagger.s();
     return green0_spline_new(delta_t, flavor, site1, site2);
-  } else {//take care of the ambiguity of the equal-time Green's fuction. Appreciate the ordering of the creation and annihilation operators in the vertex
+  } else {
     itime_t delta_t=c.t()-cdagger.t();
     site_t site1 = c.s();
     site_t site2 = cdagger.s();
@@ -100,24 +59,6 @@ double InteractionExpansion::green0_spline_for_M(const spin_t flavor, size_t c_p
     return green0_spline_new(delta_t+time_shift, flavor, site1, site2);
   }
 }
-
-///Compute the Green's function G0 (the BARE) green's function between two points
-double InteractionExpansion::green0_spline_new(const annihilator &c, const creator &cdagger) const
-{
-  //for the M matrix we need the bare temporal Green's function.
-  //For the dressed frequency GF we need the bare frequency GF.
-  //here we get the bare temporal GF, interpolated, as needed for the M matrix.
-  //we will receive this as an input into our solver later.
-  spin_t flavor;
-  if((flavor=cdagger.flavor()) != c.flavor()){
-    return 0; //the delta in spin space.
-  }
-  itime_t delta_t=c.t()-cdagger.t();
-  site_t site1 = c.s();
-  site_t site2 = cdagger.s();
-  return green0_spline_new(delta_t, flavor, site1, site2);
-}
-
 
 ///Compute the bare green's function for a given flavor, site, and imaginary time.
 double InteractionExpansion::green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const
