@@ -269,7 +269,7 @@ void InteractionExpansion::measure_densities()
         g0_taui[i] = green0_spline_new(tau-M[z].creators()[i].t(),z, s, M[z].creators()[i].s());
       if (num_rows(M[z].matrix())>0)
           gemv(M[z].matrix(),g0_tauj,M_g0_tauj);
-      dens[z][s] += green0_spline_new(0,z,s,s);
+      dens[z][s] += green0_spline_new(-beta*1E-10,z,s,s);//tau=-0
       for (unsigned int j=0;j<Nv;++j)
         dens[z][s] -= g0_taui[j]*M_g0_tauj[j]; 
     }
@@ -279,26 +279,26 @@ void InteractionExpansion::measure_densities()
     std::valarray<double> densmeas(n_site);
     for (unsigned int i=0; i<n_site; ++i) {
       densities[z] += dens[z][i];
-      densmeas[i] = 1+dens[z][i];
+      densmeas[i] = dens[z][i];
     }
     measurements["densities_"+boost::lexical_cast<std::string>(z)] << static_cast<std::valarray<double> > (densmeas*sign);
     densities[z] /= n_site;
-    densities[z] = 1 + densities[z];
+    densities[z] = densities[z];
   }
   measurements["densities"] << static_cast<std::valarray<double> > (densities*sign);
   double density_correlation = 0.;
   for (unsigned int i=0; i<n_site; ++i) {
-    density_correlation += (1+dens[0][i])*(1+dens[1][i]);
+    density_correlation += (dens[0][i])*(dens[1][i]);
   }
   density_correlation /= n_site;
   measurements["density_correlation"] << (density_correlation*sign);
   std::valarray<double> ninj(n_site*n_site*4);
   for (unsigned int i=0; i<n_site; ++i) {
     for (unsigned int j=0; j<n_site; ++j) {
-      ninj[i*n_site+j] = (1+dens[0][i])*(1+dens[0][j]);
-      ninj[i*n_site+j+1] = (1+dens[0][i])*(1+dens[1][j]);
-      ninj[i*n_site+j+2] = (1+dens[1][i])*(1+dens[0][j]);
-      ninj[i*n_site+j+3] = (1+dens[1][i])*(1+dens[1][j]);
+      ninj[i*n_site+j] = (dens[0][i])*(dens[0][j]);
+      ninj[i*n_site+j+1] = (dens[0][i])*(dens[1][j]);
+      ninj[i*n_site+j+2] = (dens[1][i])*(dens[0][j]);
+      ninj[i*n_site+j+3] = (dens[1][i])*(dens[1][j]);
     }
   }
   measurements["n_i n_j"] << static_cast<std::valarray<double> > (ninj*sign);
