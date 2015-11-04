@@ -29,19 +29,21 @@
 
 #include "interaction_expansion.hpp"
 
-std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_t n_vertices_add)
+std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_t n_vertices_add, std::vector<itime_vertex>& new_vertices)
 {
+  assert(n_vertices_add==new_vertices.size());
+
   //work array
   helper.clear();
 
   //add vertices one by one
   double prod_Uval = 1.0;
   for (size_t iv=0; iv<n_vertices_add; ++iv) {
-    const double time = beta*random();
-    const size_t v_type = static_cast<size_t>(random()*Uijkl.n_vertex_type());
+    const size_t v_type = new_vertices[iv].type();
     const vertex_definition<GTYPE> new_vertex_type = Uijkl.get_vertex(v_type);
+    const double time = new_vertices[iv].time();
     const size_t rank = new_vertex_type.rank();
-    const size_t af_state = static_cast<size_t>(random()* new_vertex_type.num_af_states());
+    const size_t af_state = new_vertices[iv].af_state();
     prod_Uval *= new_vertex_type.Uval();
 
     for (size_t i_rank=0; i_rank<rank; ++i_rank) {

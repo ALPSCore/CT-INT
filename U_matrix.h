@@ -124,8 +124,8 @@ public:
 
 private:
   double *val_;
-  site_t ns_;
-  spin_t nf_;
+  size_t ns_;
+  size_t nf_;
   int n_nonzero_;
   double mu_shift_;
 };
@@ -137,7 +137,7 @@ template<class T>
 class vertex_definition
  {
  public:
-    vertex_definition(size_t rank, size_t num_af_states, std::vector<spin_t>& flavors, std::vector<site_t>& sites, T Uval, boost::multi_array<T,2>& alpha_af_rank)
+    vertex_definition(size_t rank, size_t num_af_states, std::vector<spin_t>& flavors, std::vector<size_t>& sites, T Uval, boost::multi_array<T,2>& alpha_af_rank)
             : rank_(rank), num_af_states_(num_af_states), flavors_(flavors), sites_(sites), Uval_(Uval), alpha_af_rank_(alpha_af_rank) {
       assert(flavors_.size()==rank);
       assert(sites.size()==2*rank);
@@ -149,7 +149,7 @@ class vertex_definition
       return flavors_;
     };
 
-    const std::vector<site_t>& sites() const {
+    const std::vector<size_t>& sites() const {
       return sites_;
     };
 
@@ -172,7 +172,7 @@ class vertex_definition
  private:
     size_t rank_;
     std::vector<spin_t> flavors_;
-    std::vector<site_t> sites_;
+    std::vector<size_t> sites_;
     size_t num_af_states_;
     T Uval_;
     boost::multi_array<T,2> alpha_af_rank_;//first index addresses af spin state, second one addresses (cdagger c)
@@ -200,7 +200,7 @@ class general_U_matrix {
       size_t rank, num_af_states;
       T Uval_;
       std::complex<double> Uval_cmplx;
-      std::vector<site_t> site_indices_;//site indices (ijkl)
+      std::vector<size_t> site_indices_;//site indices (ijkl)
       std::vector<spin_t> flavor_indices_;//flavor indices for c^dagger c
       boost::multi_array<T,2> alpha_;//the first index is auxially spin, the second denotes (ij) or (kl).
       boost::multi_array<std::complex<double>,2> alpha_cmplx;//tempolary
@@ -250,14 +250,24 @@ class general_U_matrix {
       return vertex_list[vertex_idx];
     }
 
+    std::vector<vertex_definition<T> > get_vertices() const {
+      return vertex_list;
+    }
+
   private:
     unsigned int ns_, nf_, num_nonzero_;
     std::vector<vertex_definition<T> > vertex_list;
  };
 
- //to remember what vertices is on the imaginary time axis..
+ //to remember what vertices are on the imaginary time axis..
  typedef struct itime_vertex {
  public:
+   itime_vertex()
+             : vertex_type_(-1),
+               af_state_(-1),
+               time_(-1),
+               rank_(-1) {}
+
    itime_vertex(size_t vertex_type, size_t af_state, double time, size_t rank)
            : vertex_type_(vertex_type),
              af_state_(af_state),
@@ -274,6 +284,21 @@ class general_U_matrix {
    size_t vertex_type_, af_state_, rank_;
    double time_;
  } itime_vertex;
+
+template<class T, class R>
+std::vector<itime_vertex> generate_vertices(const general_U_matrix<T>& Uijkl, R& random01, double beta, int n_vertices_add) {
+  std::vector<itime_vertex> itime_vertices;
+  itime_vertices.reserve(n_vertices_add);
+  for (int iv=0; iv<n_vertices_add; ++iv) {
+    const double time = beta * random01();
+    const size_t v_type = static_cast<size_t>(random01() * Uijkl.n_vertex_type());
+    const vertex_definition<T> new_vertex_type = Uijkl.get_vertex(v_type);
+    const size_t rank = new_vertex_type.rank();
+    const size_t af_state = static_cast<size_t>(random01() * new_vertex_type.num_af_states());
+    itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank));
+  }
+  return itime_vertices;
+}
 
 std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
 

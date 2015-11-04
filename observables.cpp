@@ -153,8 +153,10 @@ void InteractionExpansion::initialize_observables(void)
   measurements << alps::accumulator::RealObservable("RecomputeTime");
   measurements << alps::accumulator::SimpleRealObservable("VertexHistogram");
 #else
-  measurements << alps::ngs::RealObservable("VertexInsertion");
-  measurements << alps::ngs::RealObservable("VertexRemoval");
+  for (int iv=0; iv<n_multi_vertex_update; ++iv)  {
+      measurements << alps::ngs::RealVectorObservable("VertexInsertion_"+boost::lexical_cast<std::string>(iv+1));
+      measurements << alps::ngs::RealVectorObservable("VertexRemoval_"+boost::lexical_cast<std::string>(iv+1));
+  }
   measurements << alps::ngs::SimpleRealVectorObservable("MeasurementTimeMsec");
   measurements << alps::ngs::RealObservable("UpdateTimeMsec");
   measurements << alps::ngs::RealObservable("RecomputeTime");
@@ -163,6 +165,8 @@ void InteractionExpansion::initialize_observables(void)
       tmp<<"VertexHistogram_"<<flavor;
       measurements << alps::ngs::SimpleRealVectorObservable(tmp.str().c_str());
   }
+   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion");
+   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval");
 #endif
   measurements.reset(true);
 }
@@ -207,4 +211,5 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
       measurements[tmp.str().c_str()] << vertex_histograms[flavor]->to_valarray();
       vertex_histograms[flavor]->clear();
   }
+
 }

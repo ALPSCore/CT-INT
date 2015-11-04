@@ -1,8 +1,6 @@
 #include <algorithm>
 #include "gtest/gtest.h"
 
-#include <boost/random.hpp>
-#include <boost/multi_array.hpp>
 
 #include "gtest.hpp"
 
@@ -163,4 +161,67 @@ TEST(Boost, Binomial) {
 TEST(MyUtil, permutation) {
     assert(permutation(3,1)==3);
     assert(permutation(3,2)==6);
+}
+
+TEST(QuantumNumber, diagonal_GF) {
+    size_t n_site = 4;
+    size_t n_flavors = 2;
+    size_t N=1000;
+
+    const size_t n_rank=2;
+    const size_t n_af=2;
+    const size_t Nv=1;
+    const double eps=0;
+
+    green_function<double> gf(N, n_site, n_flavors);
+
+    std::vector<vertex_definition<double> > vertices;
+    boost::multi_array<double,2> alpha(boost::extents[n_af][n_rank]);
+    std::fill(alpha.origin(), alpha.origin()+alpha.num_elements(), 0);
+
+    //for (size_t iv=0; iv<Nv; ++iv) {
+    std::vector<spin_t> flavors(n_rank);
+    std::vector<size_t> sites(2*n_rank);
+    flavors[0] = 0;
+    flavors[1] = 1;
+    sites[0] = 0;
+    sites[1] = 1;
+    sites[2] = 2;
+    sites[3] = 3;
+    vertices.push_back(vertex_definition<double>(2,2,flavors,sites,0.0,alpha));
+
+    int qs[] = {1, -1, 0, 0, 0, 0, 1, -1};
+    std::vector<std::valarray<int> > quantum_number_vertices;
+    quantum_number_vertices = make_quantum_numbers(gf, vertices, eps);
+    std::valarray<int> qs2(qs,n_site*n_flavors);
+    //std::valarray<int> qs3(qs,n_site*n_flavors);
+    bool flag = true;
+    for (int i=0; i<qs2.size(); ++i) {
+        //std::cout << i << " " << quantum_number_vertices[0][i] << std::endl;
+        if (qs2[i]!=quantum_number_vertices[0][i]) {
+            flag = false;
+        }
+    }
+    ASSERT_TRUE(flag);
+    //ASSERT_TRUE(qs2==std::valarray<int>(quantum_number_vertices[0]));
+    //ASSERT_TRUE(1==1);
+    //ASSERT_TRUE(qs2==qs3);
+}
+
+TEST(UpdateStatistics, EstimateSpread) {
+    const double beta = 100;
+
+    std::vector<simple_vertex> vertices;
+    vertices.push_back(simple_vertex(0.0));
+    vertices.push_back(simple_vertex(0.3*beta));
+    ASSERT_TRUE(std::abs(compute_spread(vertices, beta)/beta-0.3)<1E-5);
+
+    //vertices are distributed on [0,beta] uniformly.
+    for (int Nv=2; Nv<10; ++Nv) {
+        vertices.clear();
+        for (int iv=0; iv<Nv; ++iv) {
+            vertices.push_back(simple_vertex((beta*iv)/Nv));
+        }
+        ASSERT_TRUE(std::abs(compute_spread(vertices, beta)/beta-(1-1./Nv))<1E-5);
+    }
 }

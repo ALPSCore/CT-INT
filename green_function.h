@@ -33,8 +33,8 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include <algorithm>
 
-//#include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
 #include "util.h"
 
@@ -46,6 +46,15 @@
 #include <alps/hdf5/archive.hpp>
 #include <alps/hdf5/pointer.hpp>
 #include <alps/hdf5/complex.hpp>
+
+#include <U_matrix.h>
+
+//forward declaration
+//class general_U_matrix;
+//class vertex_definition;
+
+//types
+typedef std::valarray<int> quantum_number_t;
 
 //Matsubara GF: use T=std::complex<double>
 //Imaginary time: use T=double
@@ -154,6 +163,19 @@ public:
 //    std::cerr << "3";
   }
 
+  //returns if G(site1, site2) is zero.
+  bool is_zero(size_t site1, size_t site2, spin_t flavor, double eps) const {
+    assert(site1<nsite() && site2<nsite());
+    bool flag = true;
+    for (size_t i=0; i<nfreq(); ++i) {
+      if (std::abs(operator()(i,site1,site2,flavor))>eps) {
+        flag = false;
+        break;
+      }
+    }
+    return flag;
+  }
+
   std::pair<std::vector<T>,std::vector<T> > to_multiple_vector() const;
   void from_multiple_vector(const std::pair<std::vector<T>,std::vector<T> > &mv);
 #ifdef USE_MPI
@@ -173,66 +195,6 @@ private:
   // the actual values and errors.
   T *val_;
   T *err_;
-};
-
-//This class allows off-diagonal elements in flavor space
-template <typename T> class full_green_function{
-
-public:
-    full_green_function(unsigned int ntime, unsigned int nsite, unsigned int nflavor)
-            :nt_(ntime), ns_(nsite), nf_(nflavor)
-            ,val_(boost::extents[nflavor][nflavor][nsite][nsite][ntime]) {
-      clear();
-    }
-
-    //full_green_function(const full_green_function& gf)
-            //:nt_(gf.nt_), ns_(gf.ns_), nf_(gf.nf_)
-            //,val_(gf.val_) {
-      //throw std::runtime_error("Called");
-    //}
-
-    void clear(){
-      std::fill(val_.origin(), val_.origin()+val_.num_elements(), 0);
-    }
-    //access of vectors and elements
-
-    ///access element with given time, site 1, site 2, and flavor
-    inline T &operator()(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor1, unsigned int flavor2){
-//return val_[t][site1][site2][flavor1][flavor2];
-      return val_[flavor2][flavor1][site2][site1][t];
-    }
-    ///access element with given time, site 1, site 2, and flavor (const reference)
-    inline const T &operator()(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor1, unsigned int flavor2) const {
-      //return val_[t][site1][site2][flavor1][flavor2];
-      return val_[flavor2][flavor1][site2][site1][t];
-    }
-
-    //size information
-    ///how many flavors do we have? (flavors are usually spins, GF of different flavors are zero)
-    unsigned int nflavor()const{return nf_;}
-    ///return # of sites
-    unsigned int nsite()const{return ns_;}
-    ///return # of imaginary time values
-    unsigned int ntime()const{return nt_;}
-    ///return # of matsubara frequencies. Exactly equivalent to ntime().
-    ///In the case of a Matsubara GF 'ntime' sounds odd -> define 'nfreq' instead.
-    unsigned int nfreq()const{return nt_;} //nfreq is an alias to ntime - more intuitive use for Matsubara GF
-    void write_hdf5(alps::hdf5::archive &ar, const std::string &path) const{
-      ar<<alps::make_pvp(path+"/nt",nt_);
-      ar<<alps::make_pvp(path+"/ns",ns_);
-      ar<<alps::make_pvp(path+"/nf",nf_);
-      std::stringstream subpath; subpath<<path<<"/values/mean";
-      ar<<alps::make_pvp(subpath.str(), val_.origin(), val_.num_elements()); // the nondiagonal components are needed for realspace representation of multisite problems
-    }
-
-    typedef T value_type;
-
-private:
-    //const values
-    const unsigned int nt_; ///imag time points
-    const unsigned int ns_; ///number of sites
-    const unsigned int nf_; ///number of flavors
-    boost::multi_array<T,5> val_;
 };
 
 //diagonal in flavor space
@@ -380,5 +342,120 @@ read_bare_green_functions(const alps::params &parms) {
 
   return std::pair< green_function<std::complex<double> >, green_function<T> >(bare_green_matsubara, bare_green_itime);
 };
+
+
+template<class T>
+void
+make_groups(size_t N, const T& connected, std::vector<std::vector<size_t> >& groups, std::vector<int>& map) {
+  map.resize(N);
+  std::fill(map.begin(),map.end(),-1);
+  groups.clear();
+
+  for (size_t site1=0; site1<N; ++site1) {
+    int connected_to_where = -1;
+    for (size_t site2=0; site2<site1; ++site2) {
+      if (connected[site1][site2] && map[site2]!=-1) {
+        connected_to_where = map[site2];
+        break;
+      }
+    }
+    if (connected_to_where==-1) {
+      //create a new group
+      groups.resize(groups.size()+1);
+      groups[groups.size()-1].push_back(site1);
+      map[site1] = groups.size()-1;
+    } else {
+      groups[connected_to_where].push_back(site1);
+      map[site1] = connected_to_where;
+    }
+  }
+#ifndef NDEBUG
+  {
+    size_t t_sum = 0;
+    for (size_t ig=0; ig<groups.size(); ++ig) {
+      t_sum += groups[ig].size();
+    }
+    assert(t_sum==N);
+    for (size_t i=0; i<N; ++i) {
+      assert(map[i]>=0);
+    }
+  }
+#endif
+}
+
+//template<class T>
+//bool compare_array_size(std::vector<T>& array1, std::vector<T>& array2) {
+  //return array1.size()<array2.size();
+//}
+
+template<class T>
+void print_group(const std::vector<std::vector<T> >& group) {
+  for (int i=0; i<group.size(); ++i) {
+    std::cout << " Group #i " << i << std::endl;
+    for (int j=0; j<group[i].size(); ++j) {
+      std::cout << group[i][j] << " , ";
+    }
+    std::cout << std::endl;
+  }
+}
+
+template<typename T>//Expected T=double or T=std::complex<double>
+std::vector<quantum_number_t>
+make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<T> >& vertices, double eps=1E-10) {
+  const size_t n_site = gf.nsite();
+  const size_t n_flavors = gf.nflavor();
+
+  //See if two sites are connected by nonzero G
+  boost::multi_array<bool,2> connected(boost::extents[n_site][n_site]);
+  std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
+  std::vector<std::vector<int> > group_map(n_flavors);
+  std::vector<size_t> num_groups(n_flavors);
+
+  //figure out how sites are connected by GF
+  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    for (size_t site1 = 0; site1 < n_site; ++site1) {
+      for (size_t site2 = 0; site2 < n_site; ++site2) {
+        connected[site1][site2] = !gf.is_zero(site1, site2, flavor, eps);
+        //std::cout << "site  " << site1 << " " << site2 << " " << connected[site1][site2] << std::endl;
+      }
+    }
+    make_groups(n_site, connected, groups[flavor], group_map[flavor]);
+    num_groups[flavor] = groups[flavor].size();
+#ifndef NDEF
+    //std::cout << "flavor " << std::endl;
+    //std::cout << "num groups  " << num_groups[flavor] << std::endl;
+    //print_group(groups[flavor]);
+#endif
+  }
+
+  //determine the dimension of quantum numbers
+  const size_t n_dim = *std::max_element(num_groups.begin(), num_groups.end());
+  //std::cout << "n_dim" << n_dim << std::endl;
+
+  //compute quantum number for each vertex
+  std::vector<quantum_number_t> qn_vertices;
+  const size_t Nv = vertices.size();
+  for (size_t iv=0; iv<Nv; ++iv) {
+    const vertex_definition<T>& vd = vertices[iv];
+    std::valarray<int> qn_diff(0, n_dim*n_flavors);
+    assert(qn_diff.size()==n_dim*n_flavors);
+
+    for (size_t i_rank=0; i_rank<vd.rank(); ++i_rank) {
+      const spin_t flavor = vd.flavors()[i_rank];
+      const size_t site1 = vd.sites()[2*i_rank];//c_dagger
+      const size_t site2 = vd.sites()[2*i_rank+1];//c
+
+      //C^dagger
+      assert(n_dim*flavor+group_map[flavor][site1]<qn_diff.size());
+      ++qn_diff[n_dim*flavor+group_map[flavor][site1]];
+      //c
+      assert(n_dim*flavor+group_map[flavor][site2]<qn_diff.size());
+      --qn_diff[n_dim*flavor+group_map[flavor][site2]];
+    }
+    qn_vertices.push_back(qn_diff);
+  }
+
+  return qn_vertices;
+}
 
 #endif

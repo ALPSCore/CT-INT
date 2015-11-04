@@ -30,6 +30,8 @@
 #ifndef DMFT_QMC_WEAK_COUPLING_H
 #define DMFT_QMC_WEAK_COUPLING_H
 
+#include <algorithm>
+
 #include <boost/multi_array.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -53,7 +55,7 @@
 #include "green_matrix.hpp"
 #include <alps/numeric/matrix.hpp>
 #include "legendre.h"
-
+#include "update_statistics.h"
 
 /*types*/
 class c_or_cdagger;
@@ -393,9 +395,11 @@ protected:
   void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();
   void sanity_check();
+  bool is_irreducible(const std::vector<itime_vertex>& vertices);
+  bool is_quantum_number_conserved(const std::vector<itime_vertex>& vertices);
 
   /*abstract virtual functions. Implement these for specific models.*/
-  virtual std::pair<double,double> try_add(fastupdate_add_helper&,size_t)=0;
+  virtual std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&)=0;
   virtual void perform_add(fastupdate_add_helper&,size_t)=0;
   virtual void reject_add(fastupdate_add_helper&,size_t)=0;
   virtual std::pair<double,double> try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
@@ -420,7 +424,10 @@ protected:
   const double beta;                                
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
   const general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
-  
+  //quantum numbers
+  std::vector<quantum_number_t> quantum_number_vertices;
+  std::vector<bool> reducible_vertices;
+
   
   const unsigned int recalc_period;                
   const unsigned int measurement_period;        
@@ -443,6 +450,7 @@ protected:
   std::vector<itime_vertex> itime_vertices;
   big_inverse_m_matrix M;
 
+
   double weight;
   double sign;
   unsigned int measurement_method;
@@ -457,6 +465,12 @@ protected:
   time_t start_time;
   clock_t update_time;
   clock_t measurement_time;
+
+  //Statistics on multi-vertex updates (imaginary time information)
+  scalar_histogram_flavors statistics_rem, statistics_ins;
+
+  //only acceptance rate
+  simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
 
   LegendreTransformer legendre_transformer;
 };
@@ -478,7 +492,7 @@ public:
   {
     if(n_flavors !=2){throw std::invalid_argument("you need a different model for n_flavors!=2.");}
   }
-  std::pair<double,double> try_add(fastupdate_add_helper&,size_t);
+  std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&);
   void perform_add(fastupdate_add_helper&,size_t);
   void reject_add(fastupdate_add_helper&,size_t);
   std::pair<double,double> try_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);

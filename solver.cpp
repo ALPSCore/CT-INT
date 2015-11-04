@@ -49,56 +49,73 @@ void InteractionExpansion::interaction_expansion_step(void)
   const int pert_order= itime_vertices.size();   //current order of perturbation series
   double metropolis_weight=0.;
   double det_rat=0;
-  static unsigned int i=0; ++i;
+  //static unsigned int i=0; ++i;
   if(random()<0.5){  //trying to ADD vertex
     M.sanity_check(itime_vertices);
     if(itime_vertices.size()>=max_order)
       return; //we have already reached the highest perturbation order
-    boost::tie(metropolis_weight,det_rat)=try_add(add_helper,nv_updated);
+    std::vector<itime_vertex> new_vertices = generate_vertices(Uijkl,random,beta,nv_updated);
+    if (!is_quantum_number_conserved(new_vertices)) {
+      simple_statistics_ins.not_valid_state(nv_updated-1);
+      return;
+    }
+    if (!is_irreducible(new_vertices)) {
+      simple_statistics_ins.reducible(nv_updated-1);
+      return;
+    }
+
+    boost::tie(metropolis_weight,det_rat)=try_add(add_helper,nv_updated, new_vertices);
+    if (nv_updated>=2) {
+      statistics_ins.add_sample(compute_spread(new_vertices,beta), std::min(fabs(metropolis_weight),1.0), nv_updated-2);
+    }
     if(fabs(metropolis_weight)> random()){
-      measurements["VertexInsertion"]<<1.;
+      //measurements["VertexInsertion"]<<1.;
       perform_add(add_helper,nv_updated);
       sign*=metropolis_weight<0?-1:1;
-      //std::cout << "debug: ins accepted"<<nv_updated<<std::endl;
-      //std::cout << "det_rat "<< det_rat <<std::endl;
-//#ifndef NDEBUG
-      //det_updated*=det_rat;
-//#endif
       M.sanity_check(itime_vertices);
+      assert(is_quantum_number_conserved(new_vertices));
+      simple_statistics_ins.accepted(nv_updated-1);
     }else{
-      measurements["VertexInsertion"]<<0.;
+      //measurements["VertexInsertion"]<<0.;
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
-      //std::cout << "debug: ins rejected"<<std::endl;
+      simple_statistics_ins.rejected(nv_updated-1);
     }
   }else{ // try to REMOVE a vertex
     M.sanity_check(itime_vertices);
-    //pert_order= itime_vertices.size();
     if(pert_order < nv_updated) {
       return;
     }
+
     //choose vertices to be removed
     const std::vector<size_t> vertices_nr = pickup_a_few_numbers(pert_order, nv_updated, random);
+    std::vector<itime_vertex> vertices_to_be_removed(nv_updated);
+    for (int iv=0; iv<nv_updated; ++iv) {
+      vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
+    }
+    if (!is_quantum_number_conserved(vertices_to_be_removed)) {
+      simple_statistics_rem.not_valid_state(nv_updated-1);
+      return;
+    }
+    if (!is_irreducible(vertices_to_be_removed)) {
+      simple_statistics_rem.reducible(nv_updated - 1);
+      return;
+    }
+
     boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
     if(fabs(metropolis_weight)> random()){ //do the actual update
-      measurements["VertexRemoval"]<<1.;
+      //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
       sign*=metropolis_weight<0?-1:1;
-//#ifndef NDEBUG
-      //det_updated*=det_rat;
-//#endif
-      //std::cout << "debug: rem accepted"<<std::endl;
       M.sanity_check(itime_vertices);
+      simple_statistics_rem.accepted(nv_updated-1);
     }else{
-      measurements["VertexRemoval"]<<0.;
+      //measurements["VertexRemoval"]<<0.;
       reject_remove(remove_helper);
       M.sanity_check(itime_vertices);
-      //std::cout << "debug: rem rejected"<<std::endl;
+      simple_statistics_rem.rejected(nv_updated-1);
     }
   }//end REMOVE
-//#ifndef NDEBUG
-  //assert(std::abs(det_updated-1/M.determinant())<1E-8);
-//#endif
   weight=metropolis_weight;
   for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
     vertex_histograms[flavor]->count(num_rows(M[flavor].matrix()));

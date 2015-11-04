@@ -77,7 +77,11 @@ bare_green_itime(n_tau+1, n_site, n_flavors),
 green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
 legendre_transformer(n_matsubara,n_legendre),
-n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1)
+n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
+statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
+statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
+simple_statistics_ins(n_multi_vertex_update),
+simple_statistics_rem(n_multi_vertex_update)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -101,6 +105,13 @@ n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1)
 
   //load bare Green's function
   boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
+
+  //make quantum numbers
+  quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), almost_zero);
+  reducible_vertices.resize(Uijkl.n_vertex_type());
+  for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
+    reducible_vertices[iv] = std::abs(quantum_number_vertices[iv]).sum()==0 ? true : false;
+  }
 
   //FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr);
   //fourier_ptr->backward_ft(bare_green_itime, bare_green_matsubara);
@@ -139,6 +150,20 @@ void InteractionExpansion::update()
     }
   }
   measurements["UpdateTimeMsec"] << timer.elapsed().wall*1E-6;
+
+  measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
+  measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
+  statistics_ins.reset();
+  statistics_rem.reset();
+
+  {
+    for (int iv=0; iv<n_multi_vertex_update; ++iv){
+      measurements["VertexInsertion_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_ins.get_result(iv);
+      measurements["VertexRemoval_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_rem.get_result(iv);
+    }
+    simple_statistics_ins.reset();
+    simple_statistics_rem.reset();
+  }
 }
 
 void InteractionExpansion::measure(){
@@ -182,6 +207,37 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
   green_itime=bare_green_itime;
 }
 
+bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices) {
+  std::valarray<int> qn_t(0, quantum_number_vertices[0].size());
+
+  for (int iv=0; iv<vertices.size(); ++iv) {
+    qn_t += quantum_number_vertices[vertices[iv].type()];
+  }
+  bool flag = true;
+  for (int i=0; i<qn_t.size(); ++i) {
+    if (qn_t[i]!=0) {
+      flag = false;
+      break;
+    }
+  }
+  return flag;
+}
+
+bool InteractionExpansion::is_irreducible(const std::vector<itime_vertex>& vertices) {
+  if (vertices.size()==1) {
+    return true;
+  }
+
+  const int dim = quantum_number_vertices[0].size();
+  bool flag = true;
+  for (int iv = 0; iv < vertices.size(); ++iv) {
+    if (reducible_vertices[vertices[iv].type()]) {
+      flag = false;
+      break;
+    }
+  }
+  return flag;
+}
 
 void InteractionExpansion::sanity_check() {
   //recompute M
