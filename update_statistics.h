@@ -41,7 +41,7 @@ public:
         if (mode_!=0) {
             throw std::logic_error("No more need for learning!");
         }
-        mode_ == 1;
+        mode_ = 1;
 
         acc_rate_reducible_[0] = 1;
         for (int i=1; i<Nv_; ++i) {
@@ -306,8 +306,9 @@ class scalar_histogram_flavors
 {
     public:
         scalar_histogram_flavors(int num_bins_, double max_val, int flavors) : flavors(flavors), max_val(max_val), histograms(flavors), num_bins(num_bins_) {
-        	for (auto& elem : histograms) {
-        		elem.init(num_bins_, max_val);
+            //for (auto& elem : histograms) {
+        	for (int i=0; i<histograms.size(); ++i) {
+        		histograms[i].init(num_bins_, max_val);
         	}
         };
 
@@ -357,8 +358,9 @@ class scalar_histogram_flavors
 
         double update_cutoff(double cutoff_ratio, double maxdist, double mag=1.2) const {
         	double maxdist_new = -1.0;
-        	for (auto& elem : histograms) {
-        		boost::tuple<bool,double> r = elem.update_cutoff(cutoff_ratio, maxdist, mag);
+            //for (auto& elem : histograms) {
+        	for (int i=0; i<histograms.size(); ++i) {
+        		boost::tuple<bool,double> r = histograms[i].update_cutoff(cutoff_ratio, maxdist, mag);
         		maxdist_new = std::max(maxdist_new, boost::get<1>(r));
         	}
         	assert(maxdist_new>0);
@@ -366,8 +368,9 @@ class scalar_histogram_flavors
         }
 
         void reset() {
-        	for (auto& elem : histograms) {
-        		elem.reset();
+        	//for (auto& elem : histograms) {
+            for (int i=0; i<histograms.size(); ++i) {
+        		histograms[i].reset();
         	}
         }
 
