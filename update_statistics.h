@@ -1,11 +1,11 @@
 #ifndef ___HISTOGRAM___
 #define ___HISTOGRAM___
 
-#import <cmath>
-#import <vector>
-#import <complex>
-#import <cassert>
-#import <math.h>
+#include <cmath>
+#include <vector>
+#include <complex>
+#include <cassert>
+#include <math.h>
 
 #include <boost/random.hpp>
 #include <boost/random/uniform_01.hpp>
