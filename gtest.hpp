@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <boost/random.hpp>
 #include <boost/math/special_functions/binomial.hpp>
 #include <boost/random.hpp>

@@ -111,8 +111,10 @@ is_thermalized_in_previous_step_(false)
   //make quantum numbers
   quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), almost_zero);
   reducible_vertices.resize(Uijkl.n_vertex_type());
+  is_density_density_type.resize(Uijkl.n_vertex_type());
   for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
     reducible_vertices[iv] = std::abs(quantum_number_vertices[iv]).sum()==0 ? true : false;
+    is_density_density_type[iv] = Uijkl.get_vertex(iv).is_density_type();
   }
 
   //set up parameters for updates
@@ -295,8 +297,11 @@ void InteractionExpansion::sanity_check() {
     }
   }
 
-  //recompute sign etc.
-
+  //check itime_vertex list
+  for (std::vector<itime_vertex>::iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+    int type = it->type();
+    assert(Uijkl.get_vertices()[type].is_density_type()==it->is_density_type());
+  }
 }
 
 
@@ -329,7 +334,9 @@ void c_or_cdagger::initialize_simulation(const alps::params &p)
 
 void InteractionExpansion::prepare_for_measurement()
 {
-  update_prop.finish_learning();
+  //update_prop.finish_learning();
+  statistics_ins.reset();
+  statistics_rem.reset();
   simple_statistics_ins.reset();
   simple_statistics_rem.reset();
 }

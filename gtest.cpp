@@ -188,7 +188,7 @@ TEST(QuantumNumber, diagonal_GF) {
     sites[1] = 1;
     sites[2] = 2;
     sites[3] = 3;
-    vertices.push_back(vertex_definition<double>(2,2,flavors,sites,0.0,alpha));
+    vertices.push_back(vertex_definition<double>(2,2,flavors,sites,0.0,alpha,0));
 
     int qs[] = {1, -1, 0, 0, 0, 0, 1, -1};
     std::vector<std::valarray<int> > quantum_number_vertices;
@@ -224,4 +224,8 @@ TEST(UpdateStatistics, EstimateSpread) {
         }
         ASSERT_TRUE(std::abs(compute_spread(vertices, beta)/beta-(1-1./Nv))<1E-5);
     }
+}
+
+TEST(TypeRange, Integer) {
+    ASSERT_TRUE(std::numeric_limits<int>::max()>=2147483647);
 }

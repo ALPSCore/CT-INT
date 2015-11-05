@@ -56,7 +56,7 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
 
       ++(helper.num_new_rows[flavor_rank]);
     }
-    itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank));
+    itime_vertices.push_back(new_vertices[iv]);
     //std::cout << "iv " << iv << " " << itime_vertex(v_type, af_state, time, rank);
     //std::cout << " alpha0 " << new_vertex_type.get_alpha(af_state, 0);
     //std::cout << " alpha1 " << new_vertex_type.get_alpha(af_state, 1);
@@ -70,7 +70,18 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
       lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
     }
   }
-  const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/permutation(itime_vertices.size(),n_vertices_add);
+  //const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/permutation(itime_vertices.size(),n_vertices_add);
+  //assert(std::count_if(itime_vertices.begin(), itime_vertices.end(), non_density_type())==itime_vertices.size());
+  //std::cout << "debug " << std::count_if(itime_vertices.begin(), itime_vertices.end(), non_density_type()) << " " << itime_vertices.size() << std::endl;
+  //std::cout << "debug2 " << non_density_type()(itime_vertices[0]) << std::endl;
+  //std::cout << "debug3 " << itime_vertices[0].is_density_type() << std::endl;
+
+  double perm = n_vertices_add==1 ?
+                permutation(itime_vertices.size(),n_vertices_add) :
+                permutation(std::count_if(itime_vertices.begin(), itime_vertices.end(), non_density_type()), n_vertices_add);
+  const double rtmp = n_vertices_add==1 ?
+                pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/perm :
+                pow(-beta*Uijkl.num_non_density_vertices(),(double)n_vertices_add)/perm;
   helper.det_rat_ = lambda_prod;
   return std::pair<double,double>(rtmp*prod_Uval*lambda_prod, lambda_prod);
 }
@@ -104,7 +115,7 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size
 }
 
 
-std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
+std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //get weight
   //figure out and remember which rows (columns) are to be removed
@@ -133,14 +144,17 @@ std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vect
   }
   helper.det_rat_ = lambda_prod;
   assert(itime_vertices.size()==nv_old);
-  helper.det_rat_ = lambda_prod;
-  double r1 = permutation(itime_vertices.size(),vertices_nr.size());
-  double r2 = pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size());
+  double r1 = vertices_nr.size()== 1 ?
+      permutation(itime_vertices.size(),vertices_nr.size()) :
+      permutation(std::count_if(itime_vertices.begin(), itime_vertices.end(), non_density_type()), vertices_nr.size());
+  double r2 = vertices_nr.size()== 1 ?
+      pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size()) :
+      pow(-beta*Uijkl.num_non_density_vertices(),(double)vertices_nr.size());
   return std::pair<double,double>((r1/r2)*lambda_prod/prod_Uval,lambda_prod);
 }
 
 
-void HubbardInteractionExpansion::perform_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper& helper)
+void HubbardInteractionExpansion::perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //perform fastupdate down
   double det_rat = 1.0;

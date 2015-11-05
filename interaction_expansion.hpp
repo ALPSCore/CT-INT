@@ -253,7 +253,6 @@ public:
       }
     }
     return -1;
-    //throw std::logic_error("Your operator is missing!");
   }
    void sanity_check() const {
      assert(num_rows(matrix_)==num_cols(matrix_));
@@ -405,8 +404,8 @@ protected:
   virtual std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&)=0;
   virtual void perform_add(fastupdate_add_helper&,size_t)=0;
   virtual void reject_add(fastupdate_add_helper&,size_t)=0;
-  virtual std::pair<double,double> try_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
-  virtual void perform_remove(const std::vector<size_t>& vertices_nr, fastupdate_remove_helper&)=0;
+  virtual std::pair<double,double> try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper&)=0;
+  virtual void perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper&)=0;
   virtual void reject_remove(fastupdate_remove_helper&)=0;
   
   /*private member variables, constant throughout the simulation*/
@@ -430,8 +429,8 @@ protected:
   //quantum numbers
   std::vector<quantum_number_t> quantum_number_vertices;
   std::vector<bool> reducible_vertices;
+  std::vector<bool> is_density_density_type;
 
-  
   const unsigned int recalc_period;                
   const unsigned int measurement_period;        
   const unsigned int convergence_check_period;        
@@ -506,8 +505,8 @@ public:
   std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&);
   void perform_add(fastupdate_add_helper&,size_t);
   void reject_add(fastupdate_add_helper&,size_t);
-  std::pair<double,double> try_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
-  void perform_remove(const std::vector<size_t>& vertex_nr, fastupdate_remove_helper&);
+  std::pair<double,double> try_remove(const std::vector<int>& vertex_nr, fastupdate_remove_helper&);
+  void perform_remove(const std::vector<int>& vertex_nr, fastupdate_remove_helper&);
   void reject_remove(fastupdate_remove_helper&);
 };
 

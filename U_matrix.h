@@ -32,151 +32,80 @@
 #ifndef U_MATRIX_H
 #define U_MATRIX_H
 
+#include <algorithm>
 #include "boost/multi_array.hpp"
 
 #include "types.h"
 #include "util.h"
 #include "alps/parameter.h"
 
-//Data structure for repulsion for density density bands.
-class U_matrix{
-public:
-  U_matrix(const alps::Parameters &parms) :
-    ns_(parms.value_or_default("SITES", 1)),
-    nf_(parms.value_or_default("FLAVORS", 2)),
-      n_nonzero_(0), mu_shift_(0)
-  {
-    val_ = new double[nf_*nf_];
-    for(unsigned i=0; i<nf_*nf_; ++i)
-      val_[i]=0; //default: non-interacting.
-    if(parms.defined("U_MATRIX")){
-      std::string ufilename(parms["U_MATRIX"]);
-      std::ifstream u_file(ufilename.c_str());
-      assert(u_file.is_open());
-      int i;
-      int j;
-      double U_ij;
-      while(u_file>>i>>j>>U_ij){
-        operator()(i,j)=U_ij;
-      }
-    } else if (nf_==1) {
-      //special case: only 1 orbital
-      operator()(0,0)=(double)(parms["U"]);
-    }else if (nf_==2) {
-      //your ordinary two site problem
-      assert(parms.defined("U"));
-      double U=(double)(parms["U"]);
-      operator()(0,0)=0; operator()(1,1)=0;
-      operator()(0,1)=U; operator()(1,0)=U;
-    } else {
-      assert(parms.defined("U") && parms.defined("J"));
-      double U=(double)(parms["U"]);
-      double J=(double)(parms["J"]);
-      double Uprime = parms.value_or_default("U'", U-2*J);
-      assemble(U, Uprime, J);
-    }
-    for (unsigned i=0; i<nf_*nf_; ++i)
-      if (val_[i]!=0)
-        n_nonzero_++;
-    for (unsigned i=0; i<nf_; ++i)
-      mu_shift_ += operator()(i,0);
-    mu_shift_ /= 2;
-  }
-
-
-  void assemble(const double U, const double Uprime, const double J){
-    //this implements the U matrix for the special case of n_flavor/2 degenerate bands
-    assert(ns_==1);
-    assert(nf_%2==0);
-    for(spin_t i=0;i<nf_;i+=2){
-      operator()(i  , i  ) = 0; //Pauli
-      operator()(i+1, i+1) = 0; //Pauli
-      operator()(i  , i+1) = U; //Hubbard repulsion same band
-      operator()(i+1, i  ) = U; //Hubbard repulsion same band
-      for(spin_t j=0; j<nf_; j+=2){
-        if(j==i)
-          continue;
-        operator()(i  ,j  ) = Uprime-J; //Hubbard repulsion interband same spin
-        operator()(i+1,j+1) = Uprime-J; //Hubbard repulsion interband same spin
-        operator()(i  ,j+1) = Uprime; //Hubbard repulsion interband opposite spin (this used to be '+J', the rest of the world uses '-J' -> changed to be consistent).
-        operator()(i+1,j  ) = Uprime; //Hubbard repulsion interband opposite spin
-      }
-    }
-  }
-
-  ~U_matrix(){
-    delete[] val_;
-  }
-
-  double &operator()(spin_t flavor_i, spin_t flavor_j){
-    return val_[flavor_i*nf_+flavor_j];
-    }
-
-  const double &operator() (spin_t flavor_i, spin_t flavor_j)const {
-    return val_[flavor_i*nf_+flavor_j];
-  }
-
-  spin_t nf()const {return nf_;}
-  spin_t ns()const {return ns_;}
-  double mu_shift() const { return mu_shift_; }
-
-  inline int n_nonzero() const{return n_nonzero_;}
-
-private:
-  double *val_;
-  size_t ns_;
-  size_t nf_;
-  int n_nonzero_;
-  double mu_shift_;
-};
-
 typedef size_t vertex_t;
 typedef size_t af_t;
 
+class itime_vertex;
+class all_type;
+class non_density_type;
+
 template<class T>
 class vertex_definition
- {
- public:
-    vertex_definition(size_t rank, size_t num_af_states, std::vector<spin_t>& flavors, std::vector<size_t>& sites, T Uval, boost::multi_array<T,2>& alpha_af_rank)
-            : rank_(rank), num_af_states_(num_af_states), flavors_(flavors), sites_(sites), Uval_(Uval), alpha_af_rank_(alpha_af_rank) {
-      assert(flavors_.size()==rank);
-      assert(sites.size()==2*rank);
-      assert(alpha_af_rank_.shape()[0]==num_af_states_);
-      assert(alpha_af_rank_.shape()[1]==rank);
-    };
+{
+public:
+   vertex_definition(size_t rank, size_t num_af_states, std::vector<spin_t>& flavors, std::vector<size_t>& sites, T Uval, boost::multi_array<T,2>& alpha_af_rank, int id)
+           : rank_(rank), num_af_states_(num_af_states), flavors_(flavors), sites_(sites), Uval_(Uval), alpha_af_rank_(alpha_af_rank), id_(id) {
+     assert(flavors_.size()==rank);
+     assert(sites.size()==2*rank);
+     assert(alpha_af_rank_.shape()[0]==num_af_states_);
+     assert(alpha_af_rank_.shape()[1]==rank);
+   };
 
-    const std::vector<spin_t>& flavors() const {
-      return flavors_;
-    };
+   const std::vector<spin_t>& flavors() const {
+     return flavors_;
+   };
 
-    const std::vector<size_t>& sites() const {
-      return sites_;
-    };
+   const std::vector<size_t>& sites() const {
+     return sites_;
+   };
 
-    double Uval() const {
-      return Uval_;
-    }
+   double Uval() const {
+     return Uval_;
+   }
 
-    size_t rank() const {
-      return rank_;
-    }
+   size_t rank() const {
+     return rank_;
+   }
 
-    size_t num_af_states() const {
-      return num_af_states_;
-    }
+   size_t num_af_states() const {
+     return num_af_states_;
+   }
 
-    T get_alpha(size_t af_state, size_t idx_rank) const {
-      return alpha_af_rank_[af_state][idx_rank];
-    }
+   T get_alpha(size_t af_state, size_t idx_rank) const {
+     return alpha_af_rank_[af_state][idx_rank];
+   }
 
- private:
-    size_t rank_;
-    std::vector<spin_t> flavors_;
-    std::vector<size_t> sites_;
-    size_t num_af_states_;
-    T Uval_;
-    boost::multi_array<T,2> alpha_af_rank_;//first index addresses af spin state, second one addresses (cdagger c)
- };
+   bool is_density_type() const {
+     bool flag = true;
+     for (int i_rank=0; i_rank<rank_; ++i_rank) {
+       if (sites_[2*i_rank] != sites_[2*i_rank+1]) {
+         flag = false;
+         break;
+       }
+     }
+     return flag;
+   }
+
+   int id() const {return id_;}
+
+private:
+   size_t rank_;
+   std::vector<spin_t> flavors_;
+   std::vector<size_t> sites_;
+   size_t num_af_states_;
+   T Uval_;
+   boost::multi_array<T,2> alpha_af_rank_;//first index addresses af spin state, second one addresses (cdagger c)
+   int id_;
+};
+
+
 
 //Data structure for general two-body interactions for a multi-orbital cluster impurity problem
 template<class T>
@@ -226,9 +155,7 @@ class general_U_matrix {
         }
         for (size_t i_rank=0; i_rank<rank; ++i_rank) {
           for (size_t iaf=0; iaf<num_af_states; ++iaf) {
-            //ifs >> alpha_[iaf][i_rank];
             ifs >> alpha_cmplx[iaf][i_rank];
-            //std::cout << " i_rank, i_af " << alpha_cmplx[iaf][i_rank] << std::endl;
           }
         }
         for (size_t i_rank=0; i_rank<rank; ++i_rank) {
@@ -237,8 +164,10 @@ class general_U_matrix {
           }
         }
 
-        vertex_list.push_back(vertex_definition<T>(rank, num_af_states, flavor_indices_, site_indices_, Uval_, alpha_));
+        vertex_list.push_back(vertex_definition<T>(rank, num_af_states, flavor_indices_, site_indices_, Uval_, alpha_, idx));
       }
+
+      find_non_density_vertices();
     }
 
     size_t n_vertex_type() const{return vertex_list.size();}
@@ -250,58 +179,178 @@ class general_U_matrix {
       return vertex_list[vertex_idx];
     }
 
-    std::vector<vertex_definition<T> > get_vertices() const {
+    const std::vector<vertex_definition<T> >& get_vertices() const {
       return vertex_list;
+    }
+
+    //const std::vector<int>& get_non_density_vertices() const {
+      //return non_density_vertices;
+    //}
+
+    const std::vector<vertex_definition<T> >& get_vertices(all_type& pred) const {
+      return vertex_list;
+    }
+
+    const std::vector<vertex_definition<T> >& get_vertices(non_density_type& pred) const {
+      //std::cout << " num non density_type " << non_density_vertices.size() << std::endl;
+      return non_density_vertices;
+    }
+
+    int num_non_density_vertices() const {
+      return non_density_vertices.size();
+    }
+
+    int num_vertex_type(all_type& pred) const {
+      return n_vertex_type();
+    }
+
+    //int num_vertex_type(non_density_type& pred) {
+      //return non_density_vertices.size();
+    //}
+
+    const std::vector<bool>& get_is_denisty_type() const {
+      return is_density_type;
     }
 
   private:
     unsigned int ns_, nf_, num_nonzero_;
-    std::vector<vertex_definition<T> > vertex_list;
+    std::vector<vertex_definition<T> > vertex_list, non_density_vertices;
+    //std::vector<int> non_density_vertices;
+    std::vector<bool> is_density_type;
+
+    void find_non_density_vertices() {
+      is_density_type.resize(vertex_list.size());
+      non_density_vertices.clear();
+      for (int iv=0; iv<vertex_list.size(); ++iv) {
+        is_density_type[iv] = vertex_list[iv].is_density_type();
+        if (!is_density_type[iv])
+          non_density_vertices.push_back(vertex_list[iv]);
+      }
+    }
  };
 
- //to remember what vertices are on the imaginary time axis..
- typedef struct itime_vertex {
- public:
-   itime_vertex()
+//to remember what vertices are on the imaginary time axis..
+typedef struct itime_vertex {
+public:
+  itime_vertex()
              : vertex_type_(-1),
                af_state_(-1),
                time_(-1),
-               rank_(-1) {}
+               rank_(-1),
+               is_density_type_(false)
+  {}
 
-   itime_vertex(size_t vertex_type, size_t af_state, double time, size_t rank)
+  itime_vertex(int vertex_type, int af_state, double time, int rank, bool is_density_type)
            : vertex_type_(vertex_type),
              af_state_(af_state),
              time_(time),
-             rank_(rank) {}
+             rank_(rank),
+             is_density_type_(is_density_type)
+  {}
 
-   size_t af_state() const { return af_state_; }
-   size_t vertex_type() const {return vertex_type_;}
-   size_t type() const {return vertex_type_;}
-   size_t rank() const {return rank_;}
-   double time() const {return time_;}
+  int af_state() const { return af_state_; }
+  int vertex_type() const {return vertex_type_;}
+  int type() const {return vertex_type_;}
+  int rank() const {return rank_;}
+  double time() const {return time_;}
+  bool is_density_type() const {return is_density_type_;}
 
- private:
-   size_t vertex_type_, af_state_, rank_;
-   double time_;
- } itime_vertex;
+private:
+  int vertex_type_, af_state_, rank_;
+  double time_;
+  bool is_density_type_;
+} itime_vertex;
 
-template<class T, class R>
-std::vector<itime_vertex> generate_vertices(const general_U_matrix<T>& Uijkl, R& random01, double beta, int n_vertices_add) {
+//template<class T>
+//itime_vertex generate_itime_vertex(vertex_definition<T> vertex_df
+//template<class V>
+//int num_non_denisty_vertices(const V& itime_vertices) {
+  //int r = 0;
+  //const std::vector<bool>& tmp = Uijkl.get_is_denisty_type();
+  //for (typename V::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+    //if (tmp[it->type()]) ++r;
+  //}
+  //return r;
+//}
+
+class density_type : public std::unary_function<itime_vertex,bool> {
+public:
+    bool operator()(itime_vertex v) {return v.is_density_type();}
+};
+
+class non_density_type : public std::unary_function<itime_vertex,bool> {
+public:
+    bool operator()(itime_vertex v) {return !v.is_density_type();}
+};
+
+class all_type : public std::unary_function<itime_vertex,bool> {
+public:
+    bool operator()(itime_vertex v) {return true;}
+};
+
+template<class T, class R, class UnaryPredicate>
+std::vector<itime_vertex> generate_itime_vertices(const general_U_matrix<T>& Uijkl, R& random01, double beta, int n_vertices_add, UnaryPredicate pred) {
   std::vector<itime_vertex> itime_vertices;
   itime_vertices.reserve(n_vertices_add);
+
+  //std::cout << " debug n_add" << n_vertices_add << std::endl;
+  const std::vector<vertex_definition<T> >& valid_vs = Uijkl.get_vertices(pred);
+  //std::cout << " debug n_add(2)" << valid_vs.size() << std::endl;
+  const int n_valid_vs = valid_vs.size();
+  if (n_valid_vs==0)
+    return std::vector<itime_vertex>();
+
   for (int iv=0; iv<n_vertices_add; ++iv) {
     const double time = beta * random01();
-    const size_t v_type = static_cast<size_t>(random01() * Uijkl.n_vertex_type());
-    const vertex_definition<T> new_vertex_type = Uijkl.get_vertex(v_type);
-    const size_t rank = new_vertex_type.rank();
-    const size_t af_state = static_cast<size_t>(random01() * new_vertex_type.num_af_states());
-    itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank));
+    const int iv_rnd = static_cast<int>(random01()*n_valid_vs);
+    const int v_type = valid_vs[iv_rnd].id();
+    const int rank = valid_vs[iv_rnd].rank();
+    const int af_state = static_cast<size_t>(random01()*valid_vs[iv_rnd].num_af_states());
+    itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank, valid_vs[iv_rnd].is_density_type()));
   }
   return itime_vertices;
 }
 
+
+template<class R, class UnaryPredicate>
+std::vector<int> pick_up_itime_vertices(const std::vector<itime_vertex>& itime_vertices,
+                                              R& random01,
+                                              int n_vertices_rem,
+                                              UnaryPredicate pred) {
+  const int n_active_vertices = std::count_if(itime_vertices.begin(), itime_vertices.end(), pred);
+  if (n_active_vertices<n_vertices_rem)
+    return std::vector<int>();
+
+  std::vector<int> pos(n_active_vertices);
+  int idx=0;
+  for (int iv=0; iv<itime_vertices.size(); ++iv) {
+    if (pred(itime_vertices[iv])) {
+      assert(idx<pos.size());
+      pos[idx] = iv;
+      ++idx;
+    }
+  }
+  assert(idx==n_active_vertices);
+
+  const std::vector<int>& indices = pickup_a_few_numbers(n_active_vertices, n_vertices_rem, random01);
+  std::vector<int> indices2(n_vertices_rem);
+  for (int i=0; i<n_vertices_rem; ++i) {
+    assert(indices[i]<pos.size());
+    indices2[i] = pos[indices[i]];
+  }
+
+#ifndef NDEBUG
+  for (int i=0; i<n_vertices_rem; ++i) {
+    assert(indices2[i]<itime_vertices.size());
+    assert(pred(itime_vertices[indices2[i]]));
+  }
+#endif
+
+  return indices2;
+};
+
+
 std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
 
-std::ostream &operator<<(std::ostream &os, const U_matrix &U);
 //U_MATRIX_H
 #endif 

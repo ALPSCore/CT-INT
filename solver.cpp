@@ -54,20 +54,16 @@ void InteractionExpansion::interaction_expansion_step(void)
     M.sanity_check(itime_vertices);
     if(itime_vertices.size()>=max_order)
       return; //we have already reached the highest perturbation order
-    std::vector<itime_vertex> new_vertices = generate_vertices(Uijkl,random,beta,nv_updated);
-    if (!is_quantum_number_conserved(new_vertices)) {
+    std::vector<itime_vertex> new_vertices = nv_updated==1 ?
+                                             generate_itime_vertices(Uijkl,random,beta,nv_updated,all_type()) :
+                                             generate_itime_vertices(Uijkl,random,beta,nv_updated,non_density_type());
+    assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
+    //if (nv_updated==1) {
+      //std::cout << " debug " << new_vertices.size() << std::endl;
+    //}
+    if (new_vertices.size()==0 || !is_quantum_number_conserved(new_vertices)) {
       simple_statistics_ins.not_valid_state(nv_updated-1);
       return;
-    }
-    if (is_irreducible(new_vertices)) {
-      update_prop.generated_irreducible_update(nv_updated);
-    } else {
-      update_prop.generated_reducible_update(nv_updated);
-      if(update_prop.accept_reducible_update(nv_updated,boost_random)) {
-        simple_statistics_ins.reducible(nv_updated - 1);
-      } else {
-        return;
-      }
     }
 
     boost::tie(metropolis_weight,det_rat)=try_add(add_helper,nv_updated, new_vertices);
@@ -75,18 +71,20 @@ void InteractionExpansion::interaction_expansion_step(void)
       statistics_ins.add_sample(compute_spread(new_vertices,beta), std::min(fabs(metropolis_weight),1.0), nv_updated-2);
     }
     if(fabs(metropolis_weight)> random()){
-      //measurements["VertexInsertion"]<<1.;
       perform_add(add_helper,nv_updated);
       sign*=metropolis_weight<0?-1:1;
       M.sanity_check(itime_vertices);
       assert(is_quantum_number_conserved(new_vertices));
       simple_statistics_ins.accepted(nv_updated-1);
+      //std::cout << "accepted " << nv_updated << std::endl;
     }else{
-      //measurements["VertexInsertion"]<<0.;
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
       simple_statistics_ins.rejected(nv_updated-1);
     }
+#ifndef NDEBUG
+    sanity_check();
+#endif
   }else{ // try to REMOVE a vertex
     M.sanity_check(itime_vertices);
     if(pert_order < nv_updated) {
@@ -94,8 +92,12 @@ void InteractionExpansion::interaction_expansion_step(void)
     }
 
     //choose vertices to be removed
-    const std::vector<size_t> vertices_nr = pickup_a_few_numbers(pert_order, nv_updated, random);
-    std::vector<itime_vertex> vertices_to_be_removed(nv_updated);
+    const std::vector<int>& vertices_nr = nv_updated==1 ?
+        pick_up_itime_vertices(itime_vertices, random, nv_updated, all_type()) :
+        pick_up_itime_vertices(itime_vertices, random, nv_updated, non_density_type());
+    if (vertices_nr.size()==0)
+      return;
+    std::vector<itime_vertex> vertices_to_be_removed(nv_updated);//ugly copy
     for (int iv=0; iv<nv_updated; ++iv) {
       vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
     }
@@ -103,18 +105,9 @@ void InteractionExpansion::interaction_expansion_step(void)
       simple_statistics_rem.not_valid_state(nv_updated-1);
       return;
     }
-    if (is_irreducible(vertices_to_be_removed)) {
-      update_prop.generated_irreducible_update(nv_updated);
-    } else {
-      update_prop.generated_reducible_update(nv_updated);
-      if(update_prop.accept_reducible_update(nv_updated,boost_random)) {
-        simple_statistics_rem.reducible(nv_updated - 1);
-      } else {
-        return;
-      }
-    }
 
     boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
+    statistics_rem.add_sample(compute_spread(vertices_to_be_removed,beta), std::min(fabs(metropolis_weight),1.0), nv_updated-2);
     if(fabs(metropolis_weight)> random()){ //do the actual update
       //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
@@ -127,6 +120,9 @@ void InteractionExpansion::interaction_expansion_step(void)
       M.sanity_check(itime_vertices);
       simple_statistics_rem.rejected(nv_updated-1);
     }
+#ifndef NDEBUG
+    sanity_check();
+#endif
   }//end REMOVE
   weight=metropolis_weight;
   for(spin_t flavor=0; flavor<n_flavors; ++flavor) {

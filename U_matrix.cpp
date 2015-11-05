@@ -10,4 +10,3 @@ std::ostream &operator<<(std::ostream &os, const itime_vertex &v) {
   os << " time= " << v.time();
   return os;
 }
-

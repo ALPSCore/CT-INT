@@ -24,13 +24,13 @@ template<typename T> T myconj(T val);
 double permutation(size_t N, size_t k);
 
 template<class R>
-std::vector<size_t> pickup_a_few_numbers(size_t N, size_t n, R& random01) {
-    std::vector<size_t> flag(N,0), list(n);
+std::vector<int> pickup_a_few_numbers(int N, int n, R& random01) {
+    std::vector<int> flag(N,0), list(n);
 
-    for (size_t i=0; i<n; ++i) {
-        size_t itmp = 0;
+    for (int i=0; i<n; ++i) {
+        int itmp = 0;
         while(true) {
-            itmp = static_cast<size_t>(random01()*N);
+            itmp = static_cast<int>(random01()*N);
             if (flag[itmp]==0) {
                 break;
             }
@@ -44,7 +44,7 @@ std::vector<size_t> pickup_a_few_numbers(size_t N, size_t n, R& random01) {
 
 //very crapy way to remove elements at given positions from a std::vector
 template<class T>
-void remove_elements_from_vector(std::vector<T>& vec, std::vector<size_t> elements_to_be_removed) {
+void remove_elements_from_vector(std::vector<T>& vec, std::vector<int> elements_to_be_removed) {
     size_t ipos = 0;
     for(typename std::vector<T>::iterator it = vec.begin(); it != vec.end();) {
         if(std::find(elements_to_be_removed.begin(), elements_to_be_removed.end(), ipos)!=elements_to_be_removed.end()) {
