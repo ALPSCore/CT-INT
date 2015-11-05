@@ -212,4 +212,16 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
       vertex_histograms[flavor]->clear();
   }
 
+  measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
+  measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
+  statistics_ins.reset();
+  statistics_rem.reset();
+
+  for (int iv=0; iv<n_multi_vertex_update; ++iv){
+    measurements["VertexInsertion_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_ins.get_result(iv);
+    measurements["VertexRemoval_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_rem.get_result(iv);
+  }
+  simple_statistics_ins.reset();
+  simple_statistics_rem.reset();
+
 }

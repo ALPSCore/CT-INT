@@ -39,7 +39,8 @@ void InteractionExpansion::interaction_expansion_step(void)
   static fastupdate_add_helper add_helper(n_flavors);
   static fastupdate_remove_helper remove_helper(n_flavors);
 
-  size_t nv_updated = (size_t) (random()*n_multi_vertex_update)+1;
+  //int nv_updated = (size_t) (random()*n_multi_vertex_update)+1;
+  const int nv_updated = update_prop.gen_Nv(boost_random);
 
 //#ifndef NDEBUG
   /***** VERY EXPENSIVE TEST *****/
@@ -49,7 +50,6 @@ void InteractionExpansion::interaction_expansion_step(void)
   const int pert_order= itime_vertices.size();   //current order of perturbation series
   double metropolis_weight=0.;
   double det_rat=0;
-  //static unsigned int i=0; ++i;
   if(random()<0.5){  //trying to ADD vertex
     M.sanity_check(itime_vertices);
     if(itime_vertices.size()>=max_order)
@@ -59,9 +59,15 @@ void InteractionExpansion::interaction_expansion_step(void)
       simple_statistics_ins.not_valid_state(nv_updated-1);
       return;
     }
-    if (!is_irreducible(new_vertices)) {
-      simple_statistics_ins.reducible(nv_updated-1);
-      return;
+    if (is_irreducible(new_vertices)) {
+      update_prop.generated_irreducible_update(nv_updated);
+    } else {
+      update_prop.generated_reducible_update(nv_updated);
+      if(update_prop.accept_reducible_update(nv_updated,boost_random)) {
+        simple_statistics_ins.reducible(nv_updated - 1);
+      } else {
+        return;
+      }
     }
 
     boost::tie(metropolis_weight,det_rat)=try_add(add_helper,nv_updated, new_vertices);
@@ -97,9 +103,15 @@ void InteractionExpansion::interaction_expansion_step(void)
       simple_statistics_rem.not_valid_state(nv_updated-1);
       return;
     }
-    if (!is_irreducible(vertices_to_be_removed)) {
-      simple_statistics_rem.reducible(nv_updated - 1);
-      return;
+    if (is_irreducible(vertices_to_be_removed)) {
+      update_prop.generated_irreducible_update(nv_updated);
+    } else {
+      update_prop.generated_reducible_update(nv_updated);
+      if(update_prop.accept_reducible_update(nv_updated,boost_random)) {
+        simple_statistics_rem.reducible(nv_updated - 1);
+      } else {
+        return;
+      }
     }
 
     boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet

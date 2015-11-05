@@ -35,6 +35,8 @@
 #include <boost/multi_array.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/random.hpp>
+#include <boost/random/discrete_distribution.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
@@ -350,9 +352,10 @@ public:
 
   InteractionExpansion(const alps::params& p, int rank);
   ~InteractionExpansion() {}
-  bool is_thermalized() const {return true;} //thermalization is done in the constructor. It's not a big deal here.
+  bool is_thermalized() const {return step>therm_steps;}
   void update();
   void measure();
+  void prepare_for_measurement(); //called once after thermalization is done
   double fraction_completed() const;
 
   //type of G(tau) This should be std::complex when G(tau) has imaginary parts. At some point, this will be templatized.
@@ -436,7 +439,10 @@ protected:
   /*InteractionExpansion's roundoff threshold*/
   const double almost_zero;                        
   /*PRNG seed*/
-  const int seed;                                
+  const int seed;
+  bool is_thermalized_in_previous_step_;
+  //boost random-number generator with flexible distribution
+  boost::random::mt19937 boost_random;
   
   /*private member variables*/
   matsubara_green_function_t green_matsubara;
@@ -471,6 +477,11 @@ protected:
 
   //only acceptance rate
   simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
+
+  //just for test
+  //std::vector<double> proposal_prob, acc_rate_reducible_update;
+  //boost::random::discrete_distribution<> dist_prop;
+  update_proposer update_prop;
 
   LegendreTransformer legendre_transformer;
 };

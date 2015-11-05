@@ -7,6 +7,83 @@
 #import <cassert>
 #import <math.h>
 
+#include <boost/random.hpp>
+#include <boost/random/uniform_01.hpp>
+#include <boost/random/discrete_distribution.hpp>
+
+class update_proposer {
+public:
+    update_proposer() : mode_(0) {};
+
+    update_proposer(int Nv, std::vector<double>& proposal_rate_Nv) :
+            Nv_(Nv),mode_(0), proposal_rate_Nv_(proposal_rate_Nv), hist_irr_(Nv, 1.0), hist_reducible_(Nv, 1.0), dist01_(),
+            dist_(proposal_rate_Nv.begin(), proposal_rate_Nv.end()), acc_rate_reducible_(Nv,1.0), target_fraction_reducible_(1.0)
+    {
+        std::fill(acc_rate_reducible_.begin()+1, acc_rate_reducible_.end(), 0.1);
+    }
+
+    void generated_irreducible_update(int num_vertices) {
+        if (mode_!=0) {
+            return;
+        }
+        hist_irr_[num_vertices-1] += 1.0;
+    }
+
+    void generated_reducible_update(int num_vertices) {
+        if (mode_!=0) {
+            return;
+        }
+        hist_reducible_[num_vertices-1] += 1.0;
+    }
+
+
+    void finish_learning() {
+        if (mode_!=0) {
+            throw std::logic_error("No more need for learning!");
+        }
+        mode_ == 1;
+
+        acc_rate_reducible_[0] = 1;
+        for (int i=1; i<Nv_; ++i) {
+            acc_rate_reducible_[i] = target_fraction_reducible_*(hist_irr_[i]/hist_reducible_[i]);
+        }
+
+        std::cout << " Summary of irreducible and reducible updates proposed in thermalization steps" << std::endl;
+        std::cout << " Number of updates proposed (# of vertices, reducible updates, irreducible updates" << std::endl;
+        for (int i=0; i<Nv_; ++i) {
+            std::cout << "  " << i+1 << " : " << hist_reducible_[i] <<  " " << hist_irr_[i] << std::endl;
+        }
+
+        for (int i=1; i<Nv_; ++i) {
+            proposal_rate_Nv_[i] *= (proposal_rate_Nv_[i]/proposal_rate_Nv_[0])/(hist_irr_[i]/hist_irr_[0]);
+        }
+        dist_ = boost::random::discrete_distribution<>(proposal_rate_Nv_.begin(), proposal_rate_Nv_.end());
+    }
+
+    int gen_Nv(boost::random::mt19937& random_gen) {
+        int Nv =  dist_(random_gen)+1;
+        return Nv;
+    }
+
+    bool accept_reducible_update(int num_vertices, boost::random::mt19937& random_gen) {
+        assert(num_vertices>=1 && num_vertices<=Nv_);
+        //if (num_vertices==1) {
+            //return true;
+        //} else {
+            ////return (dist01_(random_gen)<0.00000000001);
+        //}
+        return (dist01_(random_gen)<=acc_rate_reducible_[num_vertices-1]);
+    }
+
+private:
+    int Nv_;
+    int mode_;//0 is learning, 1 is learned
+    double target_fraction_reducible_;
+    std::vector<double> hist_irr_, hist_reducible_, proposal_rate_Nv_, acc_rate_reducible_;
+    boost::random::uniform_01<> dist01_;
+    boost::random::discrete_distribution<> dist_;
+};
+
 class simple_update_statistcs {
 public:
     simple_update_statistcs(int Nv) : counter_(), Nv_(Nv) {

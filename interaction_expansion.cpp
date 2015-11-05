@@ -71,6 +71,7 @@ measurement_period(parms["MEASUREMENT_PERIOD"] | 500*n_flavors*n_site),
 convergence_check_period(parms["CONVERGENCE_CHECK_PERIOD"] | (int)recalc_period),
 almost_zero(parms["ALMOSTZERO"] | 1.e-16),
 seed(parms["SEED"] | 0),
+boost_random(seed),
 green_matsubara(n_matsubara, n_site, n_flavors),
 bare_green_matsubara(n_matsubara,n_site, n_flavors), 
 bare_green_itime(n_tau+1, n_site, n_flavors),
@@ -81,7 +82,8 @@ n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
 statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
 statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
 simple_statistics_ins(n_multi_vertex_update),
-simple_statistics_rem(n_multi_vertex_update)
+simple_statistics_rem(n_multi_vertex_update),
+is_thermalized_in_previous_step_(false)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -113,6 +115,19 @@ simple_statistics_rem(n_multi_vertex_update)
     reducible_vertices[iv] = std::abs(quantum_number_vertices[iv]).sum()==0 ? true : false;
   }
 
+  //set up parameters for updates
+  std::vector<double> proposal_prob(n_multi_vertex_update, 1.0);
+  //std::fill(proposal_prob.begin(), proposal_prob.end(), 1);
+  //proposal_prob[1] = 1000;
+  update_prop = update_proposer(n_multi_vertex_update, proposal_prob);
+  //acc_rate_reducible_update.resize(n_multi_vertex_update);
+  //acc_rate_reducible_update[0] = 1;
+  //for (int i=1; i<n_multi_vertex_update; ++i) {
+    //acc_rate_reducible_update[i] = 0.05;
+  //}
+  //dist_prop = boost::random::discrete_distribution<>(proposal_prob.begin(), proposal_prob.end());
+
+
   //FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr);
   //fourier_ptr->backward_ft(bare_green_itime, bare_green_matsubara);
 
@@ -135,6 +150,12 @@ void InteractionExpansion::update()
 {
   boost::timer::cpu_timer timer;
   //std::cout << "step " << step << std::endl;
+  //std::cout << "thermalized " << is_thermalized() << " " << is_thermalized_in_previous_step_ << std::endl;
+  if (!is_thermalized_in_previous_step_ && is_thermalized()) {
+    prepare_for_measurement();
+  }
+  is_thermalized_in_previous_step_ = is_thermalized();
+
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     interaction_expansion_step();
@@ -150,20 +171,6 @@ void InteractionExpansion::update()
     }
   }
   measurements["UpdateTimeMsec"] << timer.elapsed().wall*1E-6;
-
-  measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
-  measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
-  statistics_ins.reset();
-  statistics_rem.reset();
-
-  {
-    for (int iv=0; iv<n_multi_vertex_update; ++iv){
-      measurements["VertexInsertion_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_ins.get_result(iv);
-      measurements["VertexRemoval_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_rem.get_result(iv);
-    }
-    simple_statistics_ins.reset();
-    simple_statistics_rem.reset();
-  }
 }
 
 void InteractionExpansion::measure(){
@@ -320,3 +327,9 @@ void c_or_cdagger::initialize_simulation(const alps::params &p)
   }
 }
 
+void InteractionExpansion::prepare_for_measurement()
+{
+  update_prop.finish_learning();
+  simple_statistics_ins.reset();
+  simple_statistics_rem.reset();
+}
