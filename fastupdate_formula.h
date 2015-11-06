@@ -8,7 +8,7 @@
 #include <alps/numeric/matrix.hpp>
 #include <alps/numeric/matrix/algorithms.hpp>
 
-//Implementing Appendix B.1.1 of Luitz's thesis
+//Implementing equations in Appendix B.1.1 of Luitz's thesis
 template<class T>
 T
 compute_det_ratio_up(
@@ -266,4 +266,52 @@ compute_inverse_matrix_down(
         return determinant(H);
     }
 }
+
+//Implementing
+template<class T>
+T
+compute_det_ratio_replace_row(const alps::numeric::matrix<T>& M, const alps::numeric::matrix<T> Dr, int m) {
+    assert(num_cols(M)==num_rows(M));
+    assert(num_rows(Dr)==1);
+    assert(num_cols(Dr)==num_rows(M));
+    const int N = num_cols(M);
+
+    T lambda = 0;
+    for (int i=0; i<N; ++i) {
+        lambda += Dr(0,i)*M(i,m);
+    }
+    return lambda;
+}
+
+template<class T>
+T
+compute_imverse_matrix_replace_row(alps::numeric::matrix<T>& M, const alps::numeric::matrix<T> Dr, int m) {
+    assert(num_cols(M) == num_rows(M));
+    assert(num_rows(Dr) == 1);
+    assert(num_cols(Dr) == num_rows(M));
+    const int N = num_cols(M);
+
+    T lambda = 0;
+    for (int i=0; i<N; ++i) {
+        lambda += Dr(0,i)*M(i,m);
+    }
+    const T inv_lambda = 1/lambda;
+
+    alps::numeric::matrix<T> R(1,N,0);
+    gemm(Dr,M,R);
+    R *= -inv_lambda;
+    R(0,m) = -1;
+
+    alps::numeric::matrix<T> new_M(N,N);
+    for (int j=0; j<N; ++j) {
+        for (int i=0; i<N; ++i) {
+            new_M(i,j) = M(i,m)*R(0,j)-M(i,j)*R(0,m);
+        }
+    }
+    for (int i=0; i<N; ++i) {
+        new_M(i,m) += M(i,m)*inv_lambda;
+    }
+    std::swap(M, new_M);
+}
+
 #endif //IMPSOLVER_FASTUPDATE_FORMULA_H

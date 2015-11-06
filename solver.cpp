@@ -55,7 +55,7 @@ void InteractionExpansion::interaction_expansion_step(void)
     if(itime_vertices.size()>=max_order)
       return; //we have already reached the highest perturbation order
     if (nv_updated>=2) {
-      add_helper.op = non_density_type_in_window(0,
+      add_helper.op = non_density_type_in_window(beta*random(),
                                                  std::min(beta,window_dist(boost_random)),
                                                  beta);
     }
@@ -92,7 +92,7 @@ void InteractionExpansion::interaction_expansion_step(void)
       return;
     }
     if (nv_updated>=2) {
-      remove_helper.op = non_density_type_in_window(0,
+      remove_helper.op = non_density_type_in_window(beta*random(),
               std::min(beta,window_dist(boost_random)),
               beta);
     }

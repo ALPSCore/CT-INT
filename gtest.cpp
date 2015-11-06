@@ -150,6 +150,31 @@ TEST(FastUpdate, BlockMatrixRemove)
     }
 }
 
+TEST(FastUpdate, ReplaceRow) {
+    typedef double T;
+    const int N = 100;
+    const int m = 41;
+    alps::numeric::matrix<T> D(N, N), new_D(N,N), M(N, N), new_M, new_M_fastu, Dr(1,N);
+
+    randomize_matrix(D, 100);//100 is a seed
+    M = inverse(D);
+
+    randomize_matrix(Dr, 200);
+    new_D = D;
+    for (int i=0; i<N; ++i) {
+        new_D(m,i) = Dr(0,i);
+    }
+    new_M = inverse(new_D);
+
+    double det_rat = determinant(new_D)/determinant(D);
+    double det_rat_fastu = compute_det_ratio_replace_row(M,Dr,m);
+    ASSERT_TRUE(std::abs(det_rat/det_rat_fastu-1)<1E-8);
+
+    new_M_fastu = M;
+    compute_imverse_matrix_replace_row(new_M_fastu,Dr,m);
+    ASSERT_TRUE(alps::numeric::norm_square(new_M-new_M_fastu)<1E-8);
+}
+
 TEST(Boost, Binomial) {
     const size_t k = 2;
     for (size_t N=k; N<10; ++N) {
