@@ -54,13 +54,15 @@ void InteractionExpansion::interaction_expansion_step(void)
     M.sanity_check(itime_vertices);
     if(itime_vertices.size()>=max_order)
       return; //we have already reached the highest perturbation order
+    if (nv_updated>=2) {
+      add_helper.op = non_density_type_in_window(0,
+                                                 std::min(beta,window_dist(boost_random)),
+                                                 beta);
+    }
     std::vector<itime_vertex> new_vertices = nv_updated==1 ?
                                              generate_itime_vertices(Uijkl,random,beta,nv_updated,all_type()) :
-                                             generate_itime_vertices(Uijkl,random,beta,nv_updated,non_density_type());
+                                             generate_itime_vertices(Uijkl,random,beta,nv_updated,add_helper.op);
     assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
-    //if (nv_updated==1) {
-      //std::cout << " debug " << new_vertices.size() << std::endl;
-    //}
     if (new_vertices.size()==0 || !is_quantum_number_conserved(new_vertices)) {
       simple_statistics_ins.not_valid_state(nv_updated-1);
       return;
@@ -76,7 +78,6 @@ void InteractionExpansion::interaction_expansion_step(void)
       M.sanity_check(itime_vertices);
       assert(is_quantum_number_conserved(new_vertices));
       simple_statistics_ins.accepted(nv_updated-1);
-      //std::cout << "accepted " << nv_updated << std::endl;
     }else{
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
@@ -90,11 +91,16 @@ void InteractionExpansion::interaction_expansion_step(void)
     if(pert_order < nv_updated) {
       return;
     }
+    if (nv_updated>=2) {
+      remove_helper.op = non_density_type_in_window(0,
+              std::min(beta,window_dist(boost_random)),
+              beta);
+    }
 
     //choose vertices to be removed
     const std::vector<int>& vertices_nr = nv_updated==1 ?
         pick_up_itime_vertices(itime_vertices, random, nv_updated, all_type()) :
-        pick_up_itime_vertices(itime_vertices, random, nv_updated, non_density_type());
+        pick_up_itime_vertices(itime_vertices, random, nv_updated, remove_helper.op);
     if (vertices_nr.size()==0)
       return;
     std::vector<itime_vertex> vertices_to_be_removed(nv_updated);//ugly copy
@@ -107,7 +113,10 @@ void InteractionExpansion::interaction_expansion_step(void)
     }
 
     boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
-    statistics_rem.add_sample(compute_spread(vertices_to_be_removed,beta), std::min(fabs(metropolis_weight),1.0), nv_updated-2);
+    if (nv_updated>=2) {
+      statistics_rem.add_sample(compute_spread(vertices_to_be_removed, beta), std::min(fabs(metropolis_weight), 1.0),
+                                nv_updated - 2);
+    }
     if(fabs(metropolis_weight)> random()){ //do the actual update
       //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);

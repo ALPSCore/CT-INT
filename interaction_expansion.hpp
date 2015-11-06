@@ -37,6 +37,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/random.hpp>
 #include <boost/random/discrete_distribution.hpp>
+#include <boost/random/exponential_distribution.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
@@ -81,6 +82,7 @@ typedef struct fastupdate_add_helper {
 
   std::vector<std::size_t> num_new_rows;
   double det_rat_;
+  non_density_type_in_window op;
 } fastupdate_add_helper;
 
 typedef struct fastupdate_remove_helper {
@@ -100,6 +102,7 @@ typedef struct fastupdate_remove_helper {
       }
     }
     double det_rat_;
+    non_density_type_in_window op;
 } fastupdate_remove_helper;
 
 
@@ -455,6 +458,9 @@ protected:
   std::vector<itime_vertex> itime_vertices;
   big_inverse_m_matrix M;
 
+  //for window update
+  double window_width;
+  boost::random::exponential_distribution<> window_dist;
 
   double weight;
   double sign;

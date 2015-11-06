@@ -83,7 +83,9 @@ statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_upd
 statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
 simple_statistics_ins(n_multi_vertex_update),
 simple_statistics_rem(n_multi_vertex_update),
-is_thermalized_in_previous_step_(false)
+is_thermalized_in_previous_step_(false),
+window_width(parms.defined("WINDOW_WIDTH") ? beta*static_cast<double>(parms["WINDOW_WIDTH"]) : 0.1*beta),
+window_dist(boost::random::exponential_distribution<>(1/window_width))
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -127,6 +129,9 @@ is_thermalized_in_previous_step_(false)
   //for (int i=1; i<n_multi_vertex_update; ++i) {
     //acc_rate_reducible_update[i] = 0.05;
   //}
+
+  //if parms.defined("WINDOW_WIDTH")
+  //window_width =
   //dist_prop = boost::random::discrete_distribution<>(proposal_prob.begin(), proposal_prob.end());
 
 

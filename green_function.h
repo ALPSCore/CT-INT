@@ -421,9 +421,9 @@ make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_defin
     }
     make_groups(n_site, connected, groups[flavor], group_map[flavor]);
     num_groups[flavor] = groups[flavor].size();
-    std::cout << "flavor " << std::endl;
-    std::cout << "num groups  " << num_groups[flavor] << std::endl;
-    print_group(groups[flavor]);
+    //std::cout << "flavor " << std::endl;
+    //std::cout << "num groups  " << num_groups[flavor] << std::endl;
+    //print_group(groups[flavor]);
 #ifndef NDEF
     //std::cout << "flavor " << std::endl;
     //std::cout << "num groups  " << num_groups[flavor] << std::endl;

@@ -45,6 +45,7 @@ typedef size_t af_t;
 class itime_vertex;
 class all_type;
 class non_density_type;
+class non_density_type_in_window;
 
 template<class T>
 class vertex_definition
@@ -192,25 +193,31 @@ class general_U_matrix {
     }
 
     const std::vector<vertex_definition<T> >& get_vertices(non_density_type& pred) const {
-      //std::cout << " num non density_type " << non_density_vertices.size() << std::endl;
       return non_density_vertices;
     }
 
-    int num_non_density_vertices() const {
-      return non_density_vertices.size();
+    const std::vector<vertex_definition<T> >& get_vertices(non_density_type_in_window& pred) const {
+        return non_density_vertices;
     }
 
     int num_vertex_type(all_type& pred) const {
       return n_vertex_type();
     }
 
+    int num_vertex_type(non_density_type& pred) const {
+        return non_density_vertices.size();
+    }
+
+    int num_vertex_type(non_density_type_in_window& pred) const {
+        return non_density_vertices.size();
+    }
+
     //int num_vertex_type(non_density_type& pred) {
       //return non_density_vertices.size();
     //}
-
-    const std::vector<bool>& get_is_denisty_type() const {
-      return is_density_type;
-    }
+    //const std::vector<bool>& get_is_denisty_type() const {
+      //return is_density_type;
+    //}
 
   private:
     unsigned int ns_, nf_, num_nonzero_;
@@ -281,11 +288,65 @@ public:
 class non_density_type : public std::unary_function<itime_vertex,bool> {
 public:
     bool operator()(itime_vertex v) {return !v.is_density_type();}
+
+    double random_time(double random01, double beta) {
+        assert(random01>=0 && random01<=1);
+        return random01*beta;
+    }
+};
+
+class non_density_type_in_window : public std::unary_function<itime_vertex,bool> {
+public:
+    non_density_type_in_window() : ts_(0), w_(0), t_small1_(0), t_small2_(0), t_large1_(1E+100), t_large2_(1E+100) {}
+
+    non_density_type_in_window(double ts, double w, double beta) : ts_(ts), w_(w), beta_(beta) {
+        assert(w<=beta);
+        if (ts+w<=beta) {
+            t_small1_ = t_small2_= ts;
+            t_large1_ = t_large2_ = ts+w;
+        } else {
+            t_small1_ = ts;
+            t_large1_ = beta;
+            t_small2_ = 0.0;
+            t_large2_ = w+ts-beta;
+        }
+        //std::cout << "t_s1,t_l1" << t_small1_ << " " << t_large1_ << std::endl;
+        //std::cout << "t_s2,t_l2" << t_small2_ << " " << t_large2_ << std::endl;
+    }
+
+    bool operator()(itime_vertex v) {
+        const double t = v.time();
+        return !v.is_density_type() && ((t_small1_<=t && t<=t_large1_) || (t_small2_<=t && t<=t_large2_));
+    }
+
+    double random_time(double random01, double beta) {
+        assert(random01>=0 && random01<=1);
+        assert(beta_==beta);
+        assert(w_>0);
+        double t = random01*w_+ts_;
+        if (t>beta_) t -= beta_;
+        return t;
+    }
+
+    double width() {
+        assert(w_>0);
+        return w_;
+    }
+
+private:
+    double ts_, w_, beta_;
+    double t_small1_, t_large1_;
+    double t_small2_, t_large2_;
 };
 
 class all_type : public std::unary_function<itime_vertex,bool> {
 public:
     bool operator()(itime_vertex v) {return true;}
+
+    double random_time(double random01, double beta) {
+        assert(random01>=0 && random01<=1);
+        return random01*beta;
+    }
 };
 
 template<class T, class R, class UnaryPredicate>
@@ -293,15 +354,13 @@ std::vector<itime_vertex> generate_itime_vertices(const general_U_matrix<T>& Uij
   std::vector<itime_vertex> itime_vertices;
   itime_vertices.reserve(n_vertices_add);
 
-  //std::cout << " debug n_add" << n_vertices_add << std::endl;
   const std::vector<vertex_definition<T> >& valid_vs = Uijkl.get_vertices(pred);
-  //std::cout << " debug n_add(2)" << valid_vs.size() << std::endl;
   const int n_valid_vs = valid_vs.size();
   if (n_valid_vs==0)
     return std::vector<itime_vertex>();
 
   for (int iv=0; iv<n_vertices_add; ++iv) {
-    const double time = beta * random01();
+    const double time = pred.random_time(random01(), beta);
     const int iv_rnd = static_cast<int>(random01()*n_valid_vs);
     const int v_type = valid_vs[iv_rnd].id();
     const int rank = valid_vs[iv_rnd].rank();
