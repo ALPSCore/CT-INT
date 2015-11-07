@@ -103,7 +103,7 @@ void InteractionExpansion::interaction_expansion_step(void)
         pick_up_itime_vertices(itime_vertices, random, nv_updated, remove_helper.op);
     if (vertices_nr.size()==0)
       return;
-    std::vector<itime_vertex> vertices_to_be_removed(nv_updated);//ugly copy
+    std::vector<itime_vertex> vertices_to_be_removed(nv_updated);
     for (int iv=0; iv<nv_updated; ++iv) {
       vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
     }

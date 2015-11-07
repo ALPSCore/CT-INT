@@ -239,11 +239,11 @@ compute_inverse_matrix_down(
 
     swap_list.resize(M);
     for (size_t i=0; i<M; ++i) {
-        if(rows_cols_removed[M-1-i]!=NpM-1-i) {
-            invBigMat.swap_cols(rows_cols_removed[M-1-i], NpM-1-i);
-            invBigMat.swap_rows(rows_cols_removed[M-1-i], NpM-1-i);
-            swap_list[i] = std::pair<size_t,size_t>(rows_cols_removed[M-1-i], NpM-1-i);
-        }
+        //if(rows_cols_removed[M-1-i]!=NpM-1-i) {
+        invBigMat.swap_cols(rows_cols_removed[M-1-i], NpM-1-i);
+        invBigMat.swap_rows(rows_cols_removed[M-1-i], NpM-1-i);
+        swap_list[i] = std::pair<size_t,size_t>(rows_cols_removed[M-1-i], NpM-1-i);
+        //}
     }
 
     if (N==0) {
@@ -314,4 +314,141 @@ compute_imverse_matrix_replace_row(alps::numeric::matrix<T>& M, const alps::nume
     std::swap(M, new_M);
 }
 
+template<class T>
+void
+replace_rows_cols(alps::numeric::matrix<T>& A,
+                  const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
+                  const std::vector<int>& rows_cols) {
+    using namespace alps::numeric;
+    typedef matrix<T> matrix_t;
+
+    const int NpM = num_cols(A);
+    const int M = rows_cols.size();
+    const int N = NpM-M;
+
+    std::vector<std::pair<int,int> > swap_list(M);
+    for (int i=0; i<M; ++i) {
+        A.swap_cols(rows_cols[M-1-i], NpM-1-i);
+        A.swap_rows(rows_cols[M-1-i], NpM-1-i);
+        swap_list[i] = std::pair<int,int>(rows_cols[M-1-i], NpM-1-i);
+    }
+
+    copy_block(Q, 0, 0, A, 0, N, N, M);
+    copy_block(R, 0, 0, A, N, 0, M, N);
+    copy_block(S, 0, 0, A, N, N, M, M);
+
+    for(std::vector<std::pair<int,int> >::reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
+        A.swap_cols(it->first, it->second);
+        A.swap_rows(it->first, it->second);
+    }
+}
+
+//Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26).
+//T = double or complex<double>
+template<class T>
+T
+compute_det_ratio_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
+                               const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
+                               const std::vector<int>& rows_cols, std::vector<std::pair<int,int> >& swap_list, alps::numeric::matrix<T>& Mmat, alps::numeric::matrix<T>& inv_tSp) {
+    using namespace alps::numeric;
+    typedef matrix<T> matrix_t;
+
+    const int NpM = num_cols(invBigMat);
+    const int M = rows_cols.size();
+    const int N = NpM-M;
+    assert(N>0);
+
+    assert(num_cols(invBigMat)==num_rows(invBigMat));
+    assert(num_rows(R)==M && num_cols(R)==N);
+    assert(num_rows(Q)==N && num_cols(Q)==M);
+    assert(num_rows(S)==M && num_cols(S)==M);
+
+    //moves rows and cols to the end
+    swap_list.resize(M);
+    //std::cout << "invBigMat " << invBigMat << std::endl;
+    for (int i=0; i<M; ++i) {
+        //std::cout << "debug_swap " << rows_cols[M-1-i] << " " << NpM-1-i << std::endl;
+        invBigMat.swap_cols(rows_cols[M-1-i], NpM-1-i);
+        invBigMat.swap_rows(rows_cols[M-1-i], NpM-1-i);
+        swap_list[i] = std::pair<int,int>(rows_cols[M-1-i], NpM-1-i);
+    }
+    //std::cout << "invBigMat (after)" << invBigMat << std::endl;
+
+    matrix_t tP(N, N), tQ(N, M), tR(M, N), tS(M, M), invtS_tR(M,N,0.), tQ_invtS_tR(N,N,0.);
+
+    copy_block(invBigMat, 0, 0, tP, 0, 0, N, N);
+    copy_block(invBigMat, 0, N, tQ, 0, 0, N, M);
+    copy_block(invBigMat, N, 0, tR, 0, 0, M, N);
+    copy_block(invBigMat, N, N, tS, 0, 0, M, M);
+
+    gemm(inverse(tS), tR, invtS_tR);
+    gemm(tQ, invtS_tR, tQ_invtS_tR);
+    Mmat = tP-tQ_invtS_tR;
+
+    matrix_t MQ(N,M,0.), RMQ(M,M,0.);//, inv_tSp(M,M);
+    gemm(Mmat, Q, MQ);
+    gemm(R, MQ, RMQ);
+    inv_tSp = S-RMQ;
+    return determinant(tS)*determinant(inv_tSp);
+}
+
+template<class T>
+T
+compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
+                                    const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
+                                    const std::vector<int>& rows_cols, const std::vector<std::pair<int,int> >& swap_list, const alps::numeric::matrix<T>& Mmat, const alps::numeric::matrix<T>& inv_tSp,
+                                    alps::numeric::matrix<T>& tPp, alps::numeric::matrix<T>& tQp, alps::numeric::matrix<T>& tRp, alps::numeric::matrix<T>& tSp) {
+    using namespace alps::numeric;
+    typedef matrix<T> matrix_t;
+
+    const int NpM = num_cols(invBigMat);
+    const int M = rows_cols.size();
+    const int N = NpM-M;
+
+    assert(N>0);
+    assert(num_cols(invBigMat)==num_rows(invBigMat));
+    assert(num_rows(R)==M && num_cols(R)==N);
+    assert(num_rows(Q)==N && num_cols(Q)==M);
+    assert(num_rows(S)==M && num_cols(S)==M);
+
+    matrix_t tmp_NM(N,M,0.), tmp_MN(M,N,0.);
+    tPp.resize(N,N);
+    tQp.resize(N,M);
+    tRp.resize(M,N);
+    //tSp.resize(M,M);
+
+    //tSp
+    tSp = inverse(inv_tSp);
+
+    //tQp
+    gemm(Q,tSp,tmp_NM);
+    std::fill(tQp.get_values().begin(), tQp.get_values().end(), 0.0);
+    gemm(Mmat,tmp_NM,tQp);
+    tQp *= -1;
+
+    //tRp
+    gemm(tSp,R,tmp_MN);
+    std::fill(tRp.get_values().begin(), tRp.get_values().end(), 0.0);
+    gemm(tmp_MN,Mmat,tRp);
+    tRp *= -1;
+
+    //tPp
+    std::fill(tPp.get_values().begin(), tPp.get_values().end(), 0.0);
+    std::fill(tmp_NM.get_values().begin(), tmp_NM.get_values().end(), 0.0);
+    gemm(Mmat, Q, tmp_NM);
+    gemm(tmp_NM, tRp, tPp);
+    tPp = Mmat-tPp;
+
+    //write back
+    copy_block(tPp, 0, 0, invBigMat, 0, 0, N, N);
+    copy_block(tQp, 0, 0, invBigMat, 0, N, N, M);
+    copy_block(tRp, 0, 0, invBigMat, N, 0, M, N);
+    copy_block(tSp, 0, 0, invBigMat, N, N, M, M);
+
+    //swap rows and cols
+    for (std::vector<std::pair<int,int> >::const_reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
+        invBigMat.swap_cols(it->first, it->second);
+        invBigMat.swap_rows(it->first, it->second);
+    }
+}
 #endif //IMPSOLVER_FASTUPDATE_FORMULA_H
