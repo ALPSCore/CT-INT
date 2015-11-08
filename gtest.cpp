@@ -202,19 +202,15 @@ TEST(FastUpdate, BlockMatrixReplaceRowsCols) {
             rows_replaced.resize(M);
             std::sort(rows_replaced.begin(), rows_replaced.end());
 
-            //for (int i=0; i<M; ++i)
-                //std::cout << "i " << rows_replaced[i] << std::endl;
-
-            //std::cout << "BigMatrix" << BigMatrix << std::endl;
+            swap_list.resize(M);
+            for (int i=0; i<M; ++i) {
+                swap_list[i] = std::pair<int,int>(rows_replaced[M-1-i], N+M-1-i);
+            }
 
             matrix_t R(M, N), S(M, M), Q(N, M);
             randomize_matrix(R, 110);//100 is a seed
             randomize_matrix(S, 210);//100 is a seed
             randomize_matrix(Q, 310);//100 is a seed
-
-            //std::cout << "R" << R << std::endl;
-            //std::cout << "Q" << Q << std::endl;
-            //std::cout << "S" << S << std::endl;
 
             matrix_t BigMatrixReplaced(BigMatrix);
             replace_rows_cols(BigMatrixReplaced, Q, R, S, rows_replaced);
@@ -224,8 +220,10 @@ TEST(FastUpdate, BlockMatrixReplaceRowsCols) {
             double det_rat = alps::numeric::determinant(BigMatrixReplaced)/determinant(BigMatrix);
 
             matrix_t invBigMatrix_fast(invBigMatrix), Mmat, inv_tSp, tPp, tQp, tRp, tSp;
-            double det_rat_fast = compute_det_ratio_replace_rows_cols(invBigMatrix_fast, Q, R, S, rows_replaced, swap_list, Mmat, inv_tSp);
-            compute_inverse_matrix_replace_rows_cols(invBigMatrix_fast, Q, R, S, rows_replaced, swap_list, Mmat, inv_tSp, tPp, tQp, tRp, tSp);
+            swap_cols_rows(invBigMatrix_fast, swap_list.begin(), swap_list.end());
+            double det_rat_fast = compute_det_ratio_replace_rows_cols(invBigMatrix_fast, Q, R, S, Mmat, inv_tSp);
+            compute_inverse_matrix_replace_rows_cols(invBigMatrix_fast, Q, R, S, Mmat, inv_tSp, tPp, tQp, tRp, tSp);
+            swap_cols_rows(invBigMatrix_fast, swap_list.rbegin(), swap_list.rend());
             //std::cout << "det= " << alps::numeric::determinant(BigMatrix)  << std::endl;
             //std::cout << "det_new = " << alps::numeric::determinant(BigMatrixReplaced)  << std::endl;
             //std::cout << "det_rat = " << det_rat << " " << det_rat_fast << std::endl;
@@ -314,4 +312,12 @@ TEST(UpdateStatistics, EstimateSpread) {
 
 TEST(TypeRange, Integer) {
     ASSERT_TRUE(std::numeric_limits<int>::max()>=2147483647);
+}
+
+TEST(Util, Mymod) {
+    const double tau = 1.0, beta = 15.0;
+    for (int i=-10; i<=10; ++i) {
+        double x = tau+beta*i;
+        ASSERT_TRUE(std::abs(mymod(x,beta)-tau)<1E-10);
+    }
 }

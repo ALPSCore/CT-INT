@@ -12,17 +12,17 @@
 * Application License; you can use, redistribute it and/or modify it under
 * the terms of the license, either version 1 or (at your option) any later
 * version.
-* 
+*
 * You should have received a copy of the ALPS Application License along with
 * the ALPS Applications; see the file LICENSE.txt. If not, the license is also
 * available from http://alps.comp-phys.org/.
 *
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-* FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT 
-* SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE 
-* FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, 
-* ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT
+* SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE
+* FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE,
+* ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
 *****************************************************************************/
@@ -33,11 +33,11 @@
 
 ///The basic updates for the InteractionExpansion algorithm: adding and removing vertices.
 ///This is the heart of InteractionExpansion's code.
-void InteractionExpansion::interaction_expansion_step(void)
+void InteractionExpansion::removal_insertion_update(void)
 {
   //temp work memory
-  static fastupdate_add_helper add_helper(n_flavors);
-  static fastupdate_remove_helper remove_helper(n_flavors);
+  //static fastupdate_add_helper add_helper(n_flavors);
+  //static fastupdate_remove_helper remove_helper(n_flavors);
 
   //int nv_updated = (size_t) (random()*n_multi_vertex_update)+1;
   const int nv_updated = update_prop.gen_Nv(boost_random);
@@ -137,6 +137,33 @@ void InteractionExpansion::interaction_expansion_step(void)
   for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
     vertex_histograms[flavor]->count(num_rows(M[flavor].matrix()));
   }
+}
+
+//Shift updates: shift a vertex.
+void InteractionExpansion::shift_update(void) {
+  const int pert_order= itime_vertices.size();
+  if (pert_order<=1)
+    return;
+
+  //choose a vertex
+  const int iv = static_cast<int>(pert_order*random());
+  const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, boost_random);
+  const double diff_time = std::abs(new_time-itime_vertices[iv].time());
+
+  double metropolis_weight = try_shift(iv, new_time);
+
+  statistics_shift.add_sample(std::min(diff_time,beta-diff_time), std::min(fabs(metropolis_weight),1.0), 0);
+  if(fabs(metropolis_weight)> random()){ //do the actual update
+    perform_shift(iv);
+    sign*=metropolis_weight<0?-1:1;
+    M.sanity_check(itime_vertices);
+  }else {
+    reject_shift(iv);
+    M.sanity_check(itime_vertices);
+  }
+#ifndef NDEBUG
+  sanity_check();
+#endif
 }
 
 ///Every now and then we have to recreate M from scratch to avoid roundoff

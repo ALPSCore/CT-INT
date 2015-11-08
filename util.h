@@ -89,4 +89,24 @@ namespace alps {
     }
 }
 
+//template<class T>
+//void swap_cols_rows(alps::numeric::matrix<T>& mat, const std::vector<std::pair<int,int> >& swap_list) {
+    //for (int i=0; i<swap_list.size(); ++i) {
+        //mat.swap_cols(swap_list[i].first, swap_list[i].second);
+        ////mat.swap_rows(swap_list[i].first, swap_list[i].second);
+    //}
+//}
+
+template<class T, class InputIterator>
+void swap_cols_rows(alps::numeric::matrix<T>& mat, InputIterator first, InputIterator end) {
+    for (InputIterator it=first; it!=end; ++it) {
+        //mat.swap_cols(swap_list[i].first, swap_list[i].second);
+        //mat.swap_rows(swap_list[i].first, swap_list[i].second);
+        mat.swap_cols(it->first, it->second);
+        mat.swap_rows(it->first, it->second);
+    }
+}
+
+double mymod(double x, double beta);
+
 #endif //IMPSOLVER_UTIL_H

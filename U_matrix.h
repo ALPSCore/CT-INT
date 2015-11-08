@@ -260,6 +260,7 @@ public:
   int type() const {return vertex_type_;}
   int rank() const {return rank_;}
   double time() const {return time_;}
+  void set_time(double new_time) {time_ = new_time;}
   bool is_density_type() const {return is_density_type_;}
 
 private:

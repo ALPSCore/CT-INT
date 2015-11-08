@@ -63,6 +63,7 @@
 /*types*/
 class c_or_cdagger;
 class vertex;
+class big_inverse_m_matrix;
 typedef class histogram simple_hist;
 typedef std::vector<vertex> vertex_array;
 
@@ -86,25 +87,76 @@ typedef struct fastupdate_add_helper {
 } fastupdate_add_helper;
 
 typedef struct fastupdate_remove_helper {
-    fastupdate_remove_helper(std::size_t num_flavors)
-      : rows_cols_removed(num_flavors), det_rat_(0) {};
+  fastupdate_remove_helper(std::size_t num_flavors)
+    : rows_cols_removed(num_flavors), det_rat_(0) {};
 
-    std::vector<std::vector<size_t> > rows_cols_removed;
+  std::vector<std::vector<size_t> > rows_cols_removed;
 
-    void sort_rows_cols() {
-      for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
-        std::sort(rows_cols_removed[flavor].begin(),rows_cols_removed[flavor].end());
-      }
+  void sort_rows_cols() {
+    for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
+      std::sort(rows_cols_removed[flavor].begin(),rows_cols_removed[flavor].end());
     }
-    void clear() {
-      for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
-        rows_cols_removed[flavor].resize(0);
-      }
+  }
+
+  void clear() {
+    for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
+      rows_cols_removed[flavor].resize(0);
     }
-    double det_rat_;
-    non_density_type_in_window op;
+  }
+  double det_rat_;
+  non_density_type_in_window op;
 } fastupdate_remove_helper;
 
+template<class T>
+class fastupdate_shift_helper {
+public:
+  typedef alps::numeric::matrix<T> matrix_t;
+
+  fastupdate_shift_helper(int num_flavors, double window_size) : num_flavors_(num_flavors), exp_dist_(1/window_size), int_dist_(0,1), swap_list(num_flavors), M_old(num_flavors), Mmat(num_flavors), inv_tSp(num_flavors),
+    num_rows_cols_updated(num_flavors), rows_cols_updated(num_flavors) {};
+
+  double new_itime(double old_time, double beta, boost::random::mt19937& random) {
+    int randint = 2*int_dist_(random)-1;
+    assert(randint==-1 || randint==1);
+    //std::cout << "debug " << exp_dist_(random) << std::endl;
+    double new_time = mymod(old_time + randint*exp_dist_(random), beta);
+    assert(new_time>=0 && new_time<=beta);
+    return new_time;
+  }
+
+  //compute number of rows and cols to be updated
+  template<class M_TYPE>
+  void find_rows_cols_set_time(int rank, int type, const std::vector<spin_t>& flavors, double time, double new_time, M_TYPE& M) {
+    for (spin_t flavor = 0; flavor < num_flavors_; ++flavor) {
+      rows_cols_updated[flavor].resize(0);
+      for (int i_rank=0; i_rank<rank; ++i_rank) {
+        if (flavors[i_rank] == flavor) {
+          int idx = M[flavor].find_row_col(time, type, i_rank);
+          //rows_cols_updated[flavor].push_back(M[flavor].find_row_col(time, type, i_rank));
+          rows_cols_updated[flavor].push_back(idx);
+          M[flavor].creators()[idx].set_time(new_time);
+          M[flavor].annihilators()[idx].set_time(new_time);
+        }
+      }
+      num_rows_cols_updated[flavor] = rows_cols_updated[flavor].size();
+    }
+  }
+
+  //work space
+  T det_rat;
+  int num_flavors_;
+  std::vector<int> num_rows_cols_updated;
+  std::vector<std::vector<int> > rows_cols_updated;
+  double old_time;
+  std::vector<std::vector<std::pair<int,int> > > swap_list;
+  std::vector<matrix_t> M_old, Mmat, inv_tSp;
+  matrix_t tPp, tQp, tRp, tSp;
+
+private:
+  boost::random::exponential_distribution<> exp_dist_;
+  boost::random::uniform_smallint<> int_dist_;
+
+};
 
 class histogram
 {
@@ -248,6 +300,9 @@ public:
   const std::vector<double> &alpha() const{ return alpha_;}
   std::vector<std::pair<vertex_t,size_t> > &vertex_info(){ return vertex_info_;}
   const std::vector<std::pair<vertex_t,size_t> > &vertex_info() const{ return vertex_info_;}
+  //int find_row_col(const itime_vertex& vertex, size_t i_rank) const {
+    //return find_row_col(vertex.time(), vertex.type(), i_)
+  //}
   int find_row_col(double time, vertex_t type, size_t i_rank) const {
     for(std::size_t i=0; i<creators_.size(); ++i) {
       if (time==creators_[i].t() && vertex_info_[i].first==type && vertex_info_[i].second==i_rank) {
@@ -265,10 +320,22 @@ public:
      assert(creators_.size()==vertex_info_.size());
    }
    void swap_ops(size_t i1, size_t i2) {
+     assert(i1>=0 && i1<creators_.size());
+     assert(i2>=0 && i2<creators_.size());
      std::swap(creators_[i1], creators_[i2]);
      std::swap(annihilators_[i1], annihilators_[i2]);
      std::swap(alpha_[i1], alpha_[i2]);
      std::swap(vertex_info_[i1], vertex_info_[i2]);
+   }
+   template<class InputIterator>
+   //void swap_ops(const std::vector<std::pair<int,int> >& swap_list) {
+   void swap_ops2(InputIterator first, InputIterator end) {
+     //for (int i=0; i<swap_list.size(); ++i) {
+       //swap_ops(swap_list[i].first, swap_list[i].second);
+     //}
+     for (InputIterator it=first; it!=end; ++it) {
+       swap_ops(it->first, it->second);
+     }
    }
    void pop_back_op() {
      creators_.pop_back();
@@ -382,13 +449,15 @@ protected:
 
   /*the actual solver functions*/
   // in file solver.cpp
-  void interaction_expansion_step(void);
+  void removal_insertion_update(void);
+  void shift_update(void);
   void reset_perturbation_series(void);
   
   // in file fastupdate.cpp:
   double fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
   double fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight);
-  
+  double fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight);
+
   /*measurement functions*/
   // in file measurements.cpp
   void measure_observables(std::valarray<double>& timings);
@@ -410,7 +479,10 @@ protected:
   virtual std::pair<double,double> try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper&)=0;
   virtual void perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper&)=0;
   virtual void reject_remove(fastupdate_remove_helper&)=0;
-  
+  virtual double try_shift(int idx_vertex, double new_time)=0;
+  virtual void perform_shift(int idx_vertex)=0;
+  virtual void reject_shift(int idx_vertex)=0;
+
   /*private member variables, constant throughout the simulation*/
   const unsigned int max_order;                        
   const spin_t n_flavors;                                //number of flavors (called 'flavors') in InteractionExpansion
@@ -425,8 +497,10 @@ protected:
   const unsigned long therm_steps;                
   const double max_time_in_seconds;
   const size_t n_multi_vertex_update;
+  const int n_ins_rem;
+  const int n_shift;
 
-  const double beta;                                
+    const double beta;
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
   const general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
   //quantum numbers
@@ -478,7 +552,7 @@ protected:
   clock_t measurement_time;
 
   //Statistics on multi-vertex updates (imaginary time information)
-  scalar_histogram_flavors statistics_rem, statistics_ins;
+  scalar_histogram_flavors statistics_rem, statistics_ins, statistics_shift;
 
   //only acceptance rate
   simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
@@ -487,6 +561,11 @@ protected:
   //std::vector<double> proposal_prob, acc_rate_reducible_update;
   //boost::random::discrete_distribution<> dist_prop;
   update_proposer update_prop;
+
+  //temporay work space etc.
+  fastupdate_add_helper add_helper;
+  fastupdate_remove_helper remove_helper;
+  fastupdate_shift_helper<GTYPE> shift_helper;
 
   LegendreTransformer legendre_transformer;
 };
@@ -514,6 +593,9 @@ public:
   std::pair<double,double> try_remove(const std::vector<int>& vertex_nr, fastupdate_remove_helper&);
   void perform_remove(const std::vector<int>& vertex_nr, fastupdate_remove_helper&);
   void reject_remove(fastupdate_remove_helper&);
+  double try_shift(int idx_vertex, double new_time);
+  void perform_shift(int idx_vertex);
+  void reject_shift(int idx_vertex);
 };
 
 

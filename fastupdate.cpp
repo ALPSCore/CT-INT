@@ -111,6 +111,59 @@ double InteractionExpansion::fastupdate_down(const std::vector<size_t>& rows_col
   }
 }
 
+//VERY UGLY IMPLEMENTATION
+double InteractionExpansion::fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight) {
+  assert(num_rows(M[flavor].matrix()) == num_cols(M[flavor].matrix()));
+  const int num_rows_cols_updated = rows_cols_updated.size();
+  const int noperators = num_rows(M[flavor].matrix());
+  const int noperators_rest = noperators-num_rows_cols_updated;
 
+  alps::numeric::matrix<GTYPE> Green0_n_n(num_rows_cols_updated, num_rows_cols_updated);//S
+  alps::numeric::matrix<GTYPE> Green0_n_j(num_rows_cols_updated, noperators_rest);//R
+  alps::numeric::matrix<GTYPE> Green0_j_n(noperators_rest, num_rows_cols_updated);//Q
+
+  shift_helper.swap_list[flavor].resize(num_rows_cols_updated);
+  for (int i=0; i<num_rows_cols_updated; ++i) {
+    const int idx1 = rows_cols_updated[num_rows_cols_updated-1-i];
+    const int idx2 = noperators-1-i;
+    shift_helper.swap_list[flavor][i] = std::pair<int,int>(idx1, idx2);
+  }
+  if (compute_only_weight) {
+    M[flavor].swap_ops2(shift_helper.swap_list[flavor].begin(), shift_helper.swap_list[flavor].end());
+    swap_cols_rows(M[flavor].matrix(), shift_helper.swap_list[flavor].begin(), shift_helper.swap_list[flavor].end());
+  }
+
+  for(int i=0;i<noperators_rest;++i) {
+    for (int iv=0; iv<num_rows_cols_updated; ++iv) {
+      Green0_n_j(iv,i) = green0_spline_for_M(flavor, iv+noperators_rest, i);
+    }
+  }
+  for(int i=0;i<noperators_rest;++i){
+    for (int iv=0; iv<num_rows_cols_updated; ++iv) {
+      Green0_j_n(i,iv) = green0_spline_for_M(flavor, i, iv+noperators_rest);
+    }
+  }
+  for (int iv2=0; iv2<num_rows_cols_updated; ++iv2) {
+    for (int iv=0; iv<num_rows_cols_updated; ++iv) {
+      Green0_n_n(iv, iv2) = green0_spline_for_M(flavor, iv+noperators_rest, iv2+noperators_rest);
+    }
+  }
+  for (int iv=0; iv<num_rows_cols_updated; ++iv) {
+    Green0_n_n(iv, iv) -= M[flavor].alpha()[iv+noperators_rest];
+  }
+
+  if(compute_only_weight){
+    shift_helper.det_rat = compute_det_ratio_replace_rows_cols(M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.Mmat[flavor], shift_helper.inv_tSp[flavor]);
+    return shift_helper.det_rat;
+  } else {
+    compute_inverse_matrix_replace_rows_cols(M[flavor].matrix(),
+                              Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.Mmat[flavor], shift_helper.inv_tSp[flavor], shift_helper.tPp, shift_helper.tQp, shift_helper.tRp, shift_helper.tSp
+                     );
+
+    swap_cols_rows(M[flavor].matrix(), shift_helper.swap_list[flavor].rbegin(), shift_helper.swap_list[flavor].rend());
+    M[flavor].swap_ops2(shift_helper.swap_list[flavor].rbegin(), shift_helper.swap_list[flavor].rend());
+    return shift_helper.det_rat;
+  }
+}
 
 

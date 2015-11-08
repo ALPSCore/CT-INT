@@ -43,6 +43,9 @@ template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, c
 //We appreciate the ordering of the creation and annihilation operators in the vertex.
 double InteractionExpansion::green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const
 {
+  assert(c_pos<M[flavor].annihilators().size());
+  assert(cdagger_pos<M[flavor].creators().size());
+
   const annihilator& c = M[flavor].annihilators()[c_pos];
   const creator& cdagger = M[flavor].creators()[cdagger_pos];
 

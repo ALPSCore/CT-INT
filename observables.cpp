@@ -158,15 +158,22 @@ void InteractionExpansion::initialize_observables(void)
       measurements << alps::ngs::RealVectorObservable("VertexRemoval_"+boost::lexical_cast<std::string>(iv+1));
   }
   measurements << alps::ngs::SimpleRealVectorObservable("MeasurementTimeMsec");
-  measurements << alps::ngs::RealObservable("UpdateTimeMsec");
+  measurements << alps::ngs::SimpleRealVectorObservable("UpdateTimeMsec");
   measurements << alps::ngs::RealObservable("RecomputeTime");
   for(spin_t flavor=0;flavor<n_flavors;++flavor) {
       std::stringstream tmp;
       tmp<<"VertexHistogram_"<<flavor;
       measurements << alps::ngs::SimpleRealVectorObservable(tmp.str().c_str());
   }
-   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion");
-   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion_count");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval_count");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift_count");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion_sum");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval_sum");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift_sum");
 #endif
   measurements.reset(true);
 }
@@ -214,8 +221,19 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
 
   measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
   measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
+  measurements["StatisticsVertexShift"] << statistics_shift.get_mean();
+
+  measurements["StatisticsVertexInsertion_count"] << statistics_ins.get_counter();
+  measurements["StatisticsVertexRemoval_count"] << statistics_rem.get_counter();
+  measurements["StatisticsVertexShift_count"] << statistics_shift.get_counter();
+
+  measurements["StatisticsVertexInsertion_sum"] << statistics_ins.get_sumval();
+  measurements["StatisticsVertexRemoval_sum"] << statistics_rem.get_sumval();
+  measurements["StatisticsVertexShift_sum"] << statistics_shift.get_sumval();
+
   statistics_ins.reset();
   statistics_rem.reset();
+  statistics_shift.reset();
 
   for (int iv=0; iv<n_multi_vertex_update; ++iv){
     measurements["VertexInsertion_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_ins.get_result(iv);

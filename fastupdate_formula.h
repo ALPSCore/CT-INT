@@ -347,14 +347,15 @@ replace_rows_cols(alps::numeric::matrix<T>& A,
 //T = double or complex<double>
 template<class T>
 T
-compute_det_ratio_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
+compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
                                const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
-                               const std::vector<int>& rows_cols, std::vector<std::pair<int,int> >& swap_list, alps::numeric::matrix<T>& Mmat, alps::numeric::matrix<T>& inv_tSp) {
+                               alps::numeric::matrix<T>& Mmat, alps::numeric::matrix<T>& inv_tSp) {
+    //const std::vector<int>& rows_cols, const std::vector<std::pair<int,int> >& swap_list, alps::numeric::matrix<T>& Mmat, alps::numeric::matrix<T>& inv_tSp) {
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
     const int NpM = num_cols(invBigMat);
-    const int M = rows_cols.size();
+    const int M = num_rows(R);
     const int N = NpM-M;
     assert(N>0);
 
@@ -364,15 +365,16 @@ compute_det_ratio_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
     assert(num_rows(S)==M && num_cols(S)==M);
 
     //moves rows and cols to the end
-    swap_list.resize(M);
-    //std::cout << "invBigMat " << invBigMat << std::endl;
-    for (int i=0; i<M; ++i) {
-        //std::cout << "debug_swap " << rows_cols[M-1-i] << " " << NpM-1-i << std::endl;
-        invBigMat.swap_cols(rows_cols[M-1-i], NpM-1-i);
-        invBigMat.swap_rows(rows_cols[M-1-i], NpM-1-i);
-        swap_list[i] = std::pair<int,int>(rows_cols[M-1-i], NpM-1-i);
-    }
-    //std::cout << "invBigMat (after)" << invBigMat << std::endl;
+    //swap_list.resize(M);
+    //std::cout << "M (before swap)" << std::endl << invBigMat << std::endl;
+    //for (int i=0; i<swap_list.size(); ++i) {
+        //invBigMat.swap_cols(swap_list[i].first, swap_list[i].second);
+        //invBigMat.swap_rows(swap_list[i].first, swap_list[i].second);
+        //invBigMat.swap_cols(rows_cols[M-1-i], NpM-1-i);
+        //invBigMat.swap_rows(rows_cols[M-1-i], NpM-1-i);
+        //swap_list[i] = std::pair<int,int>(rows_cols[M-1-i], NpM-1-i);
+    //}
+    //std::cout << "M (after swap)" << std::endl << invBigMat << std::endl;
 
     matrix_t tP(N, N), tQ(N, M), tR(M, N), tS(M, M), invtS_tR(M,N,0.), tQ_invtS_tR(N,N,0.);
 
@@ -396,13 +398,14 @@ template<class T>
 T
 compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
                                     const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
-                                    const std::vector<int>& rows_cols, const std::vector<std::pair<int,int> >& swap_list, const alps::numeric::matrix<T>& Mmat, const alps::numeric::matrix<T>& inv_tSp,
+                                    const alps::numeric::matrix<T>& Mmat, const alps::numeric::matrix<T>& inv_tSp,
+                                    //const std::vector<int>& rows_cols, const std::vector<std::pair<int,int> >& swap_list, const alps::numeric::matrix<T>& Mmat, const alps::numeric::matrix<T>& inv_tSp,
                                     alps::numeric::matrix<T>& tPp, alps::numeric::matrix<T>& tQp, alps::numeric::matrix<T>& tRp, alps::numeric::matrix<T>& tSp) {
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
     const int NpM = num_cols(invBigMat);
-    const int M = rows_cols.size();
+    const int M = num_rows(R);
     const int N = NpM-M;
 
     assert(N>0);
@@ -445,10 +448,10 @@ compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
     copy_block(tRp, 0, 0, invBigMat, N, 0, M, N);
     copy_block(tSp, 0, 0, invBigMat, N, N, M, M);
 
-    //swap rows and cols
-    for (std::vector<std::pair<int,int> >::const_reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
-        invBigMat.swap_cols(it->first, it->second);
-        invBigMat.swap_rows(it->first, it->second);
-    }
+    ////swap rows and cols
+    //for (std::vector<std::pair<int,int> >::const_reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
+        //invBigMat.swap_cols(it->first, it->second);
+        //invBigMat.swap_rows(it->first, it->second);
+    //}
 }
 #endif //IMPSOLVER_FASTUPDATE_FORMULA_H

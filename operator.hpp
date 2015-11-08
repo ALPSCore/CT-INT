@@ -142,7 +142,10 @@ private:
 
 
 public:
-  
+  void set_time(itime_t time) {
+    t_ = time;
+  }
+
 
   void compute_exp(const frequency_t n_matsubara, const int sign)
   {

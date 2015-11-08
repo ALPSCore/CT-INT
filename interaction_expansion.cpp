@@ -81,11 +81,17 @@ legendre_transformer(n_matsubara,n_legendre),
 n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
 statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
 statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
+statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, 1),
 simple_statistics_ins(n_multi_vertex_update),
 simple_statistics_rem(n_multi_vertex_update),
 is_thermalized_in_previous_step_(false),
 window_width(parms.defined("WINDOW_WIDTH") ? beta*static_cast<double>(parms["WINDOW_WIDTH"]) : 0.1*beta),
-window_dist(boost::random::exponential_distribution<>(1/window_width))
+window_dist(boost::random::exponential_distribution<>(1/window_width)),
+add_helper(n_flavors),
+remove_helper(n_flavors),
+shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 0.1*beta),
+n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
+n_shift(parms["N_SHIFT_VERTEX"] | 1)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -147,7 +153,7 @@ window_dist(boost::random::exponential_distribution<>(1/window_width))
     vertex_histograms[i]=new simple_hist(vertex_histogram_size);
   }
   c_or_cdagger::initialize_simulation(parms);
-  
+
   //if(n_site !=1) throw std::invalid_argument("you're trying to run this code for more than one site. Do you know what you're doing?!?");
 }
 
@@ -155,9 +161,7 @@ window_dist(boost::random::exponential_distribution<>(1/window_width))
 
 void InteractionExpansion::update()
 {
-  boost::timer::cpu_timer timer;
-  //std::cout << "step " << step << std::endl;
-  //std::cout << "thermalized " << is_thermalized() << " " << is_thermalized_in_previous_step_ << std::endl;
+  std::valarray<double> t_meas(0.0, 2);
   if (!is_thermalized_in_previous_step_ && is_thermalized()) {
     prepare_for_measurement();
   }
@@ -165,19 +169,27 @@ void InteractionExpansion::update()
 
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
-    interaction_expansion_step();
-    //sanity_check();
+    boost::timer::cpu_timer timer;
+
+    for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem)
+      removal_insertion_update();
+
+    double t_m = timer.elapsed().wall;
+
+    for (int i_shift=0; i_shift<n_shift; ++i_shift)
+      shift_update();
+
+    t_meas[0] += t_m;
+    t_meas[1] += (timer.elapsed().wall-t_m);
     if(itime_vertices.size()<max_order)
       pert_hist[itime_vertices.size()]++;
     if(step % recalc_period ==0) {
-      //just for debug
-#ifndef NDEBUG
-      sanity_check();
-#endif
       reset_perturbation_series();
     }
   }
-  measurements["UpdateTimeMsec"] << timer.elapsed().wall*1E-6;
+  t_meas *= 1E-6/measurement_period;
+  measurements["UpdateTimeMsec"] << t_meas;
+//  measurements["UpdateTimeMsec"] << t_meas;
 }
 
 void InteractionExpansion::measure(){
@@ -254,6 +266,8 @@ bool InteractionExpansion::is_irreducible(const std::vector<itime_vertex>& verti
 }
 
 void InteractionExpansion::sanity_check() {
+  M.sanity_check(itime_vertices);
+
   //recompute M
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     if (num_rows(M[flavor].matrix())==0) {
@@ -342,6 +356,7 @@ void InteractionExpansion::prepare_for_measurement()
   //update_prop.finish_learning();
   statistics_ins.reset();
   statistics_rem.reset();
+  statistics_shift.reset();
   simple_statistics_ins.reset();
   simple_statistics_rem.reset();
 }
