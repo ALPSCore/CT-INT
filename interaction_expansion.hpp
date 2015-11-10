@@ -499,6 +499,7 @@ protected:
   const size_t n_multi_vertex_update;
   const int n_ins_rem;
   const int n_shift;
+  const bool force_quantum_number_conservation;
 
     const double beta;
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        

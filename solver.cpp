@@ -63,7 +63,7 @@ void InteractionExpansion::removal_insertion_update(void)
                                              generate_itime_vertices(Uijkl,random,beta,nv_updated,all_type()) :
                                              generate_itime_vertices(Uijkl,random,beta,nv_updated,add_helper.op);
     assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
-    if (new_vertices.size()==0 || !is_quantum_number_conserved(new_vertices)) {
+    if (new_vertices.size()==0 || (force_quantum_number_conservation && !is_quantum_number_conserved(new_vertices))) {
       simple_statistics_ins.not_valid_state(nv_updated-1);
       return;
     }
@@ -107,7 +107,7 @@ void InteractionExpansion::removal_insertion_update(void)
     for (int iv=0; iv<nv_updated; ++iv) {
       vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
     }
-    if (!is_quantum_number_conserved(vertices_to_be_removed)) {
+    if (force_quantum_number_conservation && !is_quantum_number_conserved(vertices_to_be_removed)) {
       simple_statistics_rem.not_valid_state(nv_updated-1);
       return;
     }

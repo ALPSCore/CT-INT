@@ -91,7 +91,8 @@ add_helper(n_flavors),
 remove_helper(n_flavors),
 shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 0.1*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
-n_shift(parms["N_SHIFT_VERTEX"] | 1)
+n_shift(parms["N_SHIFT_VERTEX"] | 1),
+force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
