@@ -321,3 +321,54 @@ TEST(Util, Mymod) {
         ASSERT_TRUE(std::abs(mymod(x,beta)-tau)<1E-10);
     }
 }
+
+TEST(FastUpdate, BlockMatrixReplaceRowsColsSingular) {
+    typedef alps::numeric::matrix<double> matrix_t;
+
+    for (int i=0; i<20; ++i) {
+        double alpha = pow(0.1, 20*i);
+        double a=4., b=8.;
+
+        matrix_t G2(2,2), G2p(2,2), M2p(2,2);
+        std::vector<std::pair<int, int> > swap_list;
+
+        G2(0,0) = alpha;
+        G2(1,1) = alpha;
+        G2(1,0) = a;
+        G2(0,1) = a;
+
+        M2p(0,0) = alpha;
+        M2p(1,0) = -b;
+        M2p(0,1) = -b;
+        M2p(1,1) = alpha;
+        M2p /= (alpha+b)*(alpha-b);
+
+        matrix_t Q(1,1), R(1,1), S(1,1);
+        Q(0,0) = b;
+        R(0,0) = b;
+        S(0,0) = alpha;
+
+        matrix_t M2p_fast = inverse(G2);
+        matrix_t Mmat, inv_tSp;
+        matrix_t tPp, tQp, tRp, tSp;
+
+        //std::cout << "A" << std::endl;
+        double det_rat_fast = compute_det_ratio_replace_rows_cols_safe(M2p_fast, Q, R, S, Mmat, inv_tSp);
+        double det_rat = (alpha-b)*(alpha+b)/((alpha-a)*(alpha+a));
+        std::cout << alpha << " " << std::abs((det_rat_fast - det_rat)/det_rat) << std::endl;
+        //std::cout << "B" << std::endl;
+        //compute_inverse_matrix_replace_rows_cols(M2p_fast, Q, R, S, Mmat, inv_tSp, tPp, tQp, tRp, tSp);
+        //std::cout << "C" << std::endl;
+
+        //std::cout << alpha << " " << std::abs((det_rat_fast - det_rat)/det_rat) << " "  << alps::numeric::norm_square(M2p-M2p_fast) << std::endl;
+        //std::cout << M2p << std::endl;
+    }
+}
+
+//TEST(Boost, Binomial) {
+    //const size_t k = 2;
+    //for (size_t N=k; N<10; ++N) {
+        ////const double tmp = boost::math::binomial_coefficient<double>(N,k);
+        //ASSERT_TRUE(std::abs(tmp-0.5*N*(N-1.0))<1E-8);
+    //}
+//}
