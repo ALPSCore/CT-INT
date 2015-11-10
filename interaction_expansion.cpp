@@ -284,34 +284,41 @@ void InteractionExpansion::sanity_check() {
       }
     }
     for (size_t p=0; p<Nv; ++p) {
-      //std::cout << "debug " << p << " " << M[flavor].alpha()[p] << " " << G0(p,p) << std::endl;
       G0(p, p) -= M[flavor].alpha()[p];
     }
 
     gemm(G0, M[flavor].matrix(), tmp);
     bool OK = true;
+    double max_diff = 0;
     for (size_t q=0; q<Nv; ++q) {
       for (size_t p=0; p<Nv; ++p) {
         if (p==q) {
-          OK = OK && (std::abs(tmp(p,q)-1.)<1E-8);
+          max_diff = std::max(max_diff, std::abs(tmp(p,q)-1.));
+          OK = OK && (std::abs(tmp(p,q)-1.)<1E-5);
         } else {
-          OK = OK && (std::abs(tmp(p,q))<1E-8);
+          max_diff = std::max(max_diff, std::abs(tmp(p,q)));
+          OK = OK && (std::abs(tmp(p,q))<1E-5);
+        }
+        if(!OK) {
+          std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
+          throw std::runtime_error("A");
         }
       }
     }
+    std::cout << "max_diff " << max_diff << std::endl;
     if (!OK) {
       std::cout << "flavor=" << flavor << std::endl;
       std::cout << "Nv=" << Nv << std::endl;
       for (size_t q=0; q<Nv; ++q) {
         for (size_t p=0; p<Nv; ++p) {
-          std::cout << " p, q = " << p << " " << q << " " << G0(p,q) << std::endl;
+          std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
         }
       }
-      for (size_t q=0; q<Nv; ++q) {
-        for (size_t p=0; p<Nv; ++p) {
-          std::cout << " p, q = " << p << " " << q << " " << M[flavor].matrix()(p,q) << std::endl;
-        }
-      }
+      //for (size_t q=0; q<Nv; ++q) {
+        //for (size_t p=0; p<Nv; ++p) {
+          ////std::cout << " p, q = " << p << " " << q << " " << M[flavor].matrix()(p,q) << std::endl;
+        //}
+      //}
       throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
   }

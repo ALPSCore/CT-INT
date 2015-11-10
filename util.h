@@ -10,6 +10,7 @@
 
 #include <alps/numeric/matrix.hpp>
 #include <boost/numeric/bindings/lapack/computational/getrf.hpp>
+#include <alps/numeric/matrix/algorithms.hpp>
 
 template<typename T> T mycast(std::complex<double> val);
 template<typename T> T myconj(T val);
@@ -108,5 +109,25 @@ void swap_cols_rows(alps::numeric::matrix<T>& mat, InputIterator first, InputIte
 }
 
 double mymod(double x, double beta);
+
+template<class T> alps::numeric::matrix<T>
+mygemm(const alps::numeric::matrix<T>& A, const alps::numeric::matrix<T>& B) {
+    alps::numeric::matrix<T> AB(alps::numeric::num_rows(A), alps::numeric::num_cols(B), 0.0);
+    alps::numeric::gemm(A, B, AB);
+    return AB;
+}
+
+template<class T> alps::numeric::matrix<T>
+safe_inverse(const alps::numeric::matrix<T>& A) {
+    using namespace alps::numeric;
+    assert(num_rows(A)==num_cols(A));
+    const int N = num_rows(A);
+    double norm = std::sqrt(alps::numeric::norm_square(A)/(N*N));
+    alps::numeric::matrix<T> A_norm(A);
+    A_norm /= norm;
+    A_norm = alps::numeric::inverse(A_norm);
+    A_norm /= norm;
+    return A_norm;
+}
 
 #endif //IMPSOLVER_UTIL_H
