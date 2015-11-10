@@ -305,7 +305,7 @@ void InteractionExpansion::sanity_check() {
         }
       }
     }
-    std::cout << "max_diff " << max_diff << std::endl;
+    //std::cout << "max_diff " << max_diff << std::endl;
     if (!OK) {
       std::cout << "flavor=" << flavor << std::endl;
       std::cout << "Nv=" << Nv << std::endl;
