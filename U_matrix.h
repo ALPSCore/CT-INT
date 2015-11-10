@@ -366,6 +366,7 @@ std::vector<itime_vertex> generate_itime_vertices(const general_U_matrix<T>& Uij
     const int v_type = valid_vs[iv_rnd].id();
     const int rank = valid_vs[iv_rnd].rank();
     const int af_state = static_cast<size_t>(random01()*valid_vs[iv_rnd].num_af_states());
+    std::cout << "debug type = " << v_type << std::endl;
     itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank, valid_vs[iv_rnd].is_density_type()));
   }
   return itime_vertices;

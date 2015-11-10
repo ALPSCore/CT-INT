@@ -425,9 +425,9 @@ make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_defin
     //std::cout << "num groups  " << num_groups[flavor] << std::endl;
     //print_group(groups[flavor]);
 #ifndef NDEF
-    //std::cout << "flavor " << std::endl;
-    //std::cout << "num groups  " << num_groups[flavor] << std::endl;
-    //print_group(groups[flavor]);
+   std::cout << "flavor " << std::endl;
+    std::cout << "num groups  " << num_groups[flavor] << std::endl;
+    print_group(groups[flavor]);
 #endif
   }
 
@@ -455,6 +455,11 @@ make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_defin
       assert(n_dim*flavor+group_map[flavor][site2]<qn_diff.size());
       --qn_diff[n_dim*flavor+group_map[flavor][site2]];
     }
+    std::cout << " iv=" << iv << " : " << std::endl;
+    for (int i=0; i<n_dim*n_flavors; ++i) {
+      std::cout << " " << qn_diff[i];
+    }
+    std::cout << std::endl;
     qn_vertices.push_back(qn_diff);
   }
 

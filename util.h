@@ -5,6 +5,7 @@
 #ifndef IMPSOLVER_UTIL_H
 #define IMPSOLVER_UTIL_H
 
+#include <math.h>
 #include <vector>
 #include <complex>
 
@@ -87,6 +88,50 @@ namespace alps {
             }
             return (p%2==0 ? det : -det);
         }
+
+        template<class Matrix>
+        typename Matrix::value_type safe_determinant(Matrix M) {
+            std::vector<int> ipiv(num_rows(M));
+            const int N = num_rows(M);
+
+            double norm = std::sqrt(norm_square(M)/(N*N));
+            M /= norm;
+
+            if (N==0) {
+                return 1.0;
+            }
+
+            int info = boost::numeric::bindings::lapack::getrf(M, ipiv);
+            if (info != 0)
+                throw std::runtime_error("Error in GETRF !");
+
+            double det = 1.0;
+            for (size_t i=0; i<N; ++i) {
+                det *= M(i,i);
+            }
+            int p = 0;
+            for (size_t i=0; i<N-1; ++i) {
+                if (ipiv[i] != i+1) {
+                    ++p;
+                }
+            }
+            double norm_pow = std::pow(norm, static_cast<double>(N));
+            return (p%2==0 ? det*norm_pow : -det*norm_pow);
+        }
+
+
+        template<class T> alps::numeric::matrix<T>
+        safe_inverse(const alps::numeric::matrix<T>& A) {
+            using namespace alps::numeric;
+            assert(num_rows(A)==num_cols(A));
+            const int N = num_rows(A);
+            double norm = std::sqrt(alps::numeric::norm_square(A)/(N*N));
+            alps::numeric::matrix<T> A_norm(A);
+            A_norm /= norm;
+            A_norm = alps::numeric::inverse(A_norm);
+            A_norm /= norm;
+            return A_norm;
+        }
     }
 }
 
@@ -117,17 +162,5 @@ mygemm(const alps::numeric::matrix<T>& A, const alps::numeric::matrix<T>& B) {
     return AB;
 }
 
-template<class T> alps::numeric::matrix<T>
-safe_inverse(const alps::numeric::matrix<T>& A) {
-    using namespace alps::numeric;
-    assert(num_rows(A)==num_cols(A));
-    const int N = num_rows(A);
-    double norm = std::sqrt(alps::numeric::norm_square(A)/(N*N));
-    alps::numeric::matrix<T> A_norm(A);
-    A_norm /= norm;
-    A_norm = alps::numeric::inverse(A_norm);
-    A_norm /= norm;
-    return A_norm;
-}
 
 #endif //IMPSOLVER_UTIL_H

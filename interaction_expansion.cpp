@@ -154,7 +154,7 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
     vertex_histograms[i]=new simple_hist(vertex_histogram_size);
   }
   c_or_cdagger::initialize_simulation(parms);
-
+//  std::cout << "force_qn" << force_quantum_number_conservation << std::endl;
   //if(n_site !=1) throw std::invalid_argument("you're trying to run this code for more than one site. Do you know what you're doing?!?");
 }
 
@@ -236,11 +236,19 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
 
 bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices) {
   std::valarray<int> qn_t(0, quantum_number_vertices[0].size());
+  std::cout << "size " << qn_t.size() << std::endl;
 
   for (int iv=0; iv<vertices.size(); ++iv) {
+    std::cout << "checking v_type " << vertices[iv].type() << std::endl;
+    assert(qn_t.size()==quantum_number_vertices[vertices[iv].type()].size());
     qn_t += quantum_number_vertices[vertices[iv].type()];
   }
   bool flag = true;
+  //std::cout << " sum : ";
+  //for (int i=0; i<qn_t.size(); ++i) {
+    //std::cout << " " << qn_t[i];
+  //}
+  //std::cout << std::endl;
   for (int i=0; i<qn_t.size(); ++i) {
     if (qn_t[i]!=0) {
       flag = false;
@@ -270,6 +278,7 @@ void InteractionExpansion::sanity_check() {
   M.sanity_check(itime_vertices);
 
   //recompute M
+  double sign_exact = 1;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     if (num_rows(M[flavor].matrix())==0) {
       continue;
@@ -288,21 +297,27 @@ void InteractionExpansion::sanity_check() {
       G0(p, p) -= M[flavor].alpha()[p];
     }
 
+    sign_exact *= boost::math::sign(alps::numeric::determinant(G0));
+
     gemm(G0, M[flavor].matrix(), tmp);
     bool OK = true;
     double max_diff = 0;
     for (size_t q=0; q<Nv; ++q) {
       for (size_t p=0; p<Nv; ++p) {
+        bool flag;
         if (p==q) {
           max_diff = std::max(max_diff, std::abs(tmp(p,q)-1.));
-          OK = OK && (std::abs(tmp(p,q)-1.)<1E-5);
+          //OK = OK && (std::abs(tmp(p,q)-1.)<1E-5);
+          flag = (std::abs(tmp(p,q)-1.)<1E-5);
         } else {
           max_diff = std::max(max_diff, std::abs(tmp(p,q)));
-          OK = OK && (std::abs(tmp(p,q))<1E-5);
+          //OK = OK && (std::abs(tmp(p,q))<1E-5);
+          flag = (std::abs(tmp(p,q))<1E-5);
         }
-        if(!OK) {
+        OK = OK && flag;
+        if(!flag) {
           std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-          throw std::runtime_error("A");
+          //throw std::runtime_error("A");
         }
       }
     }
@@ -310,11 +325,11 @@ void InteractionExpansion::sanity_check() {
     if (!OK) {
       std::cout << "flavor=" << flavor << std::endl;
       std::cout << "Nv=" << Nv << std::endl;
-      for (size_t q=0; q<Nv; ++q) {
-        for (size_t p=0; p<Nv; ++p) {
-          std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-        }
-      }
+      //for (size_t q=0; q<Nv; ++q) {
+        //for (size_t p=0; p<Nv; ++p) {
+          //std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
+        //}
+      //}
       //for (size_t q=0; q<Nv; ++q) {
         //for (size_t p=0; p<Nv; ++p) {
           ////std::cout << " p, q = " << p << " " << q << " " << M[flavor].matrix()(p,q) << std::endl;
@@ -323,6 +338,7 @@ void InteractionExpansion::sanity_check() {
       throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
   }
+  //assert(sign==sign_exact);
 
   //check itime_vertex list
   for (std::vector<itime_vertex>::iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {

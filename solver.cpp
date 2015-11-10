@@ -74,10 +74,10 @@ void InteractionExpansion::removal_insertion_update(void)
     }
     if(fabs(metropolis_weight)> random()){
       perform_add(add_helper,nv_updated);
-      sign*=metropolis_weight<0?-1:1;
+      sign*=boost::math::sign(metropolis_weight);
       M.sanity_check(itime_vertices);
-      assert(is_quantum_number_conserved(new_vertices));
       simple_statistics_ins.accepted(nv_updated-1);
+      assert(is_quantum_number_conserved(new_vertices));
     }else{
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
@@ -120,7 +120,7 @@ void InteractionExpansion::removal_insertion_update(void)
     if(fabs(metropolis_weight)> random()){ //do the actual update
       //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
-      sign*=metropolis_weight<0?-1:1;
+      sign*=boost::math::sign(metropolis_weight);
       M.sanity_check(itime_vertices);
       simple_statistics_rem.accepted(nv_updated-1);
     }else{
@@ -150,16 +150,24 @@ void InteractionExpansion::shift_update(void) {
   const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, boost_random);
   const double diff_time = std::abs(new_time-itime_vertices[iv].time());
 
+  std::cout << std::endl << std::endl << "Try shift type " << itime_vertices[iv].type() << " iv =" << iv << " order " << pert_order << std::endl;
+
+
   double metropolis_weight = try_shift(iv, new_time);
 
   statistics_shift.add_sample(std::min(diff_time,beta-diff_time), std::min(fabs(metropolis_weight),1.0), 0);
   if(fabs(metropolis_weight)> random()){ //do the actual update
     perform_shift(iv);
-    sign*=metropolis_weight<0?-1:1;
+    sign*=boost::math::sign(metropolis_weight);
+#ifndef NDEBUG
     M.sanity_check(itime_vertices);
+#endif
+    std::cout << std::endl << std::endl << "Done shift " << metropolis_weight << std::endl;
   }else {
     reject_shift(iv);
+#ifndef NDEBUG
     M.sanity_check(itime_vertices);
+#endif
   }
 #ifndef NDEBUG
   sanity_check();

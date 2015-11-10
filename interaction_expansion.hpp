@@ -38,6 +38,7 @@
 #include <boost/random.hpp>
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/exponential_distribution.hpp>
+#include <boost/math/special_functions/sign.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
@@ -138,6 +139,7 @@ public:
           M[flavor].annihilators()[idx].set_time(new_time);
         }
       }
+      std::sort(rows_cols_updated[flavor].begin(), rows_cols_updated[flavor].end());
       num_rows_cols_updated[flavor] = rows_cols_updated[flavor].size();
     }
   }
@@ -407,7 +409,7 @@ public:
     inverse_m_matrix::value_type determinant() {
       inverse_m_matrix::value_type det=1.0;
       for (spin_t flavor=0; flavor<size(); ++flavor) {
-        det *= alps::numeric::determinant(sub_matrices_[flavor].matrix());
+        det *= alps::numeric::safe_determinant(sub_matrices_[flavor].matrix());
       }
       return det;
     }

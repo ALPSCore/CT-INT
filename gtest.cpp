@@ -175,6 +175,98 @@ TEST(FastUpdate, ReplaceRow) {
     ASSERT_TRUE(alps::numeric::norm_square(new_M-new_M_fastu)<1E-8);
 }
 
+TEST(FastUpdate, ReplaceRowCol) {
+    typedef double T;
+    const int N = 10;
+    const int m = 3;
+    assert(m<N);
+    alps::numeric::matrix<T> D(N, N), new_D(N,N), M(N, N), new_M, new_M_fastu, Dr(1,N), Dc(N,1);
+
+    randomize_matrix(D, 100);//100 is a seed
+    randomize_matrix(Dr, 200);
+    randomize_matrix(Dc, 300);
+
+    M = inverse(D);
+    Dr(0,m) = Dc(m,0);
+    new_D = D;
+    for (int i=0; i<N; ++i) {
+        new_D(m,i) = Dr(0,i);
+        new_D(i,m) = Dc(i,0);
+    }
+    new_M = inverse(new_D);
+
+    double det_rat = determinant(new_D)/determinant(D);
+    alps::numeric::matrix<T> M_fastu(M);
+    double det_rat_fastu = compute_inverse_matrix_replace_row_col(M_fastu,Dr,Dc,m);
+    ASSERT_TRUE(std::abs(det_rat/det_rat_fastu-1)<1E-10);
+
+    ASSERT_TRUE(alps::numeric::norm_square(new_M-M_fastu)<1E-10);
+}
+
+TEST(FastUpdate, BlockMatrixReplaceRowsColsSuccessive) {
+    typedef alps::numeric::matrix<double> matrix_t;
+
+    std::vector<size_t> N_list, M_list;
+    N_list.push_back(10);
+    M_list.push_back(4);
+
+    for (int n = 0; n < N_list.size(); ++n) {
+        for (int m = 0; m < M_list.size(); ++m) {
+            const int N = N_list[n];
+            const int M = M_list[m];
+            matrix_t BigMatrix(N + M, N + M, 0), invBigMatrix(N + M, N + M, 0);
+
+            //which rows and cols are to be replaced
+            std::vector<int> rows_replaced(N + M);
+            for (int i = 0; i < N + M; ++i) {
+                rows_replaced[i] = i;
+            }
+            std::random_shuffle(rows_replaced.begin(), rows_replaced.end());
+            rows_replaced.resize(M);
+            std::sort(rows_replaced.begin(), rows_replaced.end());
+            for (int i=0; i<M; ++i) {
+                std::cout << "row = " << rows_replaced[i] << std::endl;
+            }
+            //std::cout << rows_replaced[1] << std::endl;
+
+            //std::vector<int> rows_replaced;
+            //rows_replaced.push_back(0);
+            //rows_replaced.push_back(2);
+
+            randomize_matrix(BigMatrix, 100);//100 is a seed
+            //BigMatrix(0,0) = 1.;
+            //BigMatrix(1,1) = 2.;
+            //BigMatrix(2,2) = 3.;
+            //BigMatrix(3,3) = 4.;
+            std::cout << "G"<<std::endl << BigMatrix << std::endl;
+
+            matrix_t R(M, N, 0), S(M, M, 0), Q(N, M, 0);
+            randomize_matrix(R, 110);//100 is a seed
+            randomize_matrix(Q, 310);//100 is a seed
+            randomize_matrix(S, 210);//100 is a seed
+
+            std::cout << "R"<<std::endl << R << std::endl;
+            std::cout << "Q"<<std::endl << Q << std::endl;
+            std::cout << "S"<<std::endl << S << std::endl;
+
+            matrix_t BigMatrixReplaced(BigMatrix);
+            replace_rows_cols_respect_ordering(BigMatrixReplaced, Q, R, S, rows_replaced);
+
+            std::cout << "G'"<<std::endl << BigMatrixReplaced << std::endl;
+
+            //testing compute_det_ratio_down
+            invBigMatrix = inverse(BigMatrix);
+            double det_rat = alps::numeric::determinant(BigMatrixReplaced)/determinant(BigMatrix);
+
+            std::cout << "det_rat " << det_rat << std::endl;
+
+            double det_rat_fast = compute_inverse_matrix_replace_rows_cols_succesive(invBigMatrix,Q,R,S,rows_replaced);
+            std::cout << "det_rat_fast " << det_rat_fast << std::endl;
+            ASSERT_TRUE(std::abs(det_rat-det_rat_fast)<1E-8);
+        }
+    }
+}
+
 TEST(FastUpdate, BlockMatrixReplaceRowsCols) {
     std::vector<size_t> N_list, M_list;
     N_list.push_back(10);
@@ -214,7 +306,6 @@ TEST(FastUpdate, BlockMatrixReplaceRowsCols) {
 
             matrix_t BigMatrixReplaced(BigMatrix);
             replace_rows_cols(BigMatrixReplaced, Q, R, S, rows_replaced);
-            //std::cout << "BigMatrixReplaced" << BigMatrixReplaced << std::endl;
 
             //testing compute_det_ratio_down
             double det_rat = alps::numeric::determinant(BigMatrixReplaced)/determinant(BigMatrix);
@@ -224,12 +315,8 @@ TEST(FastUpdate, BlockMatrixReplaceRowsCols) {
             double det_rat_fast = compute_det_ratio_replace_rows_cols(invBigMatrix_fast, Q, R, S, Mmat, inv_tSp);
             compute_inverse_matrix_replace_rows_cols(invBigMatrix_fast, Q, R, S, Mmat, inv_tSp, tPp, tQp, tRp, tSp);
             swap_cols_rows(invBigMatrix_fast, swap_list.rbegin(), swap_list.rend());
-            //std::cout << "det= " << alps::numeric::determinant(BigMatrix)  << std::endl;
-            //std::cout << "det_new = " << alps::numeric::determinant(BigMatrixReplaced)  << std::endl;
-            //std::cout << "det_rat = " << det_rat << " " << det_rat_fast << std::endl;
             ASSERT_TRUE(std::abs(det_rat-det_rat_fast)<1E-8);
             ASSERT_TRUE(alps::numeric::norm_square(inverse(BigMatrixReplaced)-invBigMatrix_fast)<1E-8);
-            //std::cout << " debug " << alps::numeric::norm_square(inverse(BigMatrixReplaced)-invBigMatrix_fast) << std::endl;
         }
     }
 }
