@@ -183,6 +183,9 @@ void InteractionExpansion::update()
   }
   is_thermalized_in_previous_step_ = is_thermalized();
 
+  if (node==0)
+    std::cout << " step = " << step << std::endl;
+
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     boost::timer::cpu_timer timer;
