@@ -113,7 +113,7 @@ class fastupdate_shift_helper {
 public:
   typedef alps::numeric::matrix<T> matrix_t;
 
-  fastupdate_shift_helper(int num_flavors, double window_size) : num_flavors_(num_flavors), exp_dist_(1/window_size), int_dist_(0,1), swap_list(num_flavors), M_old(num_flavors), Mmat(num_flavors), inv_tSp(num_flavors),
+  fastupdate_shift_helper(int num_flavors, double window_size) : num_flavors_(num_flavors), exp_dist_(1/window_size), int_dist_(0,1), M_old(num_flavors), Mmat(num_flavors), inv_tSp(num_flavors),
     num_rows_cols_updated(num_flavors), rows_cols_updated(num_flavors) {};
 
   double new_itime(double old_time, double beta, boost::random::mt19937& random) {
@@ -150,7 +150,7 @@ public:
   std::vector<int> num_rows_cols_updated;
   std::vector<std::vector<int> > rows_cols_updated;
   double old_time;
-  std::vector<std::vector<std::pair<int,int> > > swap_list;
+  //std::vector<std::vector<std::pair<int,int> > > swap_list;
   std::vector<matrix_t> M_old, Mmat, inv_tSp;
   matrix_t tPp, tQp, tRp, tSp;
 
@@ -458,7 +458,7 @@ protected:
   // in file fastupdate.cpp:
   double fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
   double fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight);
-  double fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight);
+  double fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated);
 
   /*measurement functions*/
   // in file measurements.cpp

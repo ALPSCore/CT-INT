@@ -85,15 +85,16 @@ statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, 1),
 simple_statistics_ins(n_multi_vertex_update),
 simple_statistics_rem(n_multi_vertex_update),
 is_thermalized_in_previous_step_(false),
-window_width(parms.defined("WINDOW_WIDTH") ? beta*static_cast<double>(parms["WINDOW_WIDTH"]) : 0.1*beta),
+window_width(parms.defined("WINDOW_WIDTH") ? beta*static_cast<double>(parms["WINDOW_WIDTH"]) : 1000.0*beta),
 window_dist(boost::random::exponential_distribution<>(1/window_width)),
 add_helper(n_flavors),
 remove_helper(n_flavors),
-shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 0.1*beta),
+shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 1),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false)
 {
+  //std::cout << "window_width" << window_width << std::endl;
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
     measurement_method=selfenergy_measurement_itime_rs;
@@ -118,7 +119,8 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
   boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
 
   //make quantum numbers
-  quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), almost_zero);
+  std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
+  quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, almost_zero);
   reducible_vertices.resize(Uijkl.n_vertex_type());
   is_density_density_type.resize(Uijkl.n_vertex_type());
   for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
@@ -147,7 +149,16 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
 
   //initialize the simulation variables
   initialize_simulation(parms);
-  if(node==0) {print(std::cout);}
+  if(node==0) {
+    print(std::cout);
+
+    std::cout << std::endl << "Analysis of quantum numbers"  << std::endl;
+    for (int flavor=0; flavor<n_flavors; ++flavor) {
+      std::cout << "  Flavor " << flavor << " has " << groups[flavor].size() << " group(s)." << std::endl;
+      print_group(groups[flavor]);
+    }
+    std::cout << std::endl;
+  }
   vertex_histograms=new simple_hist *[n_flavors];
   vertex_histogram_size=100;
   for(unsigned int i=0;i<n_flavors;++i){
@@ -236,10 +247,10 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
 
 bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices) {
   std::valarray<int> qn_t(0, quantum_number_vertices[0].size());
-  std::cout << "size " << qn_t.size() << std::endl;
+  //std::cout << "size " << qn_t.size() << std::endl;
 
   for (int iv=0; iv<vertices.size(); ++iv) {
-    std::cout << "checking v_type " << vertices[iv].type() << std::endl;
+    //std::cout << "checking v_type " << vertices[iv].type() << std::endl;
     assert(qn_t.size()==quantum_number_vertices[vertices[iv].type()].size());
     qn_t += quantum_number_vertices[vertices[iv].type()];
   }
@@ -275,6 +286,7 @@ bool InteractionExpansion::is_irreducible(const std::vector<itime_vertex>& verti
 }
 
 void InteractionExpansion::sanity_check() {
+#ifndef NDEBUG
   M.sanity_check(itime_vertices);
 
   //recompute M
@@ -335,7 +347,7 @@ void InteractionExpansion::sanity_check() {
           ////std::cout << " p, q = " << p << " " << q << " " << M[flavor].matrix()(p,q) << std::endl;
         //}
       //}
-      throw std::runtime_error("There is something wrong: G^{-1} != M.");
+      //throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
   }
   //assert(sign==sign_exact);
@@ -345,6 +357,7 @@ void InteractionExpansion::sanity_check() {
     int type = it->type();
     assert(Uijkl.get_vertices()[type].is_density_type()==it->is_density_type());
   }
+#endif
 }
 
 

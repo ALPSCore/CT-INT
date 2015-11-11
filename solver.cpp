@@ -150,8 +150,7 @@ void InteractionExpansion::shift_update(void) {
   const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, boost_random);
   const double diff_time = std::abs(new_time-itime_vertices[iv].time());
 
-  std::cout << std::endl << std::endl << "Try shift type " << itime_vertices[iv].type() << " iv =" << iv << " order " << pert_order << std::endl;
-
+  //std::cout << std::endl << std::endl << "Try shift type " << itime_vertices[iv].type() << " iv =" << iv << " order " << pert_order << std::endl;
 
   double metropolis_weight = try_shift(iv, new_time);
 
@@ -162,7 +161,7 @@ void InteractionExpansion::shift_update(void) {
 #ifndef NDEBUG
     M.sanity_check(itime_vertices);
 #endif
-    std::cout << std::endl << std::endl << "Done shift " << metropolis_weight << std::endl;
+    //std::cout << "Done shift " << metropolis_weight << std::endl;
   }else {
     reject_shift(iv);
 #ifndef NDEBUG

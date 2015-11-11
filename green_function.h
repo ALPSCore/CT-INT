@@ -308,7 +308,6 @@ read_bare_green_functions(const alps::params &parms) {
       for (std::size_t site2=0; site2<n_site; ++site2) {
         for (std::size_t iomega = 0; iomega < n_matsubara; iomega++) {
           ifs >> itmp >> itmp2 >> itmp3 >> re >> imag;
-          //std::cout << "Error " << itmp << " " << itmp2 << " " << itmp3 << " " << re << " " << imag << std::endl;
           if (!(itmp==site1 && itmp2==site2 && itmp3==iomega)) {
             throw std::runtime_error("Ilegal format of G0_OMEGA0");
           }
@@ -391,23 +390,26 @@ make_groups(size_t N, const T& connected, std::vector<std::vector<size_t> >& gro
 template<class T>
 void print_group(const std::vector<std::vector<T> >& group) {
   for (int i=0; i<group.size(); ++i) {
-    std::cout << " Group #i " << i << std::endl;
+    std::cout << "   Group "<<i<<" consists of site ";
     for (int j=0; j<group[i].size(); ++j) {
-      std::cout << group[i][j] << " , ";
+      std::cout << group[i][j];
+      if (j<group[i].size()-1)
+        std::cout << ", ";
     }
-    std::cout << std::endl;
+    std::cout << "." << std::endl;
   }
 }
 
 template<typename T>//Expected T=double or T=std::complex<double>
 std::vector<quantum_number_t>
-make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<T> >& vertices, double eps=1E-10) {
+make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<T> >& vertices, std::vector<std::vector<std::vector<size_t> > >& groups, double eps=1E-10) {
   const size_t n_site = gf.nsite();
   const size_t n_flavors = gf.nflavor();
 
   //See if two sites are connected by nonzero G
   boost::multi_array<bool,2> connected(boost::extents[n_site][n_site]);
-  std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
+  //std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
+  groups.resize(n_flavors);
   std::vector<std::vector<int> > group_map(n_flavors);
   std::vector<size_t> num_groups(n_flavors);
 
@@ -416,24 +418,14 @@ make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_defin
     for (size_t site1 = 0; site1 < n_site; ++site1) {
       for (size_t site2 = 0; site2 < n_site; ++site2) {
         connected[site1][site2] = !gf.is_zero(site1, site2, flavor, eps);
-        //std::cout << "site  " << site1 << " " << site2 << " " << connected[site1][site2] << std::endl;
       }
     }
     make_groups(n_site, connected, groups[flavor], group_map[flavor]);
     num_groups[flavor] = groups[flavor].size();
-    //std::cout << "flavor " << std::endl;
-    //std::cout << "num groups  " << num_groups[flavor] << std::endl;
-    //print_group(groups[flavor]);
-#ifndef NDEF
-   std::cout << "flavor " << std::endl;
-    std::cout << "num groups  " << num_groups[flavor] << std::endl;
-    print_group(groups[flavor]);
-#endif
   }
 
   //determine the dimension of quantum numbers
   const size_t n_dim = *std::max_element(num_groups.begin(), num_groups.end());
-  //std::cout << "n_dim" << n_dim << std::endl;
 
   //compute quantum number for each vertex
   std::vector<quantum_number_t> qn_vertices;
@@ -455,11 +447,6 @@ make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_defin
       assert(n_dim*flavor+group_map[flavor][site2]<qn_diff.size());
       --qn_diff[n_dim*flavor+group_map[flavor][site2]];
     }
-    std::cout << " iv=" << iv << " : " << std::endl;
-    for (int i=0; i<n_dim*n_flavors; ++i) {
-      std::cout << " " << qn_diff[i];
-    }
-    std::cout << std::endl;
     qn_vertices.push_back(qn_diff);
   }
 

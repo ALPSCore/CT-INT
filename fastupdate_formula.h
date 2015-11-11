@@ -5,6 +5,8 @@
 #ifndef IMPSOLVER_FASTUPDATE_FORMULA_H
 #define IMPSOLVER_FASTUPDATE_FORMULA_H
 
+//#include <boost/multiprecision/float128.hpp>
+
 #include <alps/numeric/matrix.hpp>
 #include <alps/numeric/matrix/algorithms.hpp>
 
@@ -351,6 +353,7 @@ template<class T>
 T
 compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T> Dr, const alps::numeric::matrix<T> Dc, int m) {
     typedef alps::numeric::matrix<T> matrix_t;
+    const double eps = 1E-10;
 
     const int N = num_cols(invG);
     const int Nm1 = N-1;
@@ -378,28 +381,48 @@ compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alp
 
     //compute lambda
     T lambda = tS*(S-mygemm(R,mygemm(tP,Q))(0,0)) +  mygemm(mygemm(R,tQ),mygemm(tR,Q))(0,0);
-
-    //matrix_t Mmat = tP -mygemm(tQ,tR)/tS;
-    matrix_t Mmat = mygemm(tQ,tR);
-    Mmat *= -1/tS;
-    Mmat += tP;
-
-    const matrix_t MQ = mygemm(Mmat, Q);
-    const matrix_t RM = mygemm(R, Mmat);
-    const matrix_t tQp = (-tS/lambda)*MQ;
-    const matrix_t tRp = (-tS/lambda)*RM;
-    const matrix_t tPp = Mmat+(tS/lambda)*mygemm(MQ, RM);
     const T tSp = tS/lambda;
+    //std::cout << "lamba split " << tS*(S-mygemm(R,mygemm(tP,Q))(0,0)) << " " <<  mygemm(mygemm(R,tQ),mygemm(tR,Q))(0,0) << std::endl;
+    //std::cout << "debug tS/tSp " << tS << " " << tSp << std::endl;
+    if (std::abs(tS)<eps && std::abs(tSp)<eps) {
+        const double R_tQ = mygemm(R, tQ)(0,0);
+        const double tR_Q = mygemm(tR, Q)(0,0);
+        matrix_t tQp(tQ); tQp /= R_tQ;
+        matrix_t tRp(tR); tRp /= tR_Q;
 
-    copy_block(tPp, 0, 0, invG, 0, 0, Nm1, Nm1);
-    copy_block(tQp, 0, 0, invG, 0, Nm1, Nm1, 1);
-    copy_block(tRp, 0, 0, invG, Nm1, 0, 1, Nm1);
-    invG(N-1,N-1) = tSp;
+        matrix_t tPp(tP);
+        tPp += -mygemm(tQp,mygemm(R,tP))-mygemm(mygemm(tP,Q),tRp)+mygemm(mygemm(tQp,mygemm(R,mygemm(tP,Q))),tRp);
 
-    invG.swap_cols(m,N-1);
-    invG.swap_rows(m,N-1);
+        copy_block(tPp, 0, 0, invG, 0, 0, Nm1, Nm1);
+        copy_block(tQp, 0, 0, invG, 0, Nm1, Nm1, 1);
+        copy_block(tRp, 0, 0, invG, Nm1, 0, 1, Nm1);
+        invG(N-1,N-1) = tSp;
 
-    return lambda;
+        invG.swap_cols(m,N-1);
+        invG.swap_rows(m,N-1);
+
+        return lambda;
+    } else {
+        matrix_t Mmat = mygemm(tQ,tR);
+        Mmat *= -1/tS;
+        Mmat += tP;
+
+        const matrix_t MQ = mygemm(Mmat, Q);
+        const matrix_t RM = mygemm(R, Mmat);
+        const matrix_t tQp = (-tS/lambda)*MQ;
+        const matrix_t tRp = (-tS/lambda)*RM;
+        const matrix_t tPp = Mmat+(tS/lambda)*mygemm(MQ, RM);
+
+        copy_block(tPp, 0, 0, invG, 0, 0, Nm1, Nm1);
+        copy_block(tQp, 0, 0, invG, 0, Nm1, Nm1, 1);
+        copy_block(tRp, 0, 0, invG, Nm1, 0, 1, Nm1);
+        invG(N-1,N-1) = tSp;
+
+        invG.swap_cols(m,N-1);
+        invG.swap_rows(m,N-1);
+
+        return lambda;
+    }
 
 /*
     matrix_t L(N,1,0.), R(1,N,0.);
@@ -470,11 +493,10 @@ compute_inverse_matrix_replace_rows_cols_succesive(alps::numeric::matrix<T>& inv
         }
         assert(idx==N-M);
         assert(idx2==M);
-        //for (int i=0; i<M; ++i) {
-            //Dr(0,rows_cols[i]) = R(im,i);
-            //Dc(rows_cols[i],0) = Q(i,im);
-        //}
-        lambda *= compute_inverse_matrix_replace_row_col(invG, Dr, Dc, rows_cols[im]);
+
+        double rtmp = compute_inverse_matrix_replace_row_col(invG, Dr, Dc, rows_cols[im]);
+        //std::cout << " im = " << im << " " << rtmp << std::endl;
+        lambda *= rtmp;
     }
     return lambda;
 }
@@ -510,6 +532,27 @@ replace_rows_cols(alps::numeric::matrix<T>& A,
 }
 
 template<class T>
+void generate_indices(const std::vector<T>& rows_cols, int N, int M, std::vector<T>& rows_cols_rest) {
+    assert(rows_cols.size()==M);
+    const int NpM = N+M;
+
+    std::vector<bool> is_included(N+M,false);
+    for (int im=0; im<M; ++im) {
+        is_included[rows_cols[im]] = true;
+    }
+
+    rows_cols_rest.resize(N);
+    int idx = 0;
+    for (int i=0; i<NpM; ++i) {
+        if (!is_included[i]) {
+            rows_cols_rest[idx]  = i;
+            ++idx;
+        }
+    }
+    assert(idx==N);
+}
+
+template<class T>
 void
 replace_rows_cols_respect_ordering(alps::numeric::matrix<T>& A,
                   const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
@@ -519,7 +562,7 @@ replace_rows_cols_respect_ordering(alps::numeric::matrix<T>& A,
     const int M = rows_cols.size();
     const int N = NpM-M;
 
-    std::vector<bool> is_included(N,false);
+    std::vector<bool> is_included(N+M,false);
     for (int im=0; im<M; ++im) {
         is_included[rows_cols[im]] = true;
     }
