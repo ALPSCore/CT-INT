@@ -95,7 +95,6 @@ n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 1),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false)
 {
-  //std::cout << "window_width" << window_width << std::endl;
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
     measurement_method=selfenergy_measurement_itime_rs;
@@ -150,7 +149,10 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
 
   //initialize the simulation variables
   initialize_simulation(parms);
+  std::cout << "Testing random generator : " << window_dist(boost_random) << std::endl;
   if(node==0) {
+    std::cout << "Using window_width = " << window_width << std::endl;
+    std::cout << std::endl;
     print(std::cout);
 
     std::cout << std::endl << "Analysis of quantum numbers"  << std::endl;
@@ -158,6 +160,7 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
       std::cout << "  Flavor " << flavor << " has " << groups[flavor].size() << " group(s)." << std::endl;
       print_group(groups[flavor]);
     }
+    std::cout << std::endl;
     std::cout << std::endl;
   }
   vertex_histograms=new simple_hist *[n_flavors];
