@@ -65,8 +65,10 @@ void InteractionExpansion::removal_insertion_update(void)
     assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
     if (new_vertices.size()==0 || (force_quantum_number_conservation && !is_quantum_number_conserved(new_vertices))) {
       simple_statistics_ins.not_valid_state(nv_updated-1);
+      update_prop.generated_invalid_update(nv_updated);
       return;
     }
+    update_prop.generated_valid_update(nv_updated);
 
     boost::tie(metropolis_weight,det_rat)=try_add(add_helper,nv_updated, new_vertices);
     if (nv_updated>=2) {
@@ -109,8 +111,11 @@ void InteractionExpansion::removal_insertion_update(void)
     }
     if (force_quantum_number_conservation && !is_quantum_number_conserved(vertices_to_be_removed)) {
       simple_statistics_rem.not_valid_state(nv_updated-1);
+      update_prop.generated_invalid_update(nv_updated);
       return;
     }
+
+    update_prop.generated_valid_update(nv_updated);
 
     boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
     if (nv_updated>=2) {

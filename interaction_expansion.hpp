@@ -486,6 +486,7 @@ protected:
   virtual void reject_shift(int idx_vertex)=0;
 
   /*private member variables, constant throughout the simulation*/
+  const unsigned int node;
   const unsigned int max_order;                        
   const spin_t n_flavors;                                //number of flavors (called 'flavors') in InteractionExpansion
   const site_t n_site;                                //number of sites

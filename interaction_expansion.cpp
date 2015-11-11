@@ -47,6 +47,7 @@ std::complex<double> *c_or_cdagger::exp_iomegan_tau_;
 
 InteractionExpansion::InteractionExpansion(const alps::params &parms, int node)
 : alps::mcbase(parms,node),
+node(node),
 max_order(parms["MAX_ORDER"] | 2048),
 n_flavors(parms["FLAVORS"] | (parms["N_ORBITALS"] | 2)),
 n_site(parms["SITES"] | 1),
@@ -214,6 +215,8 @@ void InteractionExpansion::measure(){
 
 double InteractionExpansion::fraction_completed() const{
   //check for error convergence
+  if (node==0)
+    std::cout << "step = " << step << std::endl;
   //std::cout << "fraction " << ((step-therm_steps) / (double) mc_steps) << std::endl;
   //std::cout << "debug fraction " << "step=" << step << " therm_steps " << therm_steps << " mc_steps= " << mc_steps << std::endl;
   if (!thermalized) {
@@ -390,7 +393,7 @@ void c_or_cdagger::initialize_simulation(const alps::params &p)
 
 void InteractionExpansion::prepare_for_measurement()
 {
-  //update_prop.finish_learning();
+  update_prop.finish_learning((node==0));
   statistics_ins.reset();
   statistics_rem.reset();
   statistics_shift.reset();
