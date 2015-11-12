@@ -521,9 +521,7 @@ protected:
   /*PRNG seed*/
   const int seed;
   bool is_thermalized_in_previous_step_;
-  //boost random-number generator with flexible distribution
-  boost::random::mt19937 boost_random;
-  
+
   /*private member variables*/
   matsubara_green_function_t green_matsubara;
   matsubara_green_function_t bare_green_matsubara;

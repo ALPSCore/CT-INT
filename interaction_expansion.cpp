@@ -72,7 +72,6 @@ measurement_period(parms["MEASUREMENT_PERIOD"] | 500*n_flavors*n_site),
 convergence_check_period(parms["CONVERGENCE_CHECK_PERIOD"] | (int)recalc_period),
 almost_zero(parms["ALMOSTZERO"] | 1.e-16),
 seed(parms["SEED"] | 0),
-boost_random(seed+node),
 green_matsubara(n_matsubara, n_site, n_flavors),
 bare_green_matsubara(n_matsubara,n_site, n_flavors), 
 bare_green_itime(n_tau+1, n_site, n_flavors),
@@ -149,7 +148,6 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
 
   //initialize the simulation variables
   initialize_simulation(parms);
-  std::cout << "Testing random generator : " << window_dist(boost_random) << std::endl;
   if(node==0) {
     std::cout << "Using window_width = " << window_width << std::endl;
     std::cout << std::endl;

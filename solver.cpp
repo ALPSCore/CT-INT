@@ -40,7 +40,7 @@ void InteractionExpansion::removal_insertion_update(void)
   //static fastupdate_remove_helper remove_helper(n_flavors);
 
   //int nv_updated = (size_t) (random()*n_multi_vertex_update)+1;
-  const int nv_updated = update_prop.gen_Nv(boost_random);
+  const int nv_updated = update_prop.gen_Nv(random.engine());
 
 //#ifndef NDEBUG
   /***** VERY EXPENSIVE TEST *****/
@@ -56,7 +56,7 @@ void InteractionExpansion::removal_insertion_update(void)
       return; //we have already reached the highest perturbation order
     if (nv_updated>=2) {
       add_helper.op = non_density_type_in_window(beta*random(),
-                                                 std::min(beta,window_dist(boost_random)),
+                                                 std::min(beta,window_dist(random.engine())),
                                                  beta);
     }
     std::vector<itime_vertex> new_vertices = nv_updated==1 ?
@@ -95,7 +95,7 @@ void InteractionExpansion::removal_insertion_update(void)
     }
     if (nv_updated>=2) {
       remove_helper.op = non_density_type_in_window(beta*random(),
-              std::min(beta,window_dist(boost_random)),
+              std::min(beta,window_dist(random.engine())),
               beta);
     }
 
@@ -152,7 +152,7 @@ void InteractionExpansion::shift_update(void) {
 
   //choose a vertex
   const int iv = static_cast<int>(pert_order*random());
-  const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, boost_random);
+  const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, random.engine());
   const double diff_time = std::abs(new_time-itime_vertices[iv].time());
 
   //std::cout << std::endl << std::endl << "Try shift type " << itime_vertices[iv].type() << " iv =" << iv << " order " << pert_order << std::endl;
