@@ -426,7 +426,6 @@ public:
   bool is_thermalized() const {return step>therm_steps;}
   void update();
   void measure();
-  void prepare_for_measurement(); //called once after thermalization is done
   double fraction_completed() const;
 
   //type of G(tau) This should be std::complex when G(tau) has imaginary parts. At some point, this will be templatized.
@@ -484,6 +483,7 @@ protected:
   virtual double try_shift(int idx_vertex, double new_time)=0;
   virtual void perform_shift(int idx_vertex)=0;
   virtual void reject_shift(int idx_vertex)=0;
+  virtual void prepare_for_measurement()=0; //called once after thermalization is done
 
   /*private member variables, constant throughout the simulation*/
   const unsigned int node;
@@ -541,7 +541,7 @@ protected:
   double weight;
   double sign;
   unsigned int measurement_method;
-  bool thermalized;
+  //bool thermalized;
   
   simple_hist pert_hist;
   unsigned int hist_max_index;
@@ -592,6 +592,7 @@ public:
   std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&);
   void perform_add(fastupdate_add_helper&,size_t);
   void reject_add(fastupdate_add_helper&,size_t);
+  void prepare_for_measurement(); //called once after thermalization is done
   std::pair<double,double> try_remove(const std::vector<int>& vertex_nr, fastupdate_remove_helper&);
   void perform_remove(const std::vector<int>& vertex_nr, fastupdate_remove_helper&);
   void reject_remove(fastupdate_remove_helper&);

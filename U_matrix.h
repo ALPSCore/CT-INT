@@ -233,9 +233,6 @@ class general_U_matrix {
         if (!is_density_type[iv])
           non_density_vertices.push_back(vertex_list[iv]);
       }
-      for (int i=0; i<non_density_vertices.size(); ++i) {
-          std::cout << "debug " << i << " " << non_density_vertices[i].id() << std::endl;
-      }
     }
  };
 

@@ -28,8 +28,10 @@
 #include "fouriertransform.h"
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #ifdef ALPS_HAVE_MPI
-#include <alps/mcmpiadapter.hpp>
-typedef alps::mcmpiadapter<HubbardInteractionExpansion> sim_type;
+//#include <alps/mcmpiadapter.hpp>
+#include "my_mcmpiadapter.hpp"
+#include "my_check_schedule.hpp"
+typedef alps::mcmpiadapter<HubbardInteractionExpansion,alps::my_check_schedule> sim_type;
 #else
 typedef HubbardInteractionExpansion sim_type;
 #endif
@@ -76,15 +78,23 @@ int main(int argc, char** argv)
 
       //on the master: collect MC results and store them in file, then postprocess
       if (global_mpi_rank==0){
+        std::cout << " collecting ... " << std::endl;
         alps::results_type<HubbardInteractionExpansion>::type results = collect_results(s);
         save_results(results, parms, output_file, "/simulation/results");
         //compute the output Green's function and Fourier transform it, store in the right path
+        std::cout << " collecting done " << std::endl;
+        c.barrier();
+        std::cout << " compute GF " << std::endl;
         compute_greens_functions(results, parms, output_file);
+        std::cout << " compute GF  done" << std::endl;
 #ifdef ALPS_HAVE_MPI
       } else{
-      collect_results(s);
+        collect_results(s);
+        std::cout << " collecting done " << std::endl;
+        c.barrier();
       }
       c.barrier();
+
 #else
       }
 #endif

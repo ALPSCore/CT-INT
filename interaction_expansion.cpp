@@ -111,8 +111,6 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
   start_time=time(NULL);
   measurement_time=0;
   update_time=0;
-  thermalized=therm_steps==0?true:false;
-
 
   //load bare Green's function
   boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
@@ -148,9 +146,15 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
 
   //initialize the simulation variables
   initialize_simulation(parms);
+  //random.engine().seed(static_cast<unsigned int>(10000*random()));
+  //std::cout << "node = " << node << " , first random number = " << random() << std::endl;
+  //for (int i=0; i<5; ++i)
+    //std::cout << " node = " << node << " random " << window_dist(random.engine()) << std::endl;
+
+
   if(node==0) {
-    std::cout << "Using window_width = " << window_width << std::endl;
-    std::cout << std::endl;
+    //std::cout << "Using window_width = " << window_width << std::endl;
+    //std::cout << std::endl;
     print(std::cout);
 
     std::cout << std::endl << "Analysis of quantum numbers"  << std::endl;
@@ -175,14 +179,17 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
 
 void InteractionExpansion::update()
 {
+  //std::cout << " update called  node " << node << std::endl;
   std::valarray<double> t_meas(0.0, 2);
-  if (!is_thermalized_in_previous_step_ && is_thermalized()) {
+  const bool is_thermalized_now = is_thermalized();
+  if (!is_thermalized_in_previous_step_ && is_thermalized_now) {
     prepare_for_measurement();
   }
-  is_thermalized_in_previous_step_ = is_thermalized();
+  is_thermalized_in_previous_step_ = is_thermalized_now;
 
-  if (node==0)
-    std::cout << " step = " << step << std::endl;
+  //if (node==0)
+  //std::cout << " node = " << node << " step = " << step << " random= " << random() << std::endl;
+  //std::cout << " node = " << node << " step = " << step << std::endl;
 
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
@@ -219,19 +226,18 @@ void InteractionExpansion::measure(){
 
 double InteractionExpansion::fraction_completed() const{
   //check for error convergence
-  if (node==0)
-    std::cout << "step = " << step << std::endl;
   //std::cout << "fraction " << ((step-therm_steps) / (double) mc_steps) << std::endl;
   //std::cout << "debug fraction " << "step=" << step << " therm_steps " << therm_steps << " mc_steps= " << mc_steps << std::endl;
-  if (!thermalized) {
+  if (!is_thermalized()) {
     return 0.;
+  } else {
+    //if(time(NULL)-start_time> max_time_in_seconds){
+    //std::cout<<"we ran out of time!"<<std::endl;
+    //return 1;
+    //}
+    //assert(step>=therm_steps);
+    return ((step - therm_steps) / (double) mc_steps);
   }
-  if(time(NULL)-start_time> max_time_in_seconds){
-    std::cout<<"we ran out of time!"<<std::endl;
-    return 1;
-  }
-  assert(step>=therm_steps);
-  return ((step-therm_steps) / (double) mc_steps);
 }
 
 
@@ -395,9 +401,10 @@ void c_or_cdagger::initialize_simulation(const alps::params &p)
   }
 }
 
-void InteractionExpansion::prepare_for_measurement()
+void HubbardInteractionExpansion::prepare_for_measurement()
 {
-  update_prop.finish_learning((node==0));
+  //update_prop.finish_learning((node==0));
+  update_prop.finish_learning(true);
   statistics_ins.reset();
   statistics_rem.reset();
   statistics_shift.reset();
