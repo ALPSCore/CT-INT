@@ -259,27 +259,40 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
 }
 
 bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices) {
-  std::valarray<int> qn_t(0, quantum_number_vertices[0].size());
-  //std::cout << "size " << qn_t.size() << std::endl;
+  const int qn_size = quantum_number_vertices[0].size();
+  const int Nv = vertices.size();
 
-  for (int iv=0; iv<vertices.size(); ++iv) {
-    //std::cout << "checking v_type " << vertices[iv].type() << std::endl;
-    assert(qn_t.size()==quantum_number_vertices[vertices[iv].type()].size());
-    qn_t += quantum_number_vertices[vertices[iv].type()];
-  }
-  bool flag = true;
-  //std::cout << " sum : ";
-  //for (int i=0; i<qn_t.size(); ++i) {
-    //std::cout << " " << qn_t[i];
-  //}
-  //std::cout << std::endl;
-  for (int i=0; i<qn_t.size(); ++i) {
-    if (qn_t[i]!=0) {
-      flag = false;
-      break;
+  if (Nv==0)
+    true;
+
+  std::valarray<int> qn_t(0, qn_size), qn_max(0, qn_size), qn_min(0, qn_size);
+  std::vector<itime_vertex> vertices_sorted(vertices);
+  std::sort(vertices_sorted.begin(), vertices_sorted.end());
+
+  for (int iv=0; iv<Nv; ++iv) {
+    qn_t += quantum_number_vertices[vertices_sorted[iv].type()];
+
+    for (int iq=0; iq<qn_size; ++iq) {
+      qn_max[iq] = std::max(qn_max[iq], qn_t[iq]);
+      qn_min[iq] = std::min(qn_min[iq], qn_t[iq]);
     }
   }
-  return flag;
+
+  //check if the quantum number is conserved
+  for (int i=0; i<qn_t.size(); ++i) {
+    if (qn_t[i]!=0) {
+      return false;
+    }
+  }
+
+  //check if the quantum number is within the range
+  for (int iq=0; iq<qn_size; ++iq) {
+     if (qn_max[iq]-qn_min[iq]>1) {
+       return false;
+     }
+  }
+
+  return true;
 }
 
 bool InteractionExpansion::is_irreducible(const std::vector<itime_vertex>& vertices) {

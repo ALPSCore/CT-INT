@@ -269,6 +269,9 @@ private:
   bool is_density_type_;
 } itime_vertex;
 
+inline bool operator<(const itime_vertex& v1, const itime_vertex& v2) {
+  return (v1.time()<v2.time());
+}
 //template<class T>
 //itime_vertex generate_itime_vertex(vertex_definition<T> vertex_df
 //template<class V>
