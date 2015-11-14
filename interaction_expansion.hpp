@@ -508,8 +508,8 @@ protected:
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
   const general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
   //quantum numbers
-  std::vector<quantum_number_t> quantum_number_vertices;
-  std::vector<bool> reducible_vertices;
+  std::vector<std::vector<quantum_number_t> > quantum_number_vertices;
+  //std::vector<bool> reducible_vertices;
   std::vector<bool> is_density_density_type;
 
   const unsigned int recalc_period;                

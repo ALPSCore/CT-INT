@@ -118,10 +118,10 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
   //make quantum numbers
   std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
   quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, almost_zero);
-  reducible_vertices.resize(Uijkl.n_vertex_type());
+  //reducible_vertices.resize(Uijkl.n_vertex_type());
   is_density_density_type.resize(Uijkl.n_vertex_type());
   for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
-    reducible_vertices[iv] = std::abs(quantum_number_vertices[iv]).sum()==0 ? true : false;
+    //reducible_vertices[iv] = std::abs(quantum_number_vertices[iv]).sum()==0 ? true : false;
     is_density_density_type[iv] = Uijkl.get_vertex(iv).is_density_type();
   }
 
@@ -270,7 +270,7 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
   std::sort(vertices_sorted.begin(), vertices_sorted.end());
 
   for (int iv=0; iv<Nv; ++iv) {
-    qn_t += quantum_number_vertices[vertices_sorted[iv].type()];
+    qn_t += quantum_number_vertices[vertices_sorted[iv].type()][vertices_sorted[iv].af_state()];
 
     for (int iq=0; iq<qn_size; ++iq) {
       qn_max[iq] = std::max(qn_max[iq], qn_t[iq]);
@@ -295,6 +295,7 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
   return true;
 }
 
+/*
 bool InteractionExpansion::is_irreducible(const std::vector<itime_vertex>& vertices) {
   if (vertices.size()==1) {
     return true;
@@ -310,6 +311,7 @@ bool InteractionExpansion::is_irreducible(const std::vector<itime_vertex>& verti
   }
   return flag;
 }
+ */
 
 void InteractionExpansion::sanity_check() {
 #ifndef NDEBUG

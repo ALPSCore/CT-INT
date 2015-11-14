@@ -401,14 +401,13 @@ void print_group(const std::vector<std::vector<T> >& group) {
 }
 
 template<typename T>//Expected T=double or T=std::complex<double>
-std::vector<quantum_number_t>
+std::vector<std::vector<quantum_number_t> >
 make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<T> >& vertices, std::vector<std::vector<std::vector<size_t> > >& groups, double eps=1E-10) {
   const size_t n_site = gf.nsite();
   const size_t n_flavors = gf.nflavor();
 
   //See if two sites are connected by nonzero G
   boost::multi_array<bool,2> connected(boost::extents[n_site][n_site]);
-  //std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
   groups.resize(n_flavors);
   std::vector<std::vector<int> > group_map(n_flavors);
   std::vector<size_t> num_groups(n_flavors);
@@ -428,26 +427,37 @@ make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_defin
   const size_t n_dim = *std::max_element(num_groups.begin(), num_groups.end());
 
   //compute quantum number for each vertex
-  std::vector<quantum_number_t> qn_vertices;
   const size_t Nv = vertices.size();
+  std::vector<std::vector<quantum_number_t> > qn_vertices(Nv);
   for (size_t iv=0; iv<Nv; ++iv) {
     const vertex_definition<T>& vd = vertices[iv];
-    std::valarray<int> qn_diff(0, n_dim*n_flavors);
-    assert(qn_diff.size()==n_dim*n_flavors);
+    const int num_af = vd.num_af_states();
+    for (int i_af=0; i_af<num_af; ++i_af) {
+      std::valarray<int> qn_diff(0, n_dim*n_flavors);
+      assert(qn_diff.size()==n_dim*n_flavors);
+      for (size_t i_rank=0; i_rank<vd.rank(); ++i_rank) {
+        const spin_t flavor = vd.flavors()[i_rank];
+        const size_t site1 = vd.sites()[2*i_rank];//c_dagger
+        const size_t site2 = vd.sites()[2*i_rank+1];//c
 
-    for (size_t i_rank=0; i_rank<vd.rank(); ++i_rank) {
-      const spin_t flavor = vd.flavors()[i_rank];
-      const size_t site1 = vd.sites()[2*i_rank];//c_dagger
-      const size_t site2 = vd.sites()[2*i_rank+1];//c
+        int PH;
+        if (site1==site2) {
+          //density type
+          PH = std::abs(vd.get_alpha(i_af,i_rank))<std::abs(vd.get_alpha(i_af,i_rank)-1) ? 1 : -1;
+        } else {
+          //non-density type
+          PH = 1;
+        }
 
-      //C^dagger
-      assert(n_dim*flavor+group_map[flavor][site1]<qn_diff.size());
-      ++qn_diff[n_dim*flavor+group_map[flavor][site1]];
-      //c
-      assert(n_dim*flavor+group_map[flavor][site2]<qn_diff.size());
-      --qn_diff[n_dim*flavor+group_map[flavor][site2]];
+        //C^dagger
+        assert(n_dim*flavor+group_map[flavor][site1]<qn_diff.size());
+        qn_diff[n_dim*flavor+group_map[flavor][site1]] += PH;
+        //c
+        assert(n_dim*flavor+group_map[flavor][site2]<qn_diff.size());
+        qn_diff[n_dim*flavor+group_map[flavor][site2]] -= PH;
+      }
+      qn_vertices[iv].push_back(qn_diff);
     }
-    qn_vertices.push_back(qn_diff);
   }
 
   return qn_vertices;

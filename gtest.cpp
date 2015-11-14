@@ -362,15 +362,14 @@ TEST(QuantumNumber, diagonal_GF) {
     vertices.push_back(vertex_definition<double>(2,2,flavors,sites,0.0,alpha,0));
 
     int qs[] = {1, -1, 0, 0, 0, 0, 1, -1};
-    std::vector<std::valarray<int> > quantum_number_vertices;
+    std::vector<std::vector<std::valarray<int> > > quantum_number_vertices;
     std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
     quantum_number_vertices = make_quantum_numbers(gf, vertices, groups, eps);
     std::valarray<int> qs2(qs,n_site*n_flavors);
-    //std::valarray<int> qs3(qs,n_site*n_flavors);
     bool flag = true;
+    int i_af = 0;
     for (int i=0; i<qs2.size(); ++i) {
-        //std::cout << i << " " << quantum_number_vertices[0][i] << std::endl;
-        if (qs2[i]!=quantum_number_vertices[0][i]) {
+        if (qs2[i]!=quantum_number_vertices[0][i_af][i]) {
             flag = false;
         }
     }
