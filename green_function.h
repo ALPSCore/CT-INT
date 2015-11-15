@@ -343,6 +343,7 @@ read_bare_green_functions(const alps::params &parms) {
 };
 
 
+//groups(groups, sites belonging to groups)
 template<class T>
 void
 make_groups(size_t N, const T& connected, std::vector<std::vector<size_t> >& groups, std::vector<int>& map) {
@@ -402,14 +403,17 @@ void print_group(const std::vector<std::vector<T> >& group) {
 
 template<typename T>//Expected T=double or T=std::complex<double>
 std::vector<std::vector<quantum_number_t> >
-make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<T> >& vertices, std::vector<std::vector<std::vector<size_t> > >& groups, double eps=1E-10) {
+make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<T> >& vertices, std::vector<std::vector<std::vector<size_t> > >& groups,
+                     std::vector<std::vector<int> >& group_map,
+                     double eps=1E-10) {
   const size_t n_site = gf.nsite();
   const size_t n_flavors = gf.nflavor();
 
   //See if two sites are connected by nonzero G
   boost::multi_array<bool,2> connected(boost::extents[n_site][n_site]);
   groups.resize(n_flavors);
-  std::vector<std::vector<int> > group_map(n_flavors);
+  //std::vector<std::vector<int> > group_map(n_flavors);
+  group_map.resize(n_flavors);
   std::vector<size_t> num_groups(n_flavors);
 
   //figure out how sites are connected by GF

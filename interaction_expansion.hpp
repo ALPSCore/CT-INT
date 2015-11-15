@@ -39,6 +39,7 @@
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/exponential_distribution.hpp>
 #include <boost/math/special_functions/sign.hpp>
+#include <boost/lambda/lambda.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
@@ -504,11 +505,12 @@ protected:
   const int n_shift;
   const bool force_quantum_number_conservation;
 
-    const double beta;
+  const double beta;
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
-  const general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
+  general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
   //quantum numbers
   std::vector<std::vector<quantum_number_t> > quantum_number_vertices;
+  int qn_dim;
   //std::vector<bool> reducible_vertices;
   std::vector<bool> is_density_density_type;
 

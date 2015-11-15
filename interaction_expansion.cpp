@@ -117,12 +117,18 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
 
   //make quantum numbers
   std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
-  quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, almost_zero);
-  //reducible_vertices.resize(Uijkl.n_vertex_type());
+  std::vector<std::vector<int> > group_map;
+  quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
   is_density_density_type.resize(Uijkl.n_vertex_type());
   for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
-    //reducible_vertices[iv] = std::abs(quantum_number_vertices[iv]).sum()==0 ? true : false;
     is_density_density_type[iv] = Uijkl.get_vertex(iv).is_density_type();
+  }
+
+  //occ changes
+  qn_dim = quantum_number_vertices[0][0].size();
+  std::cout << "qn_dim " << qn_dim << std::endl;
+  for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
+    Uijkl.get_vertex(iv).make_quantum_numbers(group_map, qn_dim/n_flavors);
   }
 
   //set up parameters for updates
@@ -259,23 +265,21 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
 }
 
 bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices) {
-  const int qn_size = quantum_number_vertices[0].size();
+  using namespace boost::lambda;
+
+  //const int qn_size = quantum_number_vertices[0].size();
   const int Nv = vertices.size();
 
   if (Nv==0)
-    true;
+    return true;
 
-  std::valarray<int> qn_t(0, qn_size), qn_max(0, qn_size), qn_min(0, qn_size);
-  std::vector<itime_vertex> vertices_sorted(vertices);
+  std::valarray<int> qn_t(0, qn_dim), qn_max(0, qn_dim), qn_min(0, qn_dim);
+  std::vector<itime_vertex> vertices_sorted(vertices);//sort vertices in decreasing order (in time)
   std::sort(vertices_sorted.begin(), vertices_sorted.end());
 
   for (int iv=0; iv<Nv; ++iv) {
-    qn_t += quantum_number_vertices[vertices_sorted[iv].type()][vertices_sorted[iv].af_state()];
-
-    for (int iq=0; iq<qn_size; ++iq) {
-      qn_max[iq] = std::max(qn_max[iq], qn_t[iq]);
-      qn_min[iq] = std::min(qn_min[iq], qn_t[iq]);
-    }
+    const vertex_definition<GTYPE> vd = Uijkl.get_vertex(vertices_sorted[iv].type());
+    vd.apply_occ_change(vertices_sorted[iv].af_state(), qn_t, qn_max, qn_min);
   }
 
   //check if the quantum number is conserved
@@ -286,7 +290,7 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
   }
 
   //check if the quantum number is within the range
-  for (int iq=0; iq<qn_size; ++iq) {
+  for (int iq=0; iq<qn_dim; ++iq) {
      if (qn_max[iq]-qn_min[iq]>1) {
        return false;
      }

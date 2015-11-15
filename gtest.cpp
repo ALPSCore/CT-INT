@@ -364,7 +364,8 @@ TEST(QuantumNumber, diagonal_GF) {
     int qs[] = {1, -1, 0, 0, 0, 0, 1, -1};
     std::vector<std::vector<std::valarray<int> > > quantum_number_vertices;
     std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
-    quantum_number_vertices = make_quantum_numbers(gf, vertices, groups, eps);
+    std::vector<std::vector<int> > group_map;
+    quantum_number_vertices = make_quantum_numbers(gf, vertices, groups, group_map, eps);
     std::valarray<int> qs2(qs,n_site*n_flavors);
     bool flag = true;
     int i_af = 0;
@@ -374,9 +375,81 @@ TEST(QuantumNumber, diagonal_GF) {
         }
     }
     ASSERT_TRUE(flag);
+
+    vertices[0].make_quantum_numbers(group_map, quantum_number_vertices[0].size()/n_flavors);
+
     //ASSERT_TRUE(qs2==std::valarray<int>(quantum_number_vertices[0]));
     //ASSERT_TRUE(1==1);
     //ASSERT_TRUE(qs2==qs3);
+}
+
+TEST(QuantumNumber, OccChange) {
+    size_t n_site = 3;
+    size_t n_flavors = 2;
+
+    const size_t n_rank = 2;
+    const size_t n_af = 2;
+    const size_t Nv = 1;
+    const double eps = 0.01;
+    const double U = 1.0;
+    const int qn_dim = 6;
+
+    std::vector<vertex_definition<double> > vertices;
+    boost::multi_array<double, 2> alpha(boost::extents[n_af][n_rank]);
+
+    std::vector<std::vector<int> > group_map(n_flavors);
+    for (int flavor=0; flavor<n_flavors; ++flavor) {
+        group_map[flavor].resize(n_site);
+        for (int i_site=0; i_site<n_site; ++i_site)
+            group_map[flavor][i_site] = i_site;
+    }
+
+    //n0u n0d
+    std::vector<spin_t> flavors(n_rank);
+    std::vector<size_t> sites(2 * n_rank);
+    flavors[0] = 0;
+    flavors[1] = 1;
+    sites[0] = 0;
+    sites[1] = 0;
+    sites[2] = 0;
+    sites[3] = 0;
+    alpha[0][0]=1+eps; alpha[0][1]=-eps; //af=0
+    alpha[1][0]=-eps; alpha[1][1]=1+eps; //af=1
+    vertices.push_back(vertex_definition<double>(2,2,flavors,sites,U,alpha,0));
+    vertices[vertices.size()-1].make_quantum_numbers(group_map, qn_dim/n_flavors);
+
+    for (int i_af=0; i_af<n_af; ++i_af) {
+        std::valarray<int> qn_t(0,qn_dim), qn_max(0,qn_dim), qn_min(0,qn_dim);
+        vertices[0].apply_occ_change(i_af,qn_t,qn_max,qn_min);
+        if (i_af==0) {
+            int qn_max_ans[] = {+1, 0, 0,  0, 0, 0};
+            int qn_min_ans[] = { 0, 0, 0, -1, 0, 0};
+            for (int i=0; i<qn_dim; ++i) {
+                ASSERT_EQ(qn_t[i], 0);
+                ASSERT_EQ(qn_max[i], qn_max_ans[i]);
+                ASSERT_EQ(qn_min[i], qn_min_ans[i]);
+            }
+        } else {
+            int qn_max_ans[] = { 0, 0, 0, +1, 0, 0};
+            int qn_min_ans[] = {-1, 0, 0,  0, 0, 0};
+            for (int i=0; i<qn_dim; ++i) {
+                ASSERT_EQ(qn_t[i], 0);
+                ASSERT_EQ(qn_max[i], qn_max_ans[i]);
+                ASSERT_EQ(qn_min[i], qn_min_ans[i]);
+            }
+        }
+    }
+
+    //std::cout << "debug " << std::endl;
+    //for (int i=0; i<qn_dim; ++i)
+        //std::cout << " i " << i << " " << qn_t[i] << std::endl;
+    //for (int i=0; i<qn_dim; ++i)
+        //std::cout << " i " << i << " " << qn_max[i] << std::endl;
+    //for (int i=0; i<qn_dim; ++i)
+        //std::cout << " i " << i << " " << qn_min[i] << std::endl;
+
+    ////std::vector<std::vector<std::valarray<int> > > quantum_number_vertices;
+    //std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
 }
 
 TEST(UpdateStatistics, EstimateSpread) {

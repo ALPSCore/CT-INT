@@ -96,10 +96,64 @@ public:
 
    int id() const {return id_;}
 
+   //track changes of occupations when this vertex is applied to a vector.
+   //group(flavor,site)
+   void make_quantum_numbers(const std::vector<std::vector<int> >& group_map, int ndim_group_per_flavor) {
+     occ_change.resize(num_af_states_);
+
+     for (int i_af=0; i_af<num_af_states_; ++i_af) {
+       occ_change[i_af].resize(0);
+       int idx = 0;
+       for (int i_rank=rank_-1; i_rank>=0; --i_rank) {
+         int PH = 1; //PH=1 means that there is no need for PH inversion.
+         const int site1 = sites_[2*i_rank];
+         const int site2 = sites_[2*i_rank+1];
+         const int flavor = flavors_[i_rank];
+         //std::cout << "site1 " << site1 << std::endl;
+         //std::cout << "site2 " << site2 << std::endl;
+         //std::cout << "ndim " << ndim_group_per_flavor << std::endl;
+         if (std::min(std::abs(get_alpha(i_af,i_rank)),std::abs(1-get_alpha(i_af,i_rank))) >0.5) {
+           throw std::runtime_error("Please take the value of alpha sufficiently close to 0 or 1 when using quantum number conservation!");
+         }
+         if(site1==site2) {//if c^dagger c is not of density type.
+           PH = std::abs(get_alpha(i_af, i_rank))<std::abs(1-get_alpha(i_af,i_rank)) ? 1 : -1;
+         }
+         if (PH==1) {
+           //apply c first, then cdagger.
+           occ_change[i_af].push_back(boost::make_tuple(group_map[flavor][site2]+ndim_group_per_flavor*flavor,flavor,-1));
+           occ_change[i_af].push_back(boost::make_tuple(group_map[flavor][site1]+ndim_group_per_flavor*flavor,flavor,+1));
+         } else {
+           //apply cdagger first, then c.
+           occ_change[i_af].push_back(boost::make_tuple(group_map[flavor][site1]+ndim_group_per_flavor*flavor,flavor,+1));
+           occ_change[i_af].push_back(boost::make_tuple(group_map[flavor][site2]+ndim_group_per_flavor*flavor,flavor,-1));
+         }
+         idx += 2;
+       }
+       assert(occ_change[i_af].size()==2*rank_);
+     }
+     //for (int i_af=0; i_af<num_af_states_; ++i_af) {
+       //std::cout << "i_af " << i_af << std::endl;
+       //for (int i=0; i<2*rank_; ++i)
+         //std::cout << " op " << i << " " << boost::get<0>(occ_change[i_af][i]) << " " << boost::get<2>(occ_change[i_af][i]) << std::endl;
+     //}
+   }
+
+   void apply_occ_change(int i_af, std::valarray<int>& occ_state, std::valarray<int>& max_occ, std::valarray<int>& min_occ) const {
+     assert(i_af<num_af_states_ && i_af>=0);
+     for (std::vector<boost::tuple<int,int,int> >::const_iterator it=occ_change[i_af].begin(); it!=occ_change[i_af].end(); ++it) {
+       const int group = boost::get<0>(*it);
+       occ_state[group] += boost::get<2>(*it);
+       max_occ[group] = std::max(occ_state[group],max_occ[group]);
+       min_occ[group] = std::min(occ_state[group],min_occ[group]);
+       assert(group<occ_state.size());
+     }
+   }
+
 private:
    size_t rank_;
    std::vector<spin_t> flavors_;
    std::vector<size_t> sites_;
+   std::vector<std::vector<boost::tuple<int,int,int> > >  occ_change;
    size_t num_af_states_;
    T Uval_;
    boost::multi_array<T,2> alpha_af_rank_;//first index addresses af spin state, second one addresses (cdagger c)
@@ -174,6 +228,11 @@ class general_U_matrix {
     size_t n_vertex_type() const{return vertex_list.size();}
     spin_t nf()const {return nf_;}
     spin_t ns()const {return ns_;}
+
+    vertex_definition<T>& get_vertex(size_t vertex_idx) {
+      assert(vertex_idx<n_vertex_type());
+      return vertex_list[vertex_idx];
+    }
 
     const vertex_definition<T>& get_vertex(size_t vertex_idx) const {
       assert(vertex_idx<n_vertex_type());
