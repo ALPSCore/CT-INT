@@ -204,11 +204,11 @@ void InteractionExpansion::update()
   //std::cout << " node = " << node << " step = " << step << std::endl;
 
   std::vector<itime_vertex> itime_vertices_bak = itime_vertices;
+  big_inverse_m_matrix M_bak(M);
 
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     boost::timer::cpu_timer timer;
-
 
     try{
       for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem)
@@ -229,8 +229,9 @@ void InteractionExpansion::update()
         alpha_update();
       }
     } catch (std::runtime_error e) {
-      std::cout << " Runtime error at rank = " << node << " : " << e.what() << ". This may be because we encountered a singular matrix." << std::endl;
+      std::cout << " Runtime error at rank = " << node << " step = " << step << " : " << e.what() << ". This may be because we encountered a singular matrix." << std::endl;
       itime_vertices = itime_vertices_bak;
+      M = M_bak;
       reset_perturbation_series(false);
     }
 

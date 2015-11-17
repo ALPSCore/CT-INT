@@ -223,16 +223,17 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   if (n_multi_vertex_update>1) {
       measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
       measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
-      measurements["StatisticsVertexShift"] << statistics_shift.get_mean();
-    
+
       measurements["StatisticsVertexInsertion_count"] << statistics_ins.get_counter();
       measurements["StatisticsVertexRemoval_count"] << statistics_rem.get_counter();
-      measurements["StatisticsVertexShift_count"] << statistics_shift.get_counter();
-    
+
       measurements["StatisticsVertexInsertion_sum"] << statistics_ins.get_sumval();
       measurements["StatisticsVertexRemoval_sum"] << statistics_rem.get_sumval();
-      measurements["StatisticsVertexShift_sum"] << statistics_shift.get_sumval();
   }
+
+  measurements["StatisticsVertexShift"] << statistics_shift.get_mean();
+  measurements["StatisticsVertexShift_count"] << statistics_shift.get_counter();
+  measurements["StatisticsVertexShift_sum"] << statistics_shift.get_sumval();
 
   statistics_ins.reset();
   statistics_rem.reset();

@@ -109,11 +109,12 @@ void InteractionExpansion::removal_insertion_update(void)
         pick_up_itime_vertices(itime_vertices, random, nv_updated, remove_helper.op);
     if (vertices_nr.size()==0)
       return;
-    std::vector<itime_vertex> vertices_to_be_removed(nv_updated);
+    std::vector<itime_vertex> vertices_to_be_removed(nv_updated), itime_vertices_new(itime_vertices);
     for (int iv=0; iv<nv_updated; ++iv) {
       vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
     }
-    if (force_quantum_number_conservation && !is_quantum_number_conserved(vertices_to_be_removed)) {
+    remove_elements_from_vector(itime_vertices_new, vertices_nr);
+    if (force_quantum_number_conservation && !is_quantum_number_conserved(itime_vertices_new)) {
       simple_statistics_rem.not_valid_state(nv_updated-1);
       update_prop.generated_invalid_update(nv_updated);
       return;
@@ -131,6 +132,7 @@ void InteractionExpansion::removal_insertion_update(void)
       perform_remove(vertices_nr, remove_helper);
       sign*=boost::math::sign(metropolis_weight);
       det*=det_rat;
+      swap(itime_vertices,itime_vertices_new);
       M.sanity_check(itime_vertices);
       simple_statistics_rem.accepted(nv_updated-1);
       if(fabs(metropolis_weight)<1E-5)

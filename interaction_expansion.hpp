@@ -301,6 +301,7 @@ public:
   std::vector<annihilator> &annihilators(){ return annihilators_;}
   const std::vector<annihilator> &annihilators()const{ return annihilators_;}
   double alpha_at(int pos) const {
+    assert(pos>=0 && pos<creators_.size());
     //std::cout << "debug alpha_scale " << alpha_[pos] << " " << (creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_scale_*alpha_[pos]) << std::endl;
     return creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_scale_*alpha_[pos];
   }

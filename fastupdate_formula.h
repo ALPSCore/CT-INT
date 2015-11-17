@@ -30,13 +30,13 @@ compute_det_ratio_up(
     assert(num_rows(D)==M && num_cols(D)==M);
 
     if (N==0) {
-        return determinant(D);
+        return safe_determinant(D);
     } else {
         //compute H
         matrix_t C_invA(M,N,0.0), C_invA_B(M,M,0.0);
         gemm(C, invA, C_invA);
         gemm(C_invA, B, C_invA_B);
-        return determinant(D-C_invA_B);
+        return safe_determinant(D-C_invA_B);
     }
 }
 
@@ -67,7 +67,7 @@ compute_inverse_matrix_up(
         F.resize(0,M);
         G.resize(M,0);
 
-        return 1./determinant(H);
+        return 1./safe_determinant(H);
     } else {
         E.resize(N,N);
         F.resize(N,M);
@@ -98,7 +98,7 @@ compute_inverse_matrix_up(
         E *= -1;
         E += invA;
 
-        return 1./determinant(H);
+        return 1./safe_determinant(H);
     }
 }
 
@@ -125,7 +125,7 @@ compute_inverse_matrix_up2(
 
     if (N==0) {
         invBigMat = safe_inverse(D);
-        return determinant(D);
+        return safe_determinant(D);
     } else {
         matrix_t E(N, N, 0), F(N, M, 0), G(M, N, 0), H(M, M, 0);
 
@@ -156,7 +156,7 @@ compute_inverse_matrix_up2(
         copy_block(G, 0, 0, invBigMat, N, 0, M, N);
         copy_block(H, 0, 0, invBigMat, N, N, M, M);
 
-        return 1. / determinant(H);
+        return 1. / safe_determinant(H);
     }
 }
 
@@ -184,7 +184,7 @@ compute_det_ratio_down(
             H(i,j) = invBigMat(rows_cols_removed[i], rows_cols_removed[j]);
         }
     }
-    return determinant(H);
+    return safe_determinant(H);
 }
 
 //Note: invBigMat will be shrinked.
@@ -251,7 +251,7 @@ compute_inverse_matrix_down(
     if (N==0) {
         matrix_t H(invBigMat);
         invBigMat.resize(0,0);
-        return determinant(H);
+        return safe_determinant(H);
     } else {
         matrix_t E(N, N), F(N, M), G(M, N), H(M, M);
         copy_block(invBigMat, 0, 0, E, 0, 0, N, N);
@@ -265,7 +265,7 @@ compute_inverse_matrix_down(
 
         invBigMat.resize(N, N);
         invBigMat = E - F_invH_G;
-        return determinant(H);
+        return safe_determinant(H);
     }
 }
 
@@ -635,7 +635,7 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     const double norm2 = std::sqrt(alps::numeric::norm_square(inv_tSp)/(M*M));
     matrix_t inv_tSp_norm(inv_tSp);
     inv_tSp_norm /= norm2;
-    return determinant(tS_norm)*determinant(inv_tSp_norm)*pow(norm*norm2,(double)M);
+    return safe_determinant(tS_norm)*safe_determinant(inv_tSp_norm)*pow(norm*norm2,(double)M);
 }
 
 template<class T>
