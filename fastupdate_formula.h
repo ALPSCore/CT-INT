@@ -62,7 +62,7 @@ compute_inverse_matrix_up(
 
     //compute H
     if (N==0) {
-        H = inverse(D);
+        H = safe_inverse(D);
         E.resize(0,0);
         F.resize(0,M);
         G.resize(M,0);
@@ -81,7 +81,7 @@ compute_inverse_matrix_up(
         matrix_t C_invA(M, N, 0.0), C_invA_B(M, M, 0.0);
         gemm(C, invA, C_invA);
         gemm(C_invA, B, C_invA_B);
-        H = inverse(D - C_invA_B);
+        H = safe_inverse(D - C_invA_B);
 
         //compute G
         gemm(H, C_invA, G);
@@ -124,7 +124,7 @@ compute_inverse_matrix_up2(
     assert(num_rows(D)==M && num_cols(D)==M);
 
     if (N==0) {
-        invBigMat = inverse(D);
+        invBigMat = safe_inverse(D);
         return determinant(D);
     } else {
         matrix_t E(N, N, 0), F(N, M, 0), G(M, N, 0), H(M, M, 0);
@@ -133,7 +133,7 @@ compute_inverse_matrix_up2(
         matrix_t C_invA(M, N, 0.0), C_invA_B(M, M, 0.0);
         gemm(C, invA, C_invA);
         gemm(C_invA, B, C_invA_B);
-        H = inverse(D - C_invA_B);
+        H = safe_inverse(D - C_invA_B);
 
         //compute G
         gemm(H, C_invA, G);
@@ -260,7 +260,7 @@ compute_inverse_matrix_down(
         copy_block(invBigMat, N, N, H, 0, 0, M, M);
 
         matrix_t invH_G(M, N, 0), F_invH_G(N, N, 0);//one might reuse memories...
-        gemm(inverse(H), G, invH_G);
+        gemm(safe_inverse(H), G, invH_G);
         gemm(F, invH_G, F_invH_G);
 
         invBigMat.resize(N, N);
@@ -624,7 +624,7 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     matrix_t tS_norm(tS);
     tS_norm /= norm;
 
-    gemm(inverse(tS_norm), tR, invtS_tR);
+    gemm(safe_inverse(tS_norm), tR, invtS_tR);
     gemm(tQ, invtS_tR, tQ_invtS_tR);
     Mmat = tP-(1/norm)*tQ_invtS_tR;
 
