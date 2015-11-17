@@ -102,10 +102,8 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
     measurement_method=selfenergy_measurement_itime_rs;
-    //std::cout << "debug: measure_in_itime_rs " << std::endl;
   } else {
     measurement_method=selfenergy_measurement_matsubara;
-    //std::cout << "debug: measure_matsubara " << std::endl;
   }
   for(unsigned int i=0;i<n_flavors;++i)
     g0.push_back(green_matrix(n_tau, 20));
@@ -122,16 +120,24 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
 
   //make quantum numbers
-  std::vector<std::vector<std::vector<size_t> > > groups(n_flavors);
-  std::vector<std::vector<int> > group_map;
   quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
+  qn_dim = quantum_number_vertices[0][0].size();
+  group_dim.clear(); group_dim.resize(qn_dim, 0);
+  {
+    const int qn_dim_f = qn_dim/n_flavors;
+    for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+      for (int g=0; g<groups[flavor].size(); ++g) {
+        group_dim[g+flavor*qn_dim_f] = groups[flavor][g].size();
+      }
+    }
+  }
+
   is_density_density_type.resize(Uijkl.n_vertex_type());
   for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
     is_density_density_type[iv] = Uijkl.get_vertex(iv).is_density_type();
   }
 
   //occ changes
-  qn_dim = quantum_number_vertices[0][0].size();
   std::cout << "qn_dim " << qn_dim << std::endl;
   for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
     Uijkl.get_vertex(iv).make_quantum_numbers(group_map, qn_dim/n_flavors);
@@ -311,17 +317,16 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
   //check if the quantum number is conserved
   for (int i=0; i<qn_t.size(); ++i) {
     if (qn_t[i]!=0) {
-      //std::cout << " is not conserved " << std::endl;
       return false;
     }
   }
 
   //check if the quantum number is within the range
   for (int iq=0; iq<qn_dim; ++iq) {
-     if (qn_max[iq]-qn_min[iq]>1) {
-       //std::cout << " is not within range " << std::endl;
-       return false;
-     }
+    //note: group_dim[iq] is zero for non-existing group
+    if (qn_max[iq]-qn_min[iq]>group_dim[iq]) {
+      return false;
+    }
   }
 
   return true;

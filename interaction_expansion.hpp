@@ -525,20 +525,24 @@ protected:
   const int n_shift;
   const bool force_quantum_number_conservation;
   const double alpha_scale_min, alpha_scale_max, alpha_scale_max_meas;
-  const int alpha_scale_update_period;                
+  const int alpha_scale_update_period;
 
   const double beta;
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
   general_U_matrix<GTYPE> Uijkl; //for any general two-body interaction
+
   //quantum numbers
+  std::vector<std::vector<std::vector<size_t> > > groups;
+  std::vector<std::vector<int> > group_map;
   std::vector<std::vector<quantum_number_t> > quantum_number_vertices;
+  std::vector<int> group_dim;
   int qn_dim;
-  //std::vector<bool> reducible_vertices;
+
   std::vector<bool> is_density_density_type;
 
   const unsigned int recalc_period;                
-  const unsigned int measurement_period;        
-  const unsigned int convergence_check_period;        
+  const unsigned int measurement_period;
+  const unsigned int convergence_check_period;
   
   /*InteractionExpansion's roundoff threshold*/
   const double almost_zero;                        
