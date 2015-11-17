@@ -77,9 +77,13 @@ void InteractionExpansion::removal_insertion_update(void)
     if(fabs(metropolis_weight)> random()){
       perform_add(add_helper,nv_updated);
       sign*=boost::math::sign(metropolis_weight);
+      det*=det_rat;
       M.sanity_check(itime_vertices);
       simple_statistics_ins.accepted(nv_updated-1);
       assert(is_quantum_number_conserved(new_vertices));
+      //for safety
+      if(fabs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
     }else{
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
@@ -126,8 +130,11 @@ void InteractionExpansion::removal_insertion_update(void)
       //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
       sign*=boost::math::sign(metropolis_weight);
+      det*=det_rat;
       M.sanity_check(itime_vertices);
       simple_statistics_rem.accepted(nv_updated-1);
+      if(fabs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
     }else{
       //measurements["VertexRemoval"]<<0.;
       reject_remove(remove_helper);
@@ -147,7 +154,7 @@ void InteractionExpansion::removal_insertion_update(void)
 //Shift updates: shift a vertex.
 void InteractionExpansion::shift_update(void) {
   const int pert_order= itime_vertices.size();
-  if (pert_order<=1)
+  if (pert_order<=1 || alpha_scale_max==1.0)
     return;
 
   //choose a vertex
@@ -163,6 +170,9 @@ void InteractionExpansion::shift_update(void) {
   if(fabs(metropolis_weight)> random()){ //do the actual update
     perform_shift(iv);
     sign*=boost::math::sign(metropolis_weight);
+    det*=metropolis_weight;
+    if(fabs(metropolis_weight)<1E-5)
+      reset_perturbation_series(false);
 #ifndef NDEBUG
     M.sanity_check(itime_vertices);
 #endif
@@ -178,13 +188,44 @@ void InteractionExpansion::shift_update(void) {
 #endif
 }
 
-///Every now and then we have to recreate M from scratch to avoid roundoff
-///error. This is done by iserting the vertices starting from zero.
-void InteractionExpansion::reset_perturbation_series()
-{
-  //static fastupdate_add_helper add_helper(n_flavors);
-  big_inverse_m_matrix M2(M); //make a copy of M
+//Update alpha for non-density-type vertices
+void InteractionExpansion::alpha_update(void) {
+  if (itime_vertices.size()==0)
+    return;
 
+  double new_alpha_scale = std::exp(random()*(std::log(alpha_scale_max)-std::log(alpha_scale_min))+std::log(alpha_scale_min));
+
+  const double det_old = det;
+  const big_inverse_m_matrix M_old(M);
+
+  M.set_alpha_scale(new_alpha_scale);
+  reset_perturbation_series(false);
+  const double metropolis_weight = det/det_old;
+
+  //std::cout << "debug " << metropolis_weight << std::endl;
+  if(fabs(metropolis_weight)> random()){ //do the actual update
+    alpha_scale = new_alpha_scale;
+    sign*=boost::math::sign(metropolis_weight);
+    //std::cout << "step " << step << " alpha_update accepted new alpha_scale = " << alpha_scale << std::endl;
+  }else {
+    det = det_old;
+    M = M_old;
+    //std::cout << "step " << step << " alpha_update rejected " << std::endl;
+  }
+}
+
+///We recreate M from scratch to avoid roundoff error.
+//This is done by constructing a matrix consisting of bare Green's function and invert it.
+void InteractionExpansion::reset_perturbation_series(bool verbose)
+{
+  big_inverse_m_matrix M2;
+  double det_old;
+  if (verbose) {
+    det_old = det;
+    M2 = M;
+  }
+
+  det = 1.;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     alps::numeric::matrix<GTYPE> G0(M[flavor].matrix());
     std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
@@ -201,27 +242,29 @@ void InteractionExpansion::reset_perturbation_series()
         }
       }
       for (size_t p=0; p<Nv; ++p) {
-        G0(p, p) -= M[flavor].alpha()[p];
+        G0(p, p) -= M[flavor].alpha_at(p);
       }
       M[flavor].matrix() = alps::numeric::inverse(G0);
+      det *= alps::numeric::determinant(G0);
     }
   }
 
-  for(unsigned int z=0;z<M2.size();++z){
-    double max_diff=0;
-    for(unsigned int j=0;j<num_cols(M2[z].matrix());++j){
-      for(unsigned int i=0;i<num_rows(M2[z].matrix());++i){
-        double diff=M[z].matrix()(i,j)-M2[z].matrix()(i,j);
-        if(std::abs(diff)>max_diff) max_diff=std::abs(diff);
+  //std::cout<<"debug : determinant computed by fast update = " << det_old << " determinant computed by matrix inversion = " << det << std::endl;
+
+  if (verbose) {
+    if (std::abs(det-det_old)/std::abs(det)>1E-8)
+      std::cout<<"WARNING: roundoff errors : determinant computed by fast update = " << det_old << " determinant computed by matrix inversion = " << det << std::endl;
+    for(unsigned int z=0;z<M2.size();++z){
+      double max_diff=0;
+      for(unsigned int j=0;j<num_cols(M2[z].matrix());++j){
+        for(unsigned int i=0;i<num_rows(M2[z].matrix());++i){
+          double diff=M[z].matrix()(i,j)-M2[z].matrix()(i,j);
+          if(std::abs(diff)>max_diff) max_diff=std::abs(diff);
+        }
       }
+      if(max_diff > 1.e-8)
+        std::cout<<"WARNING: roundoff errors in flavor: "<<z<<" max diff "<<max_diff<<std::endl;
     }
-    //std::cout << "debug: max_diff = " << max_diff << std::endl;
-    if(max_diff > 1.e-8)
-      std::cout<<"WARNING: roundoff errors in flavor: "<<z<<" max diff "<<max_diff<<std::endl;
   }
-
-#ifndef NDEBUG
-  //recompute weight
-#endif
 }
 

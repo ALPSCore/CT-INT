@@ -68,7 +68,7 @@ double InteractionExpansion::fastupdate_up(const int flavor, bool compute_only_w
     }
   }
   for (size_t iv=0; iv<n_vertices_add; ++iv) {
-    Green0_n_n(iv, iv) -= M[flavor].alpha()[noperators+iv];
+    Green0_n_n(iv, iv) -= M[flavor].alpha_at(noperators+iv);
   }
 
   //B: Green0_j_n
@@ -152,7 +152,7 @@ double InteractionExpansion::fastupdate_shift(const int flavor, const std::vecto
     }
   }
   for (int iv=0; iv<num_rows_cols_updated; ++iv) {
-    Green0_n_n(iv, iv) -= M[flavor].alpha()[rows_cols_updated[iv]];
+    Green0_n_n(iv, iv) -= M[flavor].alpha_at(rows_cols_updated[iv]);
   }
 
   shift_helper.det_rat = compute_inverse_matrix_replace_rows_cols_succesive(M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.rows_cols_updated[flavor]);

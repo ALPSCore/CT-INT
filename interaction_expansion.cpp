@@ -92,7 +92,11 @@ remove_helper(n_flavors),
 shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 1),
-force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false)
+force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
+alpha_scale(1.),
+alpha_scale_min(1),
+alpha_scale_max(parms["ALPHA_SCALE_MAX"] | 1),
+alpha_scale_max_meas(parms["ALPHA_SCALE_MEASURE_MAX"] | 1)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -107,6 +111,7 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
   //other parameters
   weight=0;
   sign=1;
+  det=1;
   step=0;
   start_time=time(NULL);
   measurement_time=0;
@@ -217,12 +222,18 @@ void InteractionExpansion::update()
       reset_perturbation_series();
     }
   }
+
+  //update alpha_scale
+  alpha_update();
+
   t_meas *= 1E-6/measurement_period;
   measurements["UpdateTimeMsec"] << t_meas;
-//  measurements["UpdateTimeMsec"] << t_meas;
 }
 
 void InteractionExpansion::measure(){
+  if (alpha_scale>alpha_scale_max_meas)
+    return;
+
   std::valarray<double> timings(2);
   measure_observables(timings);
   measurements["MeasurementTimeMsec"] << timings;

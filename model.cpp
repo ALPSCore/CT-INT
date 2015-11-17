@@ -51,7 +51,7 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
 
       M[flavor_rank].creators().push_back(creator(flavor_rank, new_vertex_type.sites()[2*i_rank], time, n_matsubara));
       M[flavor_rank].annihilators().push_back(annihilator(flavor_rank, new_vertex_type.sites()[2*i_rank+1], time, n_matsubara));
-      M[flavor_rank].alpha().push_back(new_vertex_type.get_alpha(af_state, i_rank));
+      M[flavor_rank].alpha_push_back(new_vertex_type.get_alpha(af_state, i_rank));
       M[flavor_rank].vertex_info().push_back(std::pair<vertex_t,size_t>(v_type,i_rank));
 
       ++(helper.num_new_rows[flavor_rank]);

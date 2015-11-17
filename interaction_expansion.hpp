@@ -293,14 +293,19 @@ class inverse_m_matrix
 {
 public:
   typedef double value_type;
+  inverse_m_matrix() : alpha_scale_(1.0) {}
   alps::numeric::matrix<double> &matrix() { return matrix_;}
   alps::numeric::matrix<double> const &matrix() const { return matrix_;}
   std::vector<creator> &creators(){ return creators_;}
   const std::vector<creator> &creators() const{ return creators_;}
   std::vector<annihilator> &annihilators(){ return annihilators_;}
   const std::vector<annihilator> &annihilators()const{ return annihilators_;}
-  std::vector<double> &alpha(){ return alpha_;}
-  const std::vector<double> &alpha() const{ return alpha_;}
+  double alpha_at(int pos) const {
+    return creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_scale_*alpha_[pos];
+  }
+  void alpha_push_back(double new_elem) {alpha_.push_back(new_elem);}
+  double alpha_scale() const {return alpha_scale_;}
+  void set_alpha_scale(double alpha_scale) {alpha_scale_ = alpha_scale;}
   std::vector<std::pair<vertex_t,size_t> > &vertex_info(){ return vertex_info_;}
   const std::vector<std::pair<vertex_t,size_t> > &vertex_info() const{ return vertex_info_;}
   //int find_row_col(const itime_vertex& vertex, size_t i_rank) const {
@@ -352,6 +357,7 @@ private:
   std::vector<annihilator> annihilators_; //an array of to annihilation operators c corresponding to the column of the matrix
   std::vector<double> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
   std::vector<std::pair<vertex_t,size_t> > vertex_info_; // an array of pairs which remember from which type of vertex operators come from. (type of vertex and the position in the vertex)
+  double alpha_scale_; //this scales the values of alpha for non-density-type vertices.
 };
 
 class big_inverse_m_matrix
@@ -374,6 +380,11 @@ public:
     size_t size() const {
       return sub_matrices_.size();
     };
+
+    void set_alpha_scale(double r) {
+      for (spin_t flavor=0; flavor<sub_matrices_.size(); ++flavor)
+        sub_matrices_[flavor].set_alpha_scale(r);
+    }
 
     void sanity_check(const std::vector<itime_vertex>& itime_vertices) const {
 #ifndef NDEBUG
@@ -453,7 +464,8 @@ protected:
   // in file solver.cpp
   void removal_insertion_update(void);
   void shift_update(void);
-  void reset_perturbation_series(void);
+  void alpha_update(void);
+  void reset_perturbation_series(bool verbose=true);
   
   // in file fastupdate.cpp:
   double fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
@@ -504,6 +516,7 @@ protected:
   const int n_ins_rem;
   const int n_shift;
   const bool force_quantum_number_conservation;
+  const double alpha_scale_min, alpha_scale_max, alpha_scale_max_meas;
 
   const double beta;
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
@@ -535,6 +548,7 @@ protected:
   //vertex_array vertices;
   std::vector<itime_vertex> itime_vertices;
   big_inverse_m_matrix M;
+  GTYPE det;//determinant of G=M^-1
 
   //for window update
   double window_width;
@@ -542,6 +556,7 @@ protected:
 
   double weight;
   double sign;
+  double alpha_scale;
   unsigned int measurement_method;
   //bool thermalized;
   
