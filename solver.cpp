@@ -80,7 +80,7 @@ void InteractionExpansion::removal_insertion_update(void)
       det*=det_rat;
       M.sanity_check(itime_vertices);
       simple_statistics_ins.accepted(nv_updated-1);
-      assert(is_quantum_number_conserved(new_vertices));
+      //assert(is_quantum_number_conserved(new_vertices));
       //for safety
       if(fabs(metropolis_weight)<1E-5)
         reset_perturbation_series(false);
@@ -196,20 +196,30 @@ void InteractionExpansion::alpha_update(void) {
   double new_alpha_scale = std::exp(random()*(std::log(alpha_scale_max)-std::log(alpha_scale_min))+std::log(alpha_scale_min));
 
   const double det_old = det;
+  const double sign_old = sign;
   const big_inverse_m_matrix M_old(M);
 
   M.set_alpha_scale(new_alpha_scale);
   reset_perturbation_series(false);
   const double metropolis_weight = det/det_old;
 
+  //std::cout << std::endl;
+  //bool flag = is_quantum_number_conserved(itime_vertices);
+  //if (M_old.alpha_scale()>1E+3 && M.alpha_scale()<1E+2 && !flag) {
+    //std::cout << "debug " << metropolis_weight << " " << flag << std::endl;
+    //if (metropolis_weight>0.9)
+    //print_vertices(std::cout, itime_vertices);
+    ////std::cout << std::endl;
+  //}
+
   //std::cout << "debug " << metropolis_weight << std::endl;
   if(fabs(metropolis_weight)> random()){ //do the actual update
     alpha_scale = new_alpha_scale;
-    sign*=boost::math::sign(metropolis_weight);
     //std::cout << "node " << node << " step " << step << " alpha_update accepted new alpha_scale = " << alpha_scale << std::endl;
   }else {
     det = det_old;
     M = M_old;
+    sign = sign_old;
     //std::cout << "node " << node << " step " << step << " alpha_update rejected new alpha_scale = " << alpha_scale << std::endl;
     //std::cout << "step " << step << " alpha_update rejected " << std::endl;
   }
@@ -246,9 +256,18 @@ void InteractionExpansion::reset_perturbation_series(bool verbose)
         G0(p, p) -= M[flavor].alpha_at(p);
       }
       M[flavor].matrix() = alps::numeric::inverse(G0);
-      det *= alps::numeric::determinant(G0);
+      det *= alps::numeric::determinant(G0);//the determinant is basically computed in alps::numeric::inverse(G0)
     }
   }
+
+  sign = boost::math::sign(det);
+  {
+    const std::vector<vertex_definition<GTYPE> >& vd = Uijkl.get_vertices();
+    for (int iv=0; iv<itime_vertices.size(); ++iv)
+      sign *= boost::math::sign(-vd[itime_vertices[iv].type()].Uval());
+  }
+  //std::cout << "sign, sign_det " << sign << " " << boost::math::sign(det) << std::endl;
+  //assert(sign==boost::math::sign(det));
 
   //std::cout<<"debug : determinant computed by fast update = " << det_old << " determinant computed by matrix inversion = " << det << std::endl;
 

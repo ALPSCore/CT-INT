@@ -301,6 +301,7 @@ public:
   std::vector<annihilator> &annihilators(){ return annihilators_;}
   const std::vector<annihilator> &annihilators()const{ return annihilators_;}
   double alpha_at(int pos) const {
+    //std::cout << "debug alpha_scale " << alpha_[pos] << " " << (creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_scale_*alpha_[pos]) << std::endl;
     return creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_scale_*alpha_[pos];
   }
   void alpha_push_back(double new_elem) {alpha_.push_back(new_elem);}
@@ -363,6 +364,8 @@ private:
 class big_inverse_m_matrix
 {
 public:
+    big_inverse_m_matrix() : alpha_scale_(1) {}
+
     void push_back(const inverse_m_matrix& new_one) {
       sub_matrices_.push_back(new_one);
     }
@@ -382,9 +385,12 @@ public:
     };
 
     void set_alpha_scale(double r) {
+      alpha_scale_ = r;
       for (spin_t flavor=0; flavor<sub_matrices_.size(); ++flavor)
         sub_matrices_[flavor].set_alpha_scale(r);
     }
+
+    double alpha_scale() const {return alpha_scale_;}
 
     void sanity_check(const std::vector<itime_vertex>& itime_vertices) const {
 #ifndef NDEBUG
@@ -426,6 +432,7 @@ public:
       return det;
     }
 private:
+    double alpha_scale_;
     std::vector<inverse_m_matrix> sub_matrices_;
 };
 

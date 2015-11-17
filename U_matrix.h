@@ -473,6 +473,7 @@ std::vector<int> pick_up_itime_vertices(const std::vector<itime_vertex>& itime_v
 
 
 std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
+void print_vertices(std::ostream &os, const std::vector<itime_vertex> &v);
 
 //U_MATRIX_H
 #endif 

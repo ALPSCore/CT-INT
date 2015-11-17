@@ -299,6 +299,7 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
   //check if the quantum number is conserved
   for (int i=0; i<qn_t.size(); ++i) {
     if (qn_t[i]!=0) {
+      //std::cout << " is not conserved " << std::endl;
       return false;
     }
   }
@@ -306,6 +307,7 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
   //check if the quantum number is within the range
   for (int iq=0; iq<qn_dim; ++iq) {
      if (qn_max[iq]-qn_min[iq]>1) {
+       //std::cout << " is not within range " << std::endl;
        return false;
      }
   }
@@ -352,10 +354,14 @@ void InteractionExpansion::sanity_check() {
       }
     }
     for (size_t p=0; p<Nv; ++p) {
-      G0(p, p) -= M[flavor].alpha()[p];
+      G0(p, p) -= M[flavor].alpha_at(p);
     }
 
+    //std::cout << "alpha_scale " << alpha_scale<<std::endl;
+    //std::cout << "G0 flavor="<<flavor<<std::endl;
+    //std::cout << G0 << std::endl;
     sign_exact *= boost::math::sign(alps::numeric::determinant(G0));
+    //std::cout << "sign_" << boost::math::sign(alps::numeric::determinant(G0)) << std::endl;
 
     gemm(G0, M[flavor].matrix(), tmp);
     bool OK = true;
@@ -396,7 +402,14 @@ void InteractionExpansion::sanity_check() {
       //throw std::runtime_error("There is something wrong: G^{-1} != M.");
     }
   }
-  //assert(sign==sign_exact);
+
+  //contribution from (-U)^n
+  {
+    const std::vector<vertex_definition<GTYPE> >& vd = Uijkl.get_vertices();
+    for (int iv=0; iv<itime_vertices.size(); ++iv)
+      sign_exact *= boost::math::sign(-vd[itime_vertices[iv].type()].Uval());
+  }
+  assert(sign==sign_exact);
 
   //check itime_vertex list
   for (std::vector<itime_vertex>::iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {

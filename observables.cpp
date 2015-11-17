@@ -174,6 +174,7 @@ void InteractionExpansion::initialize_observables(void)
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift_sum");
+  measurements << alps::ngs::SimpleRealVectorObservable("PerturbationOrderVertex");
 #endif
   measurements.reset(true);
 }
@@ -244,4 +245,8 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   simple_statistics_ins.reset();
   simple_statistics_rem.reset();
 
+  std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
+  for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it)
+    ++pert_vertex[it->type()];
+  measurements["PerturbationOrderVertex"] << pert_vertex;
 }
