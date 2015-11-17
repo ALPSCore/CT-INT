@@ -82,7 +82,7 @@ int main(int argc, char** argv)
         alps::results_type<HubbardInteractionExpansion>::type results = collect_results(s);
         save_results(results, parms, output_file, "/simulation/results");
         //compute the output Green's function and Fourier transform it, store in the right path
-        std::cout << " collecting done " << std::endl;
+        std::cout << " collecting done rank = " << global_mpi_rank << std::endl;
         c.barrier();
         std::cout << " compute GF " << std::endl;
         compute_greens_functions(results, parms, output_file);
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 #ifdef ALPS_HAVE_MPI
       } else{
         collect_results(s);
-        std::cout << " collecting done " << std::endl;
+        std::cout << " collecting done rank = " << global_mpi_rank << std::endl;
         c.barrier();
       }
       c.barrier();

@@ -154,7 +154,7 @@ void InteractionExpansion::removal_insertion_update(void)
 //Shift updates: shift a vertex.
 void InteractionExpansion::shift_update(void) {
   const int pert_order= itime_vertices.size();
-  if (pert_order<=1 || alpha_scale_max==1.0)
+  if (pert_order<=1)
     return;
 
   //choose a vertex
@@ -190,7 +190,7 @@ void InteractionExpansion::shift_update(void) {
 
 //Update alpha for non-density-type vertices
 void InteractionExpansion::alpha_update(void) {
-  if (itime_vertices.size()==0)
+  if (itime_vertices.size()==0 || alpha_scale_max==1.0)
     return;
 
   double new_alpha_scale = std::exp(random()*(std::log(alpha_scale_max)-std::log(alpha_scale_min))+std::log(alpha_scale_min));
@@ -206,10 +206,11 @@ void InteractionExpansion::alpha_update(void) {
   if(fabs(metropolis_weight)> random()){ //do the actual update
     alpha_scale = new_alpha_scale;
     sign*=boost::math::sign(metropolis_weight);
-    //std::cout << "step " << step << " alpha_update accepted new alpha_scale = " << alpha_scale << std::endl;
+    //std::cout << "node " << node << " step " << step << " alpha_update accepted new alpha_scale = " << alpha_scale << std::endl;
   }else {
     det = det_old;
     M = M_old;
+    //std::cout << "node " << node << " step " << step << " alpha_update rejected new alpha_scale = " << alpha_scale << std::endl;
     //std::cout << "step " << step << " alpha_update rejected " << std::endl;
   }
 }

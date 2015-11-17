@@ -100,6 +100,7 @@ namespace alps {
                         if (result.count()) {
                           partial_results.insert(*it, result.reduce(communicator, binnumber));
                         } else {
+                          std::cout << "Error in collecting result (count is zero) : rank = " << communicator.rank() << ", name =" << *it << ", count = " << result.count() << std::endl;
                           partial_results.insert(*it, result);
                         }
                     #endif

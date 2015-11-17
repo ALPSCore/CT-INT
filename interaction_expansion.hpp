@@ -517,6 +517,7 @@ protected:
   const int n_shift;
   const bool force_quantum_number_conservation;
   const double alpha_scale_min, alpha_scale_max, alpha_scale_max_meas;
+  const int alpha_scale_update_period;                
 
   const double beta;
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        

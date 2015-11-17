@@ -96,7 +96,8 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
 alpha_scale(1.),
 alpha_scale_min(1),
 alpha_scale_max(parms["ALPHA_SCALE_MAX"] | 1),
-alpha_scale_max_meas(parms["ALPHA_SCALE_MEASURE_MAX"] | 1)
+alpha_scale_max_meas(parms["ALPHA_SCALE_MEASURE_MAX"] | 1),
+alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -221,10 +222,12 @@ void InteractionExpansion::update()
     if(step % recalc_period ==0) {
       reset_perturbation_series();
     }
+    //update alpha_scale
+    if(alpha_scale_update_period>0 && step%alpha_scale_update_period==0) {
+      alpha_update();
+    }
   }
 
-  //update alpha_scale
-  alpha_update();
 
   t_meas *= 1E-6/measurement_period;
   measurements["UpdateTimeMsec"] << t_meas;
