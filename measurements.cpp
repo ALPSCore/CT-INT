@@ -38,7 +38,7 @@ void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardI
                                                                         const matsubara_green_function_t &bare_green_matsubara,
                                                                         std::vector<double>& densities,
                                                                         const double &beta, std::size_t n_site,
-                                                                        std::size_t n_flavors, std::size_t n_matsubara);
+                                                                        std::size_t n_flavors, std::size_t n_matsubara, std::size_t n_matsubara_measurements);
 void evaluate_selfenergy_measurement_itime_rs(const alps::results_type<HubbardInteractionExpansion>::type &results, 
                                                                        itime_green_function_t &green_result,
                                                                        const itime_green_function_t &green0,
@@ -103,7 +103,7 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
   if(measure_in_matsubara) {
     evaluate_selfenergy_measurement_matsubara(results, green_matsubara_measured,
                                               bare_green_matsubara, densities,
-                                              beta, n_site, n_flavors, n_matsubara_measurements);
+                                              beta, n_site, n_flavors, n_matsubara, n_matsubara_measurements);
   }
   else {
     throw std::runtime_error("Please make sure that sign is correcly treated!");

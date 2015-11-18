@@ -309,7 +309,7 @@ void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardI
                                                                         const matsubara_green_function_t &bare_green_matsubara,
                                                                         std::vector<double>& densities,
                                                                         const double &beta, std::size_t n_site,
-                                                                        std::size_t n_flavors, std::size_t n_matsubara) {
+                                                                        std::size_t n_flavors, std::size_t n_matsubara, std::size_t n_matsubara_meas) {
   green_matsubara_measured.clear();
   std::cout << "evaluating self energy measurement: matsubara, reciprocal space" << std::endl;
   double sign = results["Sign"].mean<double>();
@@ -321,7 +321,11 @@ void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardI
         Wk_imag_name << "Wk_imag_" << flavor1 << "_" << site1 << "_" << site2;
         std::vector<double> mean_real = results[Wk_real_name.str().c_str()].mean<std::vector<double> >();
         std::vector<double> mean_imag = results[Wk_imag_name.str().c_str()].mean<std::vector<double> >();
-        for (unsigned int w = 0; w < n_matsubara; ++w) {
+        assert(mean_real.size()==n_matsubara_meas && mean_imag.size()==n_matsubara_meas);
+        if (!(mean_real.size()==n_matsubara_meas && mean_imag.size()==n_matsubara_meas)) {
+          throw std::logic_error("Logic error in evaluate_selfenergy_measurement_matsubara.");
+        }
+        for (unsigned int w = 0; w < n_matsubara_meas; ++w) {
           green_matsubara_measured(w, site1, site2, flavor1) = -std::complex<double>(mean_real[w], mean_imag[w]) / (sign*beta);
         }
       }
