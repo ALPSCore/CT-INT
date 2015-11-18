@@ -247,7 +247,9 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   simple_statistics_rem.reset();
 
   std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
-  for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it)
+  for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+    assert(it->type()>=0 && it->type()<Uijkl.n_vertex_type());
     ++pert_vertex[it->type()];
+  }
   measurements["PerturbationOrderVertex"] << pert_vertex;
 }

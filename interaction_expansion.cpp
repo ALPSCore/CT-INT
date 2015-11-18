@@ -91,7 +91,7 @@ add_helper(n_flavors),
 remove_helper(n_flavors),
 shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
-n_shift(parms["N_SHIFT_VERTEX"] | 1),
+n_shift(parms["N_SHIFT_VERTEX"] | 0),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
 alpha_scale(1.),
 alpha_scale_min(1),
@@ -402,7 +402,7 @@ void InteractionExpansion::sanity_check() {
         }
       }
     }
-    //std::cout << "max_diff " << max_diff << std::endl;
+    std::cout << "sanity check max_diff " << max_diff << std::endl;
     if (!OK) {
       std::cout << "flavor=" << flavor << std::endl;
       std::cout << "Nv=" << Nv << std::endl;

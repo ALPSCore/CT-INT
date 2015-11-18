@@ -52,7 +52,7 @@ void InteractionExpansion::removal_insertion_update(void)
   double det_rat=0;
   if(random()<0.5){  //trying to ADD vertex
     M.sanity_check(itime_vertices);
-    if(itime_vertices.size()>=max_order)
+    if(pert_order+nv_updated>max_order)
       return; //we have already reached the highest perturbation order
     if (nv_updated>=2) {
       add_helper.op = non_density_type_in_window(beta*random(),
