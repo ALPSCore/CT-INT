@@ -84,12 +84,20 @@ void InteractionExpansion::removal_insertion_update(void)
       M.sanity_check(itime_vertices);
       simple_statistics_ins.accepted(nv_updated-1);
       //assert(is_quantum_number_conserved(new_vertices));
-      if (nv_updated==2) {
-        std::cout << "accepted ins " << new_vertices[0].type() << " " << new_vertices[1].type() << std::endl;
+      if (nv_updated==1) {
+        std::cout << "node " << node << " accepted ins " << new_vertices[0].type() << " acc " << metropolis_weight << std::endl;
+      }else if (nv_updated==2) {
+        std::cout << "node " << node << " accepted ins " << new_vertices[0].type() << " " << new_vertices[1].type() << " acc " << metropolis_weight << std::endl;
       }
       //for safety
-      if(fabs(metropolis_weight)<1E-5)
-        reset_perturbation_series(false);
+      if(fabs(metropolis_weight)<1E-3)  {
+        std::cout << "doing sanity check node " << node << std::endl;
+        reset_perturbation_series(true);
+        std::cout << "sanity check done " << metropolis_weight << " node " << node << std::endl;
+        std::cout << "doing second sanity check node " << node << std::endl;
+        reset_perturbation_series(true);
+        std::cout << "sanity second check done " << metropolis_weight << " node " << node << std::endl;
+      }
     }else{
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
@@ -134,8 +142,10 @@ void InteractionExpansion::removal_insertion_update(void)
                                 nv_updated - 2);
     }
     if(fabs(metropolis_weight)> random()){ //do the actual update
-      if (nv_updated==2) {
-        std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " " << vertices_to_be_removed[1].type() << std::endl;
+      if (nv_updated==1) {
+        std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " acc " << metropolis_weight << std::endl;
+      } else if (nv_updated==2) {
+        std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " " << vertices_to_be_removed[1].type() << " acc " << metropolis_weight << std::endl;
       }
       //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
@@ -144,8 +154,13 @@ void InteractionExpansion::removal_insertion_update(void)
       swap(itime_vertices,itime_vertices_new);
       M.sanity_check(itime_vertices);
       simple_statistics_rem.accepted(nv_updated-1);
-      if(fabs(metropolis_weight)<1E-5)
-        reset_perturbation_series(false);
+      //if(fabs(metropolis_weight)<1E-5)
+        //reset_perturbation_series(false);
+      if(fabs(metropolis_weight)<1E-3) {
+        std::cout << "doing sanity check " << metropolis_weight << " node " << node << std::endl;
+        reset_perturbation_series(true);
+        std::cout << "sanity check done " << metropolis_weight << " node " << node << std::endl;
+      }
     }else{
       //measurements["VertexRemoval"]<<0.;
       reject_remove(remove_helper);
@@ -284,7 +299,7 @@ void InteractionExpansion::reset_perturbation_series(bool verbose)
 
   if (verbose) {
     if (std::abs(det-det_old)/std::abs(det)>1E-8)
-      std::cout<<"WARNING: roundoff errors : determinant computed by fast update = " << det_old << " determinant computed by matrix inversion = " << det << std::endl;
+      std::cout<<" node= " << node << " WARNING: roundoff errors : determinant computed by fast update = " << det_old << " determinant computed by matrix inversion = " << det << std::endl;
     for(unsigned int z=0;z<M2.size();++z){
       double max_diff=0;
       for(unsigned int j=0;j<num_cols(M2[z].matrix());++j){
@@ -294,7 +309,7 @@ void InteractionExpansion::reset_perturbation_series(bool verbose)
         }
       }
       if(max_diff > 1.e-8)
-        std::cout<<"WARNING: roundoff errors in flavor: "<<z<<" max diff "<<max_diff<<std::endl;
+        std::cout<<" node = " << node << " WARNING: roundoff errors in flavor: "<<z<<" max diff "<<max_diff<<std::endl;
     }
   }
 }

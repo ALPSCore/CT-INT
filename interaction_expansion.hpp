@@ -492,7 +492,7 @@ protected:
   void measure_densities();
   void sanity_check();
   bool is_irreducible(const std::vector<itime_vertex>& vertices);
-  bool is_quantum_number_conserved(const std::vector<itime_vertex>& vertices);
+  bool is_quantum_number_conserved(const std::vector<itime_vertex>& vertices, bool check_range=true);
 
   /*abstract virtual functions. Implement these for specific models.*/
   virtual std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&)=0;
