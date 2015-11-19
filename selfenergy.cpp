@@ -154,13 +154,13 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
     }//i_freq
   }//z
 
-  std::cout << " Wk node = " << node << " " << Wk[0][3][3][1].imag() << " " << Wk[1][3][3][1].imag() << " step " << step << " qn " << is_quantum_number_conserved(itime_vertices) << std::endl;
-  if (!is_quantum_number_conserved(itime_vertices)) {
-    std::cout << "w/o check range " << is_quantum_number_conserved(itime_vertices,false) << std::endl;
-    std::vector<itime_vertex> itime_vertices_sorted(itime_vertices);
-    std::sort(itime_vertices_sorted.begin(), itime_vertices_sorted.end());
-    print_vertices(std::cout, itime_vertices_sorted);
-  }
+  //std::cout << " Wk node = " << node << " " << Wk[0][3][3][1].imag() << " " << Wk[1][3][3][1].imag() << " step " << step << " qn " << is_quantum_number_conserved(itime_vertices) << std::endl;
+  //if (!is_quantum_number_conserved(itime_vertices)) {
+    //std::cout << "w/o check range " << is_quantum_number_conserved(itime_vertices,false) << std::endl;
+    //std::vector<itime_vertex> itime_vertices_sorted(itime_vertices);
+    //std::sort(itime_vertices_sorted.begin(), itime_vertices_sorted.end());
+    //print_vertices(std::cout, itime_vertices_sorted);
+  //}
 
   for(unsigned int flavor=0;flavor<n_flavors;++flavor) {
     for (unsigned int site1 = 0; site1 < n_site; ++site1) {

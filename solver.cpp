@@ -35,6 +35,8 @@
 ///This is the heart of InteractionExpansion's code.
 void InteractionExpansion::removal_insertion_update(void)
 {
+  //std::cout << std::endl;
+  //std::cout << "step " << step << std::endl;
   //temp work memory
   //static fastupdate_add_helper add_helper(n_flavors);
   //static fastupdate_remove_helper remove_helper(n_flavors);
@@ -84,20 +86,20 @@ void InteractionExpansion::removal_insertion_update(void)
       M.sanity_check(itime_vertices);
       simple_statistics_ins.accepted(nv_updated-1);
       //assert(is_quantum_number_conserved(new_vertices));
-      if (nv_updated==1) {
-        std::cout << "node " << node << " accepted ins " << new_vertices[0].type() << " acc " << metropolis_weight << std::endl;
-      }else if (nv_updated==2) {
-        std::cout << "node " << node << " accepted ins " << new_vertices[0].type() << " " << new_vertices[1].type() << " acc " << metropolis_weight << std::endl;
-      }
+      //if (nv_updated==1) {
+        //std::cout << "node " << node << " accepted ins " << new_vertices[0].type() << " acc " << metropolis_weight << std::endl;
+      //}else if (nv_updated==2) {
+        //std::cout << "node " << node << " accepted ins " << new_vertices[0].type() << " " << new_vertices[1].type() << " acc " << metropolis_weight << std::endl;
+      //}
+      //std::cout << " qn = " << is_quantum_number_conserved(itime_vertices) << std::endl;
       //for safety
-      if(fabs(metropolis_weight)<1E-3)  {
-        std::cout << "doing sanity check node " << node << std::endl;
-        reset_perturbation_series(true);
-        std::cout << "sanity check done " << metropolis_weight << " node " << node << std::endl;
-        std::cout << "doing second sanity check node " << node << std::endl;
-        reset_perturbation_series(true);
-        std::cout << "sanity second check done " << metropolis_weight << " node " << node << std::endl;
-      }
+      //if(fabs(metropolis_weight)<1E-3 || (step>= 2558981 && step<=2559000) )  {
+        //std::cout << "doing sanity check node " << node << std::endl;
+        //reset_perturbation_series(true);
+        //std::cout << "sanity check done " << metropolis_weight << " node " << node << std::endl;
+      //}
+      if(fabs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
     }else{
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
@@ -142,11 +144,11 @@ void InteractionExpansion::removal_insertion_update(void)
                                 nv_updated - 2);
     }
     if(fabs(metropolis_weight)> random()){ //do the actual update
-      if (nv_updated==1) {
-        std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " acc " << metropolis_weight << std::endl;
-      } else if (nv_updated==2) {
-        std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " " << vertices_to_be_removed[1].type() << " acc " << metropolis_weight << std::endl;
-      }
+      //if (nv_updated==1) {
+        //std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " acc " << metropolis_weight << std::endl;
+      //} else if (nv_updated==2) {
+        //std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " " << vertices_to_be_removed[1].type() << " acc " << metropolis_weight << std::endl;
+      //}
       //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
       sign*=boost::math::sign(metropolis_weight);
@@ -154,13 +156,17 @@ void InteractionExpansion::removal_insertion_update(void)
       swap(itime_vertices,itime_vertices_new);
       M.sanity_check(itime_vertices);
       simple_statistics_rem.accepted(nv_updated-1);
-      //if(fabs(metropolis_weight)<1E-5)
-        //reset_perturbation_series(false);
-      if(fabs(metropolis_weight)<1E-3) {
-        std::cout << "doing sanity check " << metropolis_weight << " node " << node << std::endl;
-        reset_perturbation_series(true);
-        std::cout << "sanity check done " << metropolis_weight << " node " << node << std::endl;
-      }
+
+      if(fabs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
+
+      //std::cout << " qn = " << is_quantum_number_conserved(itime_vertices) << std::endl;
+      //if(fabs(metropolis_weight)<1E-3 || (step>= 2558981 && step<=2559000) )  {
+        //std::cout << "doing sanity check " << metropolis_weight << " node " << node << std::endl;
+        //reset_perturbation_series(true);
+        //std::cout << "sanity check done " << metropolis_weight << " node " << node << std::endl;
+      //}
+
     }else{
       //measurements["VertexRemoval"]<<0.;
       reject_remove(remove_helper);
