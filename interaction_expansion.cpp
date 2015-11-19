@@ -298,7 +298,7 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
   green_itime=bare_green_itime;
 }
 
-bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices, bool check_range) {
+bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices) {
   using namespace boost::lambda;
 
   //const int qn_size = quantum_number_vertices[0].size();
@@ -320,16 +320,6 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
   for (int i=0; i<qn_t.size(); ++i) {
     if (qn_t[i]!=0) {
       return false;
-    }
-  }
-
-  //check if the quantum number is within the range
-  if (check_range) {
-    for (int iq=0; iq<qn_dim; ++iq) {
-      //note: group_dim[iq] is zero for non-existing group
-      if (qn_max[iq]-qn_min[iq]>group_dim[iq]) {
-        return false;
-      }
     }
   }
 
