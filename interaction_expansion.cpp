@@ -145,6 +145,8 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
 
   //set up parameters for updates
   std::vector<double> proposal_prob(n_multi_vertex_update, 1.0);
+proposal_prob[0] = 1.0;//REMOVE AFTER DEBUG
+proposal_prob[1] = 10.0;
   //std::fill(proposal_prob.begin(), proposal_prob.end(), 1);
   //proposal_prob[1] = 1000;
   update_prop = update_proposer(n_multi_vertex_update, proposal_prob);
@@ -467,7 +469,7 @@ void c_or_cdagger::initialize_simulation(const alps::params &p)
 void HubbardInteractionExpansion::prepare_for_measurement()
 {
   //update_prop.finish_learning((node==0));
-  update_prop.finish_learning(true);
+  //update_prop.finish_learning(true);//REMOVE AFTER DEBUG
   statistics_ins.reset();
   statistics_rem.reset();
   statistics_shift.reset();

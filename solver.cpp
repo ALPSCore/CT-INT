@@ -84,6 +84,9 @@ void InteractionExpansion::removal_insertion_update(void)
       M.sanity_check(itime_vertices);
       simple_statistics_ins.accepted(nv_updated-1);
       //assert(is_quantum_number_conserved(new_vertices));
+      if (nv_updated==2) {
+        std::cout << "accepted ins " << new_vertices[0].type() << " " << new_vertices[1].type() << std::endl;
+      }
       //for safety
       if(fabs(metropolis_weight)<1E-5)
         reset_perturbation_series(false);
@@ -131,6 +134,9 @@ void InteractionExpansion::removal_insertion_update(void)
                                 nv_updated - 2);
     }
     if(fabs(metropolis_weight)> random()){ //do the actual update
+      if (nv_updated==2) {
+        std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " " << vertices_to_be_removed[1].type() << std::endl;
+      }
       //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
       sign*=boost::math::sign(metropolis_weight);

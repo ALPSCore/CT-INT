@@ -77,7 +77,7 @@ inline twocomplex fastcmult(const twocomplex &a, const twocomplex &b)
 
 void InteractionExpansion::compute_W_matsubara()
 {
-  static Wk_t Wk(boost::extents[n_flavors][n_site][n_site][n_matsubara]);
+  Wk_t Wk(boost::extents[n_flavors][n_site][n_site][n_matsubara]);
   std::fill(Wk.origin(), Wk.origin()+Wk.num_elements(), 0);
   measure_Wk(Wk, n_matsubara_measurements);
   measure_densities();
@@ -153,6 +153,8 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
     }//i_freq
   }//z
+
+  std::cout << " Wk node = " << node << " " << Wk[0][3][3][1].imag() << " " << Wk[1][3][3][1].imag() << " step " << step << std::endl;
 
   for(unsigned int flavor=0;flavor<n_flavors;++flavor) {
     for (unsigned int site1 = 0; site1 < n_site; ++site1) {
