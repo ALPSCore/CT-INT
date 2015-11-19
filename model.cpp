@@ -170,8 +170,8 @@ void HubbardInteractionExpansion::perform_remove(const std::vector<int>& vertice
   }
   assert(std::abs(det_rat/helper.det_rat_-1)<1E-8);
   //get rid of vertex list entries.
-  //remove_elements_from_vector(itime_vertices, vertices_nr);
-  //M.sanity_check(itime_vertices);
+  remove_elements_from_vector(itime_vertices, vertices_nr);
+  M.sanity_check(itime_vertices);
 }
 
 
