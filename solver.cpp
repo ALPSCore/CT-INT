@@ -35,13 +35,6 @@
 ///This is the heart of InteractionExpansion's code.
 void InteractionExpansion::removal_insertion_update(void)
 {
-  //std::cout << std::endl;
-  //std::cout << "step " << step << std::endl;
-  //temp work memory
-  //static fastupdate_add_helper add_helper(n_flavors);
-  //static fastupdate_remove_helper remove_helper(n_flavors);
-
-  //int nv_updated = (size_t) (random()*n_multi_vertex_update)+1;
   const int nv_updated = update_prop.gen_Nv(random.engine());
 
 //#ifndef NDEBUG
@@ -65,9 +58,6 @@ void InteractionExpansion::removal_insertion_update(void)
                                              generate_itime_vertices(Uijkl,random,beta,nv_updated,all_type()) :
                                              generate_itime_vertices(Uijkl,random,beta,nv_updated,add_helper.op);
     assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
-    //std::vector<itime_vertex> itime_vertices_new(itime_vertices);
-    //for (int iv=0; iv<nv_updated; ++iv)
-      //itime_vertices_new.push_back(new_vertices[iv]);
     if (new_vertices.size()==0 || (force_quantum_number_conservation && !is_quantum_number_conserved(new_vertices))) {
       simple_statistics_ins.not_valid_state(nv_updated-1);
       update_prop.generated_invalid_update(nv_updated);
@@ -144,12 +134,6 @@ void InteractionExpansion::removal_insertion_update(void)
                                 nv_updated - 2);
     }
     if(fabs(metropolis_weight)> random()){ //do the actual update
-      //if (nv_updated==1) {
-        //std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " acc " << metropolis_weight << std::endl;
-      //} else if (nv_updated==2) {
-        //std::cout << "accepted rem " << vertices_to_be_removed[0].type() << " " << vertices_to_be_removed[1].type() << " acc " << metropolis_weight << std::endl;
-      //}
-      //measurements["VertexRemoval"]<<1.;
       perform_remove(vertices_nr, remove_helper);
       sign*=boost::math::sign(metropolis_weight);
       det*=det_rat;

@@ -79,9 +79,9 @@ green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
 legendre_transformer(n_matsubara,n_legendre),
 n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
-statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
-statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, n_multi_vertex_update-1),
-statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 10), beta, 1),
+statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
+statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
+statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, 1),
 simple_statistics_ins(n_multi_vertex_update),
 simple_statistics_rem(n_multi_vertex_update),
 is_thermalized_in_previous_step_(false),
@@ -138,43 +138,28 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   }
 
   //occ changes
-  std::cout << "qn_dim " << qn_dim << std::endl;
   for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
     Uijkl.get_vertex(iv).make_quantum_numbers(group_map, qn_dim/n_flavors);
   }
 
   //set up parameters for updates
   std::vector<double> proposal_prob(n_multi_vertex_update, 1.0);
-proposal_prob[0] = 1.0;//REMOVE AFTER DEBUG
-proposal_prob[1] = 10.0;
-  //std::fill(proposal_prob.begin(), proposal_prob.end(), 1);
-  //proposal_prob[1] = 1000;
+  if (params.defined("MULTI_VERTEX_UPDATE_PROPOSAL_RATE")) {
+    proposal_prob.resize(0);
+    std::stringstream ss(params["MULTI_VERTEX_UPDATE_PROPOSAL_RATE"].cast<std::string>());
+    double rtmp;
+    while (ss >> rtmp) {
+      proposal_prob.push_back(rtmp);
+    }
+    if (proposal_prob.size()!=n_multi_vertex_update)
+      throw std::runtime_error("The number of elements in MULTI_VERTEX_UPDATE_PROPOSAL_RATE is different from N_MULTI_VERTEX_UPDATE");
+  }
   update_prop = update_proposer(n_multi_vertex_update, proposal_prob);
-  //acc_rate_reducible_update.resize(n_multi_vertex_update);
-  //acc_rate_reducible_update[0] = 1;
-  //for (int i=1; i<n_multi_vertex_update; ++i) {
-    //acc_rate_reducible_update[i] = 0.05;
-  //}
-
-  //if parms.defined("WINDOW_WIDTH")
-  //window_width =
-  //dist_prop = boost::random::discrete_distribution<>(proposal_prob.begin(), proposal_prob.end());
-
-
-  //FourierTransformer::generate_transformer(alps::make_deprecated_parameters(parms), fourier_ptr);
-  //fourier_ptr->backward_ft(bare_green_itime, bare_green_matsubara);
 
   //initialize the simulation variables
   initialize_simulation(parms);
-  //random.engine().seed(static_cast<unsigned int>(10000*random()));
-  //std::cout << "node = " << node << " , first random number = " << random() << std::endl;
-  //for (int i=0; i<5; ++i)
-    //std::cout << " node = " << node << " random " << window_dist(random.engine()) << std::endl;
-
 
   if(node==0) {
-    //std::cout << "Using window_width = " << window_width << std::endl;
-    //std::cout << std::endl;
     print(std::cout);
 
     std::cout << std::endl << "Analysis of quantum numbers"  << std::endl;
@@ -191,8 +176,6 @@ proposal_prob[1] = 10.0;
     vertex_histograms[i]=new simple_hist(vertex_histogram_size);
   }
   c_or_cdagger::initialize_simulation(parms);
-//  std::cout << "force_qn" << force_quantum_number_conservation << std::endl;
-  //if(n_site !=1) throw std::invalid_argument("you're trying to run this code for more than one site. Do you know what you're doing?!?");
 }
 
 
