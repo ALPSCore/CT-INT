@@ -162,5 +162,25 @@ mygemm(const alps::numeric::matrix<T>& A, const alps::numeric::matrix<T>& B) {
     return AB;
 }
 
+template<class T>
+double
+is_identity(const alps::numeric::matrix<T>& M) {
+    if (num_cols(M)!=num_rows(M))
+        throw std::runtime_error("num_rows != num_cols");
+
+    const int Nv = num_cols(M);
+    double max_diff = 0;
+    for (size_t q=0; q<Nv; ++q) {
+        for (size_t p=0; p<Nv; ++p) {
+            if (p == q) {
+                max_diff = std::max(max_diff, std::abs(M(p, q) - 1.));
+            } else {
+                max_diff = std::max(max_diff, std::abs(M(p, q)));
+            }
+        }
+    }
+    return max_diff;
+}
+
 
 #endif //IMPSOLVER_UTIL_H

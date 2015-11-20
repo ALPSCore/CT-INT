@@ -227,7 +227,7 @@ void InteractionExpansion::update()
     }
 
     if(step % recalc_period ==0) {
-      reset_perturbation_series();
+      reset_perturbation_series(true);
     }
   }
 
@@ -337,8 +337,7 @@ void InteractionExpansion::sanity_check() {
     if (num_rows(M[flavor].matrix())==0) {
       continue;
     }
-    alps::numeric::matrix<GTYPE> tmp(M[flavor].matrix()), G0(M[flavor].matrix());
-    std::fill(tmp.get_values().begin(), tmp.get_values().end(), 0);
+    alps::numeric::matrix<GTYPE> G0(M[flavor].matrix());
     std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
 
     const size_t Nv = M[flavor].matrix().num_rows();
@@ -357,7 +356,7 @@ void InteractionExpansion::sanity_check() {
     sign_exact *= boost::math::sign(alps::numeric::determinant(G0));
     //std::cout << "sign_" << boost::math::sign(alps::numeric::determinant(G0)) << std::endl;
 
-    gemm(G0, M[flavor].matrix(), tmp);
+    alps::numeric::matrix<GTYPE> tmp = mygemm(G0, M[flavor].matrix());
     bool OK = true;
     double max_diff = 0;
     for (size_t q=0; q<Nv; ++q) {
@@ -365,17 +364,14 @@ void InteractionExpansion::sanity_check() {
         bool flag;
         if (p==q) {
           max_diff = std::max(max_diff, std::abs(tmp(p,q)-1.));
-          //OK = OK && (std::abs(tmp(p,q)-1.)<1E-5);
           flag = (std::abs(tmp(p,q)-1.)<1E-5);
         } else {
           max_diff = std::max(max_diff, std::abs(tmp(p,q)));
-          //OK = OK && (std::abs(tmp(p,q))<1E-5);
           flag = (std::abs(tmp(p,q))<1E-5);
         }
         OK = OK && flag;
         if(!flag) {
           std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-          //throw std::runtime_error("A");
         }
       }
     }

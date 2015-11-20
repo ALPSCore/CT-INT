@@ -244,6 +244,7 @@ void InteractionExpansion::alpha_update(void) {
 //This is done by constructing a matrix consisting of bare Green's function and invert it.
 void InteractionExpansion::reset_perturbation_series(bool verbose)
 {
+  typedef alps::numeric::matrix<GTYPE> matrix_t;
   big_inverse_m_matrix M2;
   double det_old;
   if (verbose) {
@@ -270,6 +271,12 @@ void InteractionExpansion::reset_perturbation_series(bool verbose)
       for (size_t p=0; p<Nv; ++p) {
         G0(p, p) -= M[flavor].alpha_at(p);
       }
+      if (verbose) {
+        matrix_t MG = mygemm(M[flavor].matrix(),G0);
+        double max_diff = is_identity(MG);
+        if (max_diff>1E-8)
+          std::cout<<" node= " << node << " step= " << step << " WARNING: roundoff errors in M*G, max_diff = " << max_diff << std::endl;
+      }
       M[flavor].matrix() = alps::numeric::inverse(G0);
       det *= alps::numeric::determinant(G0);//the determinant is basically computed in alps::numeric::inverse(G0)
     }
@@ -288,7 +295,7 @@ void InteractionExpansion::reset_perturbation_series(bool verbose)
 
   if (verbose) {
     if (std::abs(det-det_old)/std::abs(det)>1E-8)
-      std::cout<<" node= " << node << " WARNING: roundoff errors : determinant computed by fast update = " << det_old << " determinant computed by matrix inversion = " << det << std::endl;
+      std::cout<<" node= " << node << " step= " << step << " WARNING: roundoff errors : determinant computed by fast update = " << det_old << " determinant computed by matrix inversion = " << det << std::endl;
     for(unsigned int z=0;z<M2.size();++z){
       double max_diff=0;
       for(unsigned int j=0;j<num_cols(M2[z].matrix());++j){
