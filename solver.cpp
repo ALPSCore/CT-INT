@@ -275,7 +275,7 @@ void InteractionExpansion::reset_perturbation_series(bool verbose)
         matrix_t MG = mygemm(M[flavor].matrix(),G0);
         double max_diff = is_identity(MG);
         if (max_diff>1E-8)
-          std::cout<<" node= " << node << " step= " << step << " WARNING: roundoff errors in M*G, max_diff = " << max_diff << std::endl;
+          std::cout<<" node= " << node << " step= " << step << " flavor " << flavor << " WARNING: roundoff errors in M*G, max_diff = " << max_diff << std::endl;
       }
       M[flavor].matrix() = alps::numeric::inverse(G0);
       det *= alps::numeric::determinant(G0);//the determinant is basically computed in alps::numeric::inverse(G0)

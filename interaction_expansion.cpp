@@ -120,14 +120,17 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
 
   //make quantum numbers
-  quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
-  qn_dim = quantum_number_vertices[0][0].size();
-  group_dim.clear(); group_dim.resize(qn_dim, 0);
-  {
-    const int qn_dim_f = qn_dim/n_flavors;
-    for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-      for (int g=0; g<groups[flavor].size(); ++g) {
-        group_dim[g+flavor*qn_dim_f] = groups[flavor][g].size();
+  //std::cout << "debug " << force_quantum_number_conservation << std::endl;
+  if (force_quantum_number_conservation) {
+    quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
+    qn_dim = quantum_number_vertices[0][0].size();
+    group_dim.clear(); group_dim.resize(qn_dim, 0);
+    {
+      const int qn_dim_f = qn_dim/n_flavors;
+      for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+        for (int g=0; g<groups[flavor].size(); ++g) {
+          group_dim[g+flavor*qn_dim_f] = groups[flavor][g].size();
+        }
       }
     }
   }
@@ -138,8 +141,10 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   }
 
   //occ changes
-  for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
-    Uijkl.get_vertex(iv).make_quantum_numbers(group_map, qn_dim/n_flavors);
+  if (force_quantum_number_conservation) {
+    for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
+      Uijkl.get_vertex(iv).make_quantum_numbers(group_map, qn_dim/n_flavors);
+    }
   }
 
   //set up parameters for updates
@@ -159,7 +164,7 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   //initialize the simulation variables
   initialize_simulation(parms);
 
-  if(node==0) {
+  if(node==0 && force_quantum_number_conservation) {
     print(std::cout);
 
     std::cout << std::endl << "Analysis of quantum numbers"  << std::endl;
