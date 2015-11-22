@@ -154,7 +154,23 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
     }//i_freq
   }//z
 
-  //std::cout << " Wk node = " << node << " " << Wk[0][3][3][1].imag() << " " << Wk[1][3][3][1].imag() << " step " << step << " qn " << is_quantum_number_conserved(itime_vertices) << std::endl;
+  int num_nd = 0;
+  for (int iv=0; iv<itime_vertices.size(); ++iv) {
+    if (!itime_vertices[iv].is_density_type())
+      ++num_nd;
+  }
+  std::cout << " Wk_node= " << node << " "
+    << Wk[0][0][0][0].real() << " " << Wk[0][0][0][0].imag() << " "
+    << Wk[0][1][1][0].real() << " " << Wk[0][1][1][0].imag() << " "
+    << Wk[0][2][2][0].real() << " " << Wk[0][2][2][0].imag() << " "
+    << Wk[0][3][3][0].real() << " " << Wk[0][3][3][0].imag() << " "
+    << Wk[1][0][0][0].real() << " " << Wk[1][0][0][0].imag() << " "
+    << Wk[1][1][1][0].real() << " " << Wk[1][1][1][0].imag() << " "
+    << Wk[1][2][2][0].real() << " " << Wk[1][2][2][0].imag() << " "
+    << Wk[1][3][3][0].real() << " " << Wk[1][3][3][0].imag() << " "
+    << " step " << step << " qn " << is_quantum_number_within_range(itime_vertices) << " " << num_nd << std::endl;
+
+    
   //if (!is_quantum_number_conserved(itime_vertices)) {
     //std::cout << "w/o check range " << is_quantum_number_conserved(itime_vertices,false) << std::endl;
     //std::vector<itime_vertex> itime_vertices_sorted(itime_vertices);

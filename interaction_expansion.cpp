@@ -107,6 +107,7 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   }
   for(unsigned int i=0;i<n_flavors;++i)
     g0.push_back(green_matrix(n_tau, 20));
+
   //other parameters
   weight=0;
   sign=1;
@@ -120,17 +121,14 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
 
   //make quantum numbers
-  //std::cout << "debug " << force_quantum_number_conservation << std::endl;
   if (force_quantum_number_conservation) {
     quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
     qn_dim = quantum_number_vertices[0][0].size();
     group_dim.clear(); group_dim.resize(qn_dim, 0);
-    {
-      const int qn_dim_f = qn_dim/n_flavors;
-      for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-        for (int g=0; g<groups[flavor].size(); ++g) {
-          group_dim[g+flavor*qn_dim_f] = groups[flavor][g].size();
-        }
+    const int qn_dim_f = qn_dim/n_flavors;
+    for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+      for (int g=0; g<groups[flavor].size(); ++g) {
+        group_dim[g+flavor*qn_dim_f] = groups[flavor][g].size();
       }
     }
   }
@@ -253,17 +251,9 @@ void InteractionExpansion::measure(){
 
 
 double InteractionExpansion::fraction_completed() const{
-  //check for error convergence
-  //std::cout << "fraction " << ((step-therm_steps) / (double) mc_steps) << std::endl;
-  //std::cout << "debug fraction " << "step=" << step << " therm_steps " << therm_steps << " mc_steps= " << mc_steps << std::endl;
   if (!is_thermalized()) {
     return 0.;
   } else {
-    //if(time(NULL)-start_time> max_time_in_seconds){
-    //std::cout<<"we ran out of time!"<<std::endl;
-    //return 1;
-    //}
-    //assert(step>=therm_steps);
     return ((step - therm_steps) / (double) mc_steps);
   }
 }
@@ -278,7 +268,6 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
   //set the right dimensions:
   for(spin_t flavor=0;flavor<n_flavors;++flavor)
     M.push_back(inverse_m_matrix());
-  //vertices.clear();
   pert_hist.clear();
   //initialize ALPS observables
   initialize_observables();
@@ -287,9 +276,8 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
 }
 
 bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices) {
-  using namespace boost::lambda;
+  //using namespace boost::lambda;
 
-  //const int qn_size = quantum_number_vertices[0].size();
   const int Nv = vertices.size();
 
   if (Nv==0)
@@ -314,23 +302,35 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
   return true;
 }
 
-/*
-bool InteractionExpansion::is_irreducible(const std::vector<itime_vertex>& vertices) {
-  if (vertices.size()==1) {
+
+//This makes sence in the absence of a bath
+bool InteractionExpansion::is_quantum_number_within_range(const std::vector<itime_vertex>& vertices) {
+  //using namespace boost::lambda;
+
+  const int Nv = vertices.size();
+
+  if (Nv==0)
     return true;
+
+  std::valarray<int> qn_t(0, qn_dim), qn_max(0, qn_dim), qn_min(0, qn_dim);
+  std::vector<itime_vertex> vertices_sorted(vertices);//sort vertices in decreasing order (in time)
+  std::sort(vertices_sorted.begin(), vertices_sorted.end());
+
+  for (int iv=0; iv<Nv; ++iv) {
+    const vertex_definition<GTYPE> vd = Uijkl.get_vertex(vertices_sorted[iv].type());
+    vd.apply_occ_change(vertices_sorted[iv].af_state(), qn_t, qn_max, qn_min);
   }
 
-  const int dim = quantum_number_vertices[0].size();
-  bool flag = true;
-  for (int iv = 0; iv < vertices.size(); ++iv) {
-    if (reducible_vertices[vertices[iv].type()]) {
-      flag = false;
-      break;
+  //check if the quantum number is within range
+  for (int iq=0; iq<qn_dim; ++iq) {
+    //note: group_dim[iq] is zero for non-existing group
+    if (qn_max[iq]-qn_min[iq]>group_dim[iq]) {
+      return false;
     }
   }
-  return flag;
+
+  return true;
 }
- */
 
 void InteractionExpansion::sanity_check() {
 #ifndef NDEBUG
@@ -355,11 +355,7 @@ void InteractionExpansion::sanity_check() {
       G0(p, p) -= M[flavor].alpha_at(p);
     }
 
-    //std::cout << "alpha_scale " << alpha_scale<<std::endl;
-    //std::cout << "G0 flavor="<<flavor<<std::endl;
-    //std::cout << G0 << std::endl;
     sign_exact *= boost::math::sign(alps::numeric::determinant(G0));
-    //std::cout << "sign_" << boost::math::sign(alps::numeric::determinant(G0)) << std::endl;
 
     alps::numeric::matrix<GTYPE> tmp = mygemm(G0, M[flavor].matrix());
     bool OK = true;
