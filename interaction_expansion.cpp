@@ -93,6 +93,7 @@ shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<d
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 0),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
+force_quantum_number_within_range(parms.defined("FORCE_QUANTUM_NUMBER_WITHIN_RANGE") ? parms["FORCE_QUANTUM_NUMBER_WITHIN_RANGE"] : false),
 alpha_scale(1.),
 alpha_scale_min(1),
 alpha_scale_max(parms["ALPHA_SCALE_MAX"] | 1),
@@ -121,7 +122,7 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
 
   //make quantum numbers
-  if (force_quantum_number_conservation) {
+  if (force_quantum_number_conservation || force_quantum_number_within_range) {
     quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
     qn_dim = quantum_number_vertices[0][0].size();
     group_dim.clear(); group_dim.resize(qn_dim, 0);
@@ -139,7 +140,7 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   }
 
   //occ changes
-  if (force_quantum_number_conservation) {
+  if (force_quantum_number_conservation || force_quantum_number_within_range) {
     for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
       Uijkl.get_vertex(iv).make_quantum_numbers(group_map, qn_dim/n_flavors);
     }
@@ -162,7 +163,7 @@ alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1)
   //initialize the simulation variables
   initialize_simulation(parms);
 
-  if(node==0 && force_quantum_number_conservation) {
+  if(node==0 && (force_quantum_number_conservation || force_quantum_number_within_range)) {
     print(std::cout);
 
     std::cout << std::endl << "Analysis of quantum numbers"  << std::endl;

@@ -168,7 +168,12 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
     << Wk[1][1][1][0].real() << " " << Wk[1][1][1][0].imag() << " "
     << Wk[1][2][2][0].real() << " " << Wk[1][2][2][0].imag() << " "
     << Wk[1][3][3][0].real() << " " << Wk[1][3][3][0].imag() << " "
-    << " step " << step << " qn " << is_quantum_number_within_range(itime_vertices) << " " << num_nd << std::endl;
+    << " step " << step;
+  if (force_quantum_number_conservation || force_quantum_number_within_range) {
+    std::cout << " qn " << is_quantum_number_within_range(itime_vertices) << " " << num_nd << std::endl;
+  } else {
+    std::cout << std::endl;
+  }
 
     
   //if (!is_quantum_number_conserved(itime_vertices)) {

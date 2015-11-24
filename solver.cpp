@@ -51,18 +51,26 @@ void InteractionExpansion::removal_insertion_update(void)
       return; //we have already reached the highest perturbation order
     if (nv_updated>=2) {
       add_helper.op = non_density_type_in_window(beta*random(),
-                                                 std::min(beta,window_dist(random.engine())),
+                                                 std::min(beta,window_width+window_dist(random.engine())),
                                                  beta);
     }
     std::vector<itime_vertex> new_vertices = nv_updated==1 ?
                                              generate_itime_vertices(Uijkl,random,beta,nv_updated,all_type()) :
                                              generate_itime_vertices(Uijkl,random,beta,nv_updated,add_helper.op);
     assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
-    if (new_vertices.size()==0 || (force_quantum_number_conservation && !is_quantum_number_conserved(new_vertices))) {
+    std::vector<itime_vertex> itime_vertices_new(itime_vertices);
+    for (std::vector<itime_vertex>::const_iterator it=new_vertices.begin(); it!=new_vertices.end(); ++it) {
+      itime_vertices_new.push_back(*it);
+    }
+    if (new_vertices.size()==0 ||
+      (nv_updated>1 && force_quantum_number_conservation && !is_quantum_number_conserved(new_vertices)) ||
+      (nv_updated>1 && force_quantum_number_within_range && !is_quantum_number_within_range(itime_vertices_new))
+      ) {
       simple_statistics_ins.not_valid_state(nv_updated-1);
       update_prop.generated_invalid_update(nv_updated);
       return;
     }
+
     update_prop.generated_valid_update(nv_updated);
 
     boost::tie(metropolis_weight,det_rat)=try_add(add_helper,nv_updated, new_vertices);
@@ -105,7 +113,7 @@ void InteractionExpansion::removal_insertion_update(void)
     }
     if (nv_updated>=2) {
       remove_helper.op = non_density_type_in_window(beta*random(),
-              std::min(beta,window_dist(random.engine())),
+              std::min(beta,window_width+window_dist(random.engine())),
               beta);
     }
 
@@ -115,12 +123,15 @@ void InteractionExpansion::removal_insertion_update(void)
         pick_up_itime_vertices(itime_vertices, random, nv_updated, remove_helper.op);
     if (vertices_nr.size()==0)
       return;
-    std::vector<itime_vertex> vertices_to_be_removed(nv_updated);//, itime_vertices_new(itime_vertices);
+    std::vector<itime_vertex> vertices_to_be_removed(nv_updated), itime_vertices_new(itime_vertices);
     for (int iv=0; iv<nv_updated; ++iv) {
       vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
     }
-    //remove_elements_from_vector(itime_vertices_new, vertices_nr);
-    if (force_quantum_number_conservation && !is_quantum_number_conserved(vertices_to_be_removed)) {
+    remove_elements_from_vector(itime_vertices_new, vertices_nr);
+    if (
+      (nv_updated>1 && force_quantum_number_conservation && !is_quantum_number_conserved(vertices_to_be_removed)) ||
+      (nv_updated>1 && force_quantum_number_within_range && !is_quantum_number_within_range(itime_vertices_new))
+      ) {
       simple_statistics_rem.not_valid_state(nv_updated-1);
       update_prop.generated_invalid_update(nv_updated);
       return;

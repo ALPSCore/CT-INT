@@ -161,6 +161,19 @@ private:
 
 };
 
+/*
+class WindowDistribution {
+public:
+  WindowDistribution(double width, double beta) : width_(width), beta_(beta), exp_dist(1./width);
+
+  double operator
+
+private:
+  const double width_, beta_;
+  boost::random::exponential_distribution<> exp_dist;
+}
+*/
+
 class histogram
 {
 public:
@@ -525,6 +538,7 @@ protected:
   const int n_ins_rem;
   const int n_shift;
   const bool force_quantum_number_conservation;
+  const bool force_quantum_number_within_range;
   const double alpha_scale_min, alpha_scale_max, alpha_scale_max_meas;
   const int alpha_scale_update_period;
 
