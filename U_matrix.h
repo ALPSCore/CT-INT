@@ -196,7 +196,6 @@ class general_U_matrix {
         Uval_ = mycast<T>(Uval_cmplx);
         assert(itmp==idx);
         assert(rank==2);
-        assert(num_af_states==2);
 
         site_indices_.resize(2*rank);
         flavor_indices_.resize(rank);
