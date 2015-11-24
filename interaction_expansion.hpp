@@ -35,6 +35,7 @@
 #include <boost/multi_array.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/tuple/tuple_io.hpp>
 #include <boost/random.hpp>
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/exponential_distribution.hpp>
@@ -537,8 +538,9 @@ protected:
   const size_t n_multi_vertex_update;
   const int n_ins_rem;
   const int n_shift;
-  const bool force_quantum_number_conservation;
-  const bool force_quantum_number_within_range;
+  //const bool force_quantum_number_conservation;
+  //const bool force_quantum_number_within_range;
+  const bool single_vertex_update_non_density_type;
   const double alpha_scale_min, alpha_scale_max, alpha_scale_max_meas;
   const int alpha_scale_update_period;
 
@@ -552,6 +554,10 @@ protected:
   std::vector<std::vector<quantum_number_t> > quantum_number_vertices;
   std::vector<int> group_dim;
   int qn_dim;
+
+  //double vertex update
+  std::vector<boost::tuple<int,int> > mv_update_valid_pair;
+  boost::multi_array<bool,2> mv_update_valid_pair_flag;
 
   std::vector<bool> is_density_density_type;
 

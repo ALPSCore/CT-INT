@@ -1,13 +1,13 @@
- /*****************************************************************************
- *
- * ALPS DMFT Project
- *
- * Copyright (C) 2005 - 2009 by Emanuel Gull <gull@phys.columbia.edu>
- *                              Philipp Werner <werner@itp.phys.ethz.ch>,
- *                              Sebastian Fuchs <fuchs@theorie.physik.uni-goettingen.de>
- *                              Matthias Troyer <troyer@comp-phys.org>
- *
- *
+/*****************************************************************************
+*
+* ALPS DMFT Project
+*
+* Copyright (C) 2005 - 2009 by Emanuel Gull <gull@phys.columbia.edu>
+*                              Philipp Werner <werner@itp.phys.ethz.ch>,
+*                              Sebastian Fuchs <fuchs@theorie.physik.uni-goettingen.de>
+*                              Matthias Troyer <troyer@comp-phys.org>
+*
+*
 * This software is part of the ALPS Applications, published under the ALPS
 * Application License; you can use, redistribute it and/or modify it under
 * the terms of the license, either version 1 or (at your option) any later
@@ -44,6 +44,7 @@ typedef size_t af_t;
 
 class itime_vertex;
 class all_type;
+class density_type;
 class non_density_type;
 class non_density_type_in_window;
 
@@ -243,10 +244,6 @@ class general_U_matrix {
       return vertex_list;
     }
 
-    //const std::vector<int>& get_non_density_vertices() const {
-      //return non_density_vertices;
-    //}
-
     const std::vector<vertex_definition<T> >& get_vertices(all_type& pred) const {
       return vertex_list;
     }
@@ -255,8 +252,16 @@ class general_U_matrix {
       return non_density_vertices;
     }
 
+    const std::vector<vertex_definition<T> >& get_vertices(density_type& pred) const {
+      return density_vertices;
+    }
+
     const std::vector<vertex_definition<T> >& get_vertices(non_density_type_in_window& pred) const {
         return non_density_vertices;
+    }
+
+    const std::vector<vertex_definition<T> >& get_non_density_vertex_defs() const {
+      return non_density_vertices;
     }
 
     int num_vertex_type(all_type& pred) const {
@@ -267,20 +272,22 @@ class general_U_matrix {
         return non_density_vertices.size();
     }
 
+    int num_vertex_type(density_type& pred) const {
+      return density_vertices.size();
+    }
+
     int num_vertex_type(non_density_type_in_window& pred) const {
         return non_density_vertices.size();
     }
 
-    //int num_vertex_type(non_density_type& pred) {
-      //return non_density_vertices.size();
-    //}
-    //const std::vector<bool>& get_is_denisty_type() const {
-      //return is_density_type;
-    //}
+    int num_density_vertex_type() const {
+      return density_vertices.size();
+    }
+
 
   private:
     unsigned int ns_, nf_, num_nonzero_;
-    std::vector<vertex_definition<T> > vertex_list, non_density_vertices;
+    std::vector<vertex_definition<T> > vertex_list, non_density_vertices, density_vertices;
     //std::vector<int> non_density_vertices;
     std::vector<bool> is_density_type;
 
@@ -289,8 +296,11 @@ class general_U_matrix {
       non_density_vertices.clear();
       for (int iv=0; iv<vertex_list.size(); ++iv) {
         is_density_type[iv] = vertex_list[iv].is_density_type();
-        if (!is_density_type[iv])
+        if (!is_density_type[iv]) {
           non_density_vertices.push_back(vertex_list[iv]);
+        } else {
+          density_vertices.push_back(vertex_list[iv]);
+        }
       }
     }
  };
@@ -346,13 +356,18 @@ inline bool operator<(const itime_vertex& v1, const itime_vertex& v2) {
 class density_type : public std::unary_function<itime_vertex,bool> {
 public:
     bool operator()(itime_vertex v) {return v.is_density_type();}
+
+    double random_time(double random01, double beta) const {
+      assert(random01>=0 && random01<=1);
+      return random01*beta;
+    }
 };
 
 class non_density_type : public std::unary_function<itime_vertex,bool> {
 public:
     bool operator()(itime_vertex v) {return !v.is_density_type();}
 
-    double random_time(double random01, double beta) {
+    double random_time(double random01, double beta) const {
         assert(random01>=0 && random01<=1);
         return random01*beta;
     }
@@ -377,12 +392,12 @@ public:
         //std::cout << "t_s2,t_l2" << t_small2_ << " " << t_large2_ << std::endl;
     }
 
-    bool operator()(itime_vertex v) {
+    bool operator()(itime_vertex v) const {
         const double t = v.time();
         return !v.is_density_type() && ((t_small1_<=t && t<=t_large1_) || (t_small2_<=t && t<=t_large2_));
     }
 
-    double random_time(double random01, double beta) {
+    double random_time(double random01, double beta)  const{
         assert(random01>=0 && random01<=1);
         assert(beta_==beta);
         assert(w_>0);
@@ -406,11 +421,39 @@ class all_type : public std::unary_function<itime_vertex,bool> {
 public:
     bool operator()(itime_vertex v) {return true;}
 
-    double random_time(double random01, double beta) {
+    double random_time(double random01, double beta)  const{
         assert(random01>=0 && random01<=1);
         return random01*beta;
     }
 };
+
+template<class T, class R, class UnaryPredicate>
+std::vector<itime_vertex> generate_valid_vertex_pair(const general_U_matrix<T>& Uijkl, const std::vector<boost::tuple<int,int> >& valid_pair,
+  R& random01, double beta, const UnaryPredicate& pred) {
+  const int n_vertices_add = 2;
+
+  std::vector<itime_vertex> itime_vertices;
+  itime_vertices.reserve(n_vertices_add);
+
+  if (valid_pair.size()==0)
+    return std::vector<itime_vertex>();
+
+  int v1,v2;
+  boost::tie(v1,v2) = valid_pair[static_cast<int>(random01()*valid_pair.size())];
+  int vtypes[] = {v1, v2};
+
+  for (int iv=0; iv<n_vertices_add; ++iv) {
+    const double time = pred.random_time(random01(), beta);
+    const int v_type = vtypes[iv];
+    const int rank = Uijkl.get_vertices()[v_type].rank();
+    const int af_state = random01()*Uijkl.get_vertices()[v_type].num_af_states();
+    itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank, false));
+    if(Uijkl.get_vertices()[v_type].is_density_type()) {
+      throw std::logic_error("Error found density type vertex");
+    }
+  }
+  return itime_vertices;
+}
 
 template<class T, class R, class UnaryPredicate>
 std::vector<itime_vertex> generate_itime_vertices(const general_U_matrix<T>& Uijkl, R& random01, double beta, int n_vertices_add, UnaryPredicate pred) {
@@ -431,6 +474,81 @@ std::vector<itime_vertex> generate_itime_vertices(const general_U_matrix<T>& Uij
     itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank, valid_vs[iv_rnd].is_density_type()));
   }
   return itime_vertices;
+}
+
+template<class UnaryPredicate>
+int count_valid_vertex_pair(const std::vector<itime_vertex>& itime_vertices, const boost::multi_array<bool,2>& valid_pair_flag, const UnaryPredicate& window) {
+  std::vector<int> vs_win; vs_win.reserve(itime_vertices.size());
+  std::vector<int> pos; pos.reserve(itime_vertices.size());
+
+  int idx = 0;
+  for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+    if (window(*it) && !it->is_density_type()) {
+      vs_win.push_back(it->type());
+      pos[vs_win.size()-1] = idx;
+    }
+    ++idx;
+  }
+
+  const int N = vs_win.size();
+  int N_valid_pair = 0;
+  for (int iv=0; iv<N; ++iv) {
+    for (int iv2=0; iv2<N; ++iv2) {
+      if (iv<=iv2)
+        continue;
+
+      if (valid_pair_flag[vs_win[iv]][vs_win[iv2]])
+        ++N_valid_pair;
+    }
+  }
+
+  return N_valid_pair;
+}
+
+template<class UnaryPredicate, class R>
+std::vector<int>
+pick_up_valid_vertex_pair(const std::vector<itime_vertex>& itime_vertices, const boost::multi_array<bool,2>& valid_pair_flag, const UnaryPredicate& window, R& random01, int& N_valid_pair) {
+  std::vector<int> vs_win; vs_win.reserve(itime_vertices.size());
+  std::vector<int> pos; pos.reserve(itime_vertices.size());
+
+  int idx = 0;
+  for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+    if (window(*it) && !it->is_density_type()) {
+      vs_win.push_back(it->type());
+      pos.push_back(idx);
+    }
+    ++idx;
+  }
+
+  const int N = vs_win.size();
+  std::vector<std::pair<int,int> > pos_pair;
+  N_valid_pair = 0;
+  for (int iv=0; iv<N; ++iv) {
+    for (int iv2=0; iv2<N; ++iv2) {
+      if (iv<=iv2)
+        continue;
+
+      if (valid_pair_flag[vs_win[iv]][vs_win[iv2]]) {
+        ++N_valid_pair;
+        pos_pair.push_back(std::make_pair(pos[iv],pos[iv2]));
+      }
+    }
+  }
+
+  if (N_valid_pair==0)
+    return std::vector<int>();
+
+  assert(pos_pair.size()==N_valid_pair);
+  //const int selected = static_cast<int>(random01()*N_valid_pair);
+  //std::cout << " debug " << selected << " " << N_valid_pair << " " << pos_pair.size() << std::endl;
+  //assert(selected<N_valid_pair);
+  std::pair<int,int> tmp = pos_pair[static_cast<int>(random01()*N_valid_pair)];
+  assert(!itime_vertices[tmp.first].is_density_type());
+  assert(!itime_vertices[tmp.second].is_density_type());
+  std::vector<int> r(2);
+  r[0] = tmp.first;
+  r[1] = tmp.second;
+  return r;
 }
 
 
@@ -471,6 +589,27 @@ std::vector<int> pick_up_itime_vertices(const std::vector<itime_vertex>& itime_v
   return indices2;
 };
 
+//void
+//find_valid_pair_multi_vertex_update(const std::vector<std::vector<std::valarray<int> > >& quantum_numbers, std::vector<boost::tuple<int,int,int,int> >& v_pair, boost::multi_array<bool,4>& v_pair_flag);
+template<class T>
+void
+find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& vertex_defs, const std::vector<std::vector<std::valarray<int> > >& quantum_numbers, std::vector<boost::tuple<int,int> >& v_pair, boost::multi_array<bool,2>& v_pair_flag) {
+  v_pair.resize(0);
+  v_pair_flag.resize(boost::extents[quantum_numbers.size()][quantum_numbers.size()]);
+
+  std::valarray<int> qn(quantum_numbers[0][0].size());
+  const int i_af1=0, i_af2=0;
+  for (int v1=0; v1<quantum_numbers.size(); ++v1) {
+    for (int v2=0; v2<quantum_numbers.size(); ++v2) {
+      qn = quantum_numbers[v1][i_af1] + quantum_numbers[v2][i_af2];
+      bool flag = is_all_zero<int>(qn) && (!vertex_defs[v1].is_density_type()) && (!vertex_defs[v2].is_density_type());
+
+      v_pair_flag[v1][v2] = flag;
+      if (v1 < v2 && flag)
+        v_pair.push_back(boost::make_tuple(v1, v2));
+    }
+  }
+};
 
 std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
 void print_vertices(std::ostream &os, const std::vector<itime_vertex> &v);

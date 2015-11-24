@@ -182,5 +182,17 @@ is_identity(const alps::numeric::matrix<T>& M) {
     return max_diff;
 }
 
+template<class T>
+bool is_all_zero(const std::valarray<T>& array) {
+    bool flag = true;
+    for (int i=0; i<array.size(); ++i) {
+        if (array[i]!=0) {
+            flag = false;
+            break;
+        }
+    }
+    return flag;
+}
+
 
 #endif //IMPSOLVER_UTIL_H

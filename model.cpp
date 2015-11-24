@@ -37,14 +37,14 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
   helper.clear();
 
   //add vertices one by one
-  double prod_Uval = 1.0;
+  double prod_Uval_wm = 1.0;
   for (size_t iv=0; iv<n_vertices_add; ++iv) {
     const size_t v_type = new_vertices[iv].type();
     const vertex_definition<GTYPE> new_vertex_type = Uijkl.get_vertex(v_type);
     const double time = new_vertices[iv].time();
     const size_t rank = new_vertex_type.rank();
     const size_t af_state = new_vertices[iv].af_state();
-    prod_Uval *= new_vertex_type.Uval();
+    prod_Uval_wm *= -new_vertex_type.Uval();
 
     for (size_t i_rank=0; i_rank<rank; ++i_rank) {
       const size_t flavor_rank = new_vertex_type.flavors()[i_rank];
@@ -57,10 +57,6 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
       ++(helper.num_new_rows[flavor_rank]);
     }
     itime_vertices.push_back(new_vertices[iv]);
-    //std::cout << "iv " << iv << " " << itime_vertex(v_type, af_state, time, rank);
-    //std::cout << " alpha0 " << new_vertex_type.get_alpha(af_state, 0);
-    //std::cout << " alpha1 " << new_vertex_type.get_alpha(af_state, 1);
-    //std::cout << std::endl;
   }
 
   //fast update for each flavor
@@ -70,20 +66,8 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
       lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
     }
   }
-  //const double rtmp = pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/permutation(itime_vertices.size(),n_vertices_add);
-  //assert(std::count_if(itime_vertices.begin(), itime_vertices.end(), non_density_type())==itime_vertices.size());
-  //std::cout << "debug " << std::count_if(itime_vertices.begin(), itime_vertices.end(), non_density_type()) << " " << itime_vertices.size() << std::endl;
-  //std::cout << "debug2 " << non_density_type()(itime_vertices[0]) << std::endl;
-  //std::cout << "debug3 " << itime_vertices[0].is_density_type() << std::endl;
-
-  double perm = n_vertices_add==1 ?
-                permutation(itime_vertices.size(),n_vertices_add) :
-                permutation(std::count_if(itime_vertices.begin(), itime_vertices.end(), helper.op), n_vertices_add);
-  const double rtmp = n_vertices_add==1 ?
-                pow(-beta*Uijkl.n_vertex_type(),(double)n_vertices_add)/perm :
-                pow(-helper.op.width()*Uijkl.num_vertex_type(helper.op),(double)n_vertices_add)/perm;
   helper.det_rat_ = lambda_prod;
-  return std::pair<double,double>(rtmp*prod_Uval*lambda_prod, lambda_prod);
+  return std::pair<double,double>(prod_Uval_wm*lambda_prod, lambda_prod);
 }
 
 
@@ -126,7 +110,7 @@ std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vect
   double prod_Uval = 1.0;
   for (size_t iv=0; iv<vertices_nr.size(); ++iv) {
     vertex_definition<GTYPE> vertex_def = Uijkl.get_vertex(itime_vertices[vertices_nr[iv]].type());
-    prod_Uval *= vertex_def.Uval();
+    prod_Uval *= -vertex_def.Uval();
     for (size_t i_rank=0; i_rank<vertex_def.rank(); ++i_rank) {
       const size_t flavor = vertex_def.flavors()[i_rank];
       int r = M[flavor].find_row_col(itime_vertices[vertices_nr[iv]].time(), itime_vertices[vertices_nr[iv]].type(), i_rank);
@@ -144,13 +128,13 @@ std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vect
   }
   helper.det_rat_ = lambda_prod;
   assert(itime_vertices.size()==nv_old);
-  double r1 = vertices_nr.size()== 1 ?
-      permutation(itime_vertices.size(),vertices_nr.size()) :
-      permutation(std::count_if(itime_vertices.begin(), itime_vertices.end(), helper.op), vertices_nr.size());
-  double r2 = vertices_nr.size()== 1 ?
-      pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size()) :
-      pow(-helper.op.width()*Uijkl.num_vertex_type(helper.op),(double)vertices_nr.size());
-  return std::pair<double,double>((r1/r2)*lambda_prod/prod_Uval,lambda_prod);
+  //double r1 = vertices_nr.size()== 1 ?
+      //permutation(itime_vertices.size(),vertices_nr.size()) :
+      //permutation(std::count_if(itime_vertices.begin(), itime_vertices.end(), helper.op), vertices_nr.size());
+  //double r2 = vertices_nr.size()== 1 ?
+      //pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size()) :
+      //pow(-helper.op.width()*Uijkl.num_vertex_type(helper.op),(double)vertices_nr.size());
+  return std::pair<double,double>(lambda_prod/prod_Uval,lambda_prod);
 }
 
 

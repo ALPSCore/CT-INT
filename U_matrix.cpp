@@ -22,3 +22,5 @@ void print_vertices(std::ostream &os, const std::vector<itime_vertex> &v) {
     os << std::endl;
   }
 }
+
+
