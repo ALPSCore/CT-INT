@@ -200,7 +200,9 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   }
   const double t2 = timer.elapsed().wall*1E-6;
 
-  compute_Sl();
+  if (n_legendre>0) {
+    compute_Sl();
+  }
 
   const double t3 = timer.elapsed().wall*1E-6;
   timings[0] = t2-t1;
