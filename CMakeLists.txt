@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 project(impsolver)
 
+set(GOOGLE_PROFILER ON)
+
 # find ALPS Library
 if(NOT ALPS_DIR AND ALPS_ROOT_DIR)
   set(ALPS_DIR ${ALPS_ROOT_DIR}/share/alps)
@@ -66,6 +68,10 @@ add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTES
 
 #libraries
 list(APPEND CHYB_LIBRARIES alps boost $ENV{BLAS_LAPACK_LIBRARIES})
+if(DEFINED GOOGLE_PROFILER)
+  list(APPEND CHYB_LIBRARIES profiler)
+endif(DEFINED GOOGLE_PROFILER)
+
 message(CHYB_LIBRARIES "${CHYB_LIBRARIES}")
 target_link_libraries(interaction ${CHYB_LIBRARIES})
 target_link_libraries(gtest ${CHYB_LIBRARIES})

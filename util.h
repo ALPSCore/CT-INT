@@ -194,5 +194,22 @@ bool is_all_zero(const std::valarray<T>& array) {
     return flag;
 }
 
+//norm_dist: distribution function normalized for [0,beta]
+template<class P, class R>
+double gen_rand_rejection_method(const P& norm_dist, double max_norm_dist, R& random01, double beta) {
+    double inv_max_norm_dist = 1/max_norm_dist;
+    double x;
+    while(true) {
+        x = beta*random01();
+        //std::cout << " debug " << x << " " << random01() << " " <<  max_norm_dist << std::endl;
+        const double Px = norm_dist(x);
+        assert(Px<=max_norm_dist);
+        if (random01() < inv_max_norm_dist*Px) {
+            break;
+        }
+    }
+    return x;
+};
+
 
 #endif //IMPSOLVER_UTIL_H

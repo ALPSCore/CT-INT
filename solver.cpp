@@ -35,12 +35,19 @@
 ///This is the heart of InteractionExpansion's code.
 void InteractionExpansion::removal_insertion_update(void)
 {
+  //std::cout << "enetering " << std::endl;
+  //std::cout << "enetering " << std::endl;
   const int nv_updated = update_prop.gen_Nv(random.engine());
+  //std::cout << "enetering " << std::endl;
 
   const int pert_order= itime_vertices.size();   //current order of perturbation series
+  //std::cout << "enetering " << std::endl;
   double metropolis_weight=0.;
+  //std::cout << "enetering " << std::endl;
   double det_rat=0;
+  //std::cout << "enetering " << std::endl;
   if(random()<0.5){  //trying to ADD vertex
+    //std::cout << "try ins " << std::endl;
     M.sanity_check(itime_vertices);
     if(pert_order+nv_updated>max_order)
       return; //we have already reached the highest perturbation order
@@ -57,7 +64,8 @@ void InteractionExpansion::removal_insertion_update(void)
         new_vertices = generate_itime_vertices(Uijkl,random,beta,nv_updated,density_type());
       }
     } else if (nv_updated==2) {
-      new_vertices = generate_valid_vertex_pair(Uijkl,mv_update_valid_pair,random,beta,add_helper.op);
+      std::pair<int,int> v_pair = mv_update_valid_pair[mv_update_valid_pair.size()*random()];
+      new_vertices = generate_valid_vertex_pair2(Uijkl,v_pair,random,beta,symm_exp_dist);
     } else {
       throw std::runtime_error("Not implemented!");
     }
@@ -87,8 +95,16 @@ void InteractionExpansion::removal_insertion_update(void)
         p_rem = 1.0 / std::count_if(itime_vertices_new.begin(),itime_vertices_new.end(),density_type());
       }
     } else if (nv_updated==2) {
-      p_ins = 1./(pow(add_helper.op.width(),(double)nv_updated)*mv_update_valid_pair.size());
-      p_rem = 1./count_valid_vertex_pair(itime_vertices_new, mv_update_valid_pair_flag, add_helper.op);
+      p_ins = 1.;
+      const double dtau = mymod(new_vertices[1].time()-new_vertices[0].time(), beta);
+      int n_vpair;
+      double F;
+      pick_up_valid_vertex_pair2(itime_vertices_new,
+                                 std::make_pair(new_vertices[0].type(),new_vertices[1].type()),
+                                 beta, symm_exp_dist, random, n_vpair, F);
+      p_rem = (beta*beta)*symm_exp_dist.coeff_X(dtau)/F;
+      if (n_vpair==0)
+        throw std::logic_error("v_pair must be larger than 0.");
     } else {
       throw std::runtime_error("Not implemented!");
     }
@@ -114,6 +130,7 @@ void InteractionExpansion::removal_insertion_update(void)
     sanity_check();
 #endif
   }else{ // try to REMOVE a vertex
+    //std::cout << "try rem " << std::endl;
     M.sanity_check(itime_vertices);
     if(pert_order < nv_updated) {
       return;
@@ -127,6 +144,8 @@ void InteractionExpansion::removal_insertion_update(void)
     //choose vertices to be removed
     std::vector<int> vertices_nr;
     int n_vpair;
+    double F;
+    double p_ins, p_rem;
     if (nv_updated==1) {
       if (single_vertex_update_non_density_type) {
         vertices_nr = pick_up_itime_vertices(itime_vertices, random, nv_updated, all_type());
@@ -134,7 +153,16 @@ void InteractionExpansion::removal_insertion_update(void)
         vertices_nr = pick_up_itime_vertices(itime_vertices, random, nv_updated, density_type());
       }
     } else if (nv_updated==2) {
-      vertices_nr = pick_up_valid_vertex_pair(itime_vertices, mv_update_valid_pair_flag, remove_helper.op, random, n_vpair);
+      std::pair<int,int> v_pair = mv_update_valid_pair[mv_update_valid_pair.size()*random()];
+      std::pair<int,int> r = pick_up_valid_vertex_pair2(itime_vertices, v_pair, beta, symm_exp_dist, random, n_vpair, F);
+      //std::cout << "debug " << itime_vertices.size() << " " << r.first << "  " << r.second << std::endl;
+      if (n_vpair>0) {
+        vertices_nr.resize(2);
+        vertices_nr[0]=r.first;
+        vertices_nr[1]=r.second;
+      } else {
+        vertices_nr.resize(0);
+      }
     } else {
       throw std::runtime_error("Not implemented!");
     }
@@ -144,11 +172,11 @@ void InteractionExpansion::removal_insertion_update(void)
 
     std::vector<itime_vertex> vertices_to_be_removed(nv_updated), itime_vertices_new(itime_vertices);
     for (int iv=0; iv<nv_updated; ++iv) {
+      assert(vertices_nr[iv]<itime_vertices.size());
       vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
     }
     remove_elements_from_vector(itime_vertices_new, vertices_nr);
 
-    double p_ins, p_rem;
     if (nv_updated==1) {
       if (single_vertex_update_non_density_type) {
         p_ins = 1.0/(beta*Uijkl.n_vertex_type());
@@ -158,8 +186,12 @@ void InteractionExpansion::removal_insertion_update(void)
         p_rem = 1.0/std::count_if(itime_vertices.begin(), itime_vertices.end(), density_type());
       }
     } else if (nv_updated==2) {
-      p_ins = 1./(pow(remove_helper.op.width(),(double)nv_updated)*mv_update_valid_pair.size());
-      p_rem = 1./n_vpair;
+      assert(vertices_to_be_removed[1].type()>vertices_to_be_removed[0].type());
+      p_ins = 1.0;
+      p_rem = (beta*beta)*
+        symm_exp_dist.coeff_X(
+          mymod(vertices_to_be_removed[1].time()-vertices_to_be_removed[0].time(), beta)
+        )/F;
     }
 
     update_prop.generated_valid_update(nv_updated);

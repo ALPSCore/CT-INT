@@ -451,6 +451,22 @@ private:
     std::vector<inverse_m_matrix> sub_matrices_;
 };
 
+
+class SymmExpDist {
+public:
+    SymmExpDist() : a_(0), b_(0), beta_(0), coeff_(0), coeffX_(0) {}
+    SymmExpDist(double a_in, double b_in, double beta_in) : a_(a_in), b_(b_in), beta_(beta_in),
+                                                            coeff_(1/((2/a_)*(1-std::exp(-a_*beta_))+b_*beta_)),
+                                                            coeffX_(2*(1-std::exp(-a_*beta_))/(a_*beta_)+b_) {}
+
+    double operator()(double dtau) const {return coeff_*bare_value(dtau);}
+    double bare_value(double dtau) const {return std::exp(-a_*dtau)+std::exp(-a_*(beta_-dtau))+ b_;}
+    double coeff_X(double dtau) const {return coeffX_;}
+
+private:
+    double a_, b_, beta_, coeff_, coeffX_;
+};
+
 class InteractionExpansion: public alps::mcbase
 {
 public:
@@ -556,7 +572,7 @@ protected:
   int qn_dim;
 
   //double vertex update
-  std::vector<boost::tuple<int,int> > mv_update_valid_pair;
+  std::vector<std::pair<int,int> > mv_update_valid_pair;
   boost::multi_array<bool,2> mv_update_valid_pair_flag;
 
   std::vector<bool> is_density_density_type;
@@ -587,6 +603,7 @@ protected:
   //for window update
   double window_width;
   boost::random::exponential_distribution<> window_dist;
+  SymmExpDist symm_exp_dist;
 
   double weight;
   double sign;

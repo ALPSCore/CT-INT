@@ -34,6 +34,9 @@
 
 #include <algorithm>
 #include "boost/multi_array.hpp"
+#include <boost/random.hpp>
+#include <boost/random/uniform_01.hpp>
+#include <boost/random/discrete_distribution.hpp>
 
 #include "types.h"
 #include "util.h"
@@ -454,6 +457,34 @@ std::vector<itime_vertex> generate_valid_vertex_pair(const general_U_matrix<T>& 
   return itime_vertices;
 }
 
+template<class T, class R, class P>
+std::vector<itime_vertex> generate_valid_vertex_pair2(const general_U_matrix<T>& Uijkl, const std::pair<int,int> v_pair,
+  R& random01, double beta, const P& normalized_prob_dist) {
+  const int n_vertices_add = 2;
+
+  std::vector<itime_vertex> itime_vertices;
+  itime_vertices.reserve(n_vertices_add);
+
+  int vtypes[] = {v_pair.first, v_pair.second};
+  double times[2];
+  times[0] = mymod(beta*random01(), beta);
+  times[1] = mymod(times[0]+gen_rand_rejection_method(normalized_prob_dist, normalized_prob_dist(0.0), random01, beta), beta);
+  assert(vtypes[0]<vtypes[1]);
+
+  for (int iv=0; iv<n_vertices_add; ++iv) {
+    const double time = times[iv];
+    const int v_type = vtypes[iv];
+    const int rank = Uijkl.get_vertices()[v_type].rank();
+    const int af_state = random01()*Uijkl.get_vertices()[v_type].num_af_states();
+    itime_vertices.push_back(itime_vertex(v_type, af_state, time, rank, false));
+    if(Uijkl.get_vertices()[v_type].is_density_type()) {
+      throw std::logic_error("Error found density type vertex");
+    }
+  }
+  return itime_vertices;
+}
+
+
 template<class T, class R, class UnaryPredicate>
 std::vector<itime_vertex> generate_itime_vertices(const general_U_matrix<T>& Uijkl, R& random01, double beta, int n_vertices_add, UnaryPredicate pred) {
   std::vector<itime_vertex> itime_vertices;
@@ -550,6 +581,54 @@ pick_up_valid_vertex_pair(const std::vector<itime_vertex>& itime_vertices, const
   return r;
 }
 
+template<class P, class R>
+std::pair<int,int>
+pick_up_valid_vertex_pair2(const std::vector<itime_vertex>& itime_vertices, std::pair<int,int> v_pair,
+                           double beta, P& p, R& random01, int& N_valid_pair, double& F) {
+
+  std::vector<itime_vertex> v1, v2;
+  std::vector<int> pos_v1, pos_v2;
+  std::vector<double> prob;
+
+  const int Nv = itime_vertices.size();
+  for (int iv=0; iv<Nv; ++iv) {
+    if (itime_vertices[iv].type()==v_pair.first) {
+      v1.push_back(itime_vertices[iv]);
+      pos_v1.push_back(iv);
+    } else if (itime_vertices[iv].type()==v_pair.second) {
+      v2.push_back(itime_vertices[iv]);
+      pos_v2.push_back(iv);
+    }
+  }
+
+  N_valid_pair = v1.size()*v2.size();
+  if (N_valid_pair==0) {
+    return std::make_pair(-1,-1);
+  }
+
+  assert(v1.size()==pos_v1.size());
+  assert(v2.size()==pos_v2.size());
+  assert(v1.size()==v2.size());
+  if (v1.size()!=v2.size())
+    throw std::logic_error("v1.size() != v2.size()");
+  prob.resize(0); prob.reserve(v1.size()*v2.size());
+  for (int iv1=0; iv1<v1.size(); ++iv1) {
+    for (int iv2=0; iv2<v2.size(); ++iv2) {
+      assert(itime_vertices[pos_v2[iv2]].type()==v_pair.second);
+      assert(itime_vertices[pos_v1[iv1]].type()==v_pair.first);
+      prob.push_back(p.bare_value(
+          mymod(itime_vertices[pos_v2[iv2]].time()-itime_vertices[pos_v1[iv1]].time(), beta)
+      ));
+    }
+  }
+
+  F = std::accumulate(prob.begin(), prob.end(), 0.0);
+  const int idx = boost::random::discrete_distribution<>(prob.begin(), prob.end())(random01.engine());
+  assert(idx/v2.size()<v1.size());
+  assert(idx%v2.size()<v2.size());
+  return std::make_pair(pos_v1[idx/v2.size()], pos_v2[idx%v2.size()]);
+}
+
 
 template<class R, class UnaryPredicate>
 std::vector<int> pick_up_itime_vertices(const std::vector<itime_vertex>& itime_vertices,
@@ -592,7 +671,7 @@ std::vector<int> pick_up_itime_vertices(const std::vector<itime_vertex>& itime_v
 //find_valid_pair_multi_vertex_update(const std::vector<std::vector<std::valarray<int> > >& quantum_numbers, std::vector<boost::tuple<int,int,int,int> >& v_pair, boost::multi_array<bool,4>& v_pair_flag);
 template<class T>
 void
-find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& vertex_defs, const std::vector<std::vector<std::valarray<int> > >& quantum_numbers, std::vector<boost::tuple<int,int> >& v_pair, boost::multi_array<bool,2>& v_pair_flag) {
+find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& vertex_defs, const std::vector<std::vector<std::valarray<int> > >& quantum_numbers, std::vector<std::pair<int,int> >& v_pair, boost::multi_array<bool,2>& v_pair_flag) {
   v_pair.resize(0);
   v_pair_flag.resize(boost::extents[quantum_numbers.size()][quantum_numbers.size()]);
 
@@ -605,7 +684,7 @@ find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& ve
 
       v_pair_flag[v1][v2] = flag;
       if (v1 < v2 && flag)
-        v_pair.push_back(boost::make_tuple(v1, v2));
+        v_pair.push_back(std::make_pair(v1, v2));
     }
   }
 };

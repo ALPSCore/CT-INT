@@ -151,6 +151,10 @@ single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NO
     }
   }
 
+  if (n_multi_vertex_update>1) {
+    symm_exp_dist = SymmExpDist(parms["DOUBLE_VERTEX_UPDATE_A"], parms["DOUBLE_VERTEX_UPDATE_B"], beta);
+  }
+
   //set up parameters for updates
   std::vector<double> proposal_prob(n_multi_vertex_update, 1.0);
   if (params.defined("MULTI_VERTEX_UPDATE_PROPOSAL_RATE")) {
@@ -383,21 +387,6 @@ void InteractionExpansion::sanity_check() {
       }
     }
     std::cout << "sanity check max_diff " << max_diff << std::endl;
-    if (!OK) {
-      std::cout << "flavor=" << flavor << std::endl;
-      std::cout << "Nv=" << Nv << std::endl;
-      //for (size_t q=0; q<Nv; ++q) {
-        //for (size_t p=0; p<Nv; ++p) {
-          //std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-        //}
-      //}
-      //for (size_t q=0; q<Nv; ++q) {
-        //for (size_t p=0; p<Nv; ++p) {
-          ////std::cout << " p, q = " << p << " " << q << " " << M[flavor].matrix()(p,q) << std::endl;
-        //}
-      //}
-      //throw std::runtime_error("There is something wrong: G^{-1} != M.");
-    }
   }
 
   //contribution from (-U)^n
