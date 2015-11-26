@@ -155,7 +155,8 @@ double InteractionExpansion::fastupdate_shift(const int flavor, const std::vecto
     Green0_n_n(iv, iv) -= M[flavor].alpha_at(rows_cols_updated[iv]);
   }
 
-  shift_helper.det_rat = compute_inverse_matrix_replace_rows_cols_succesive(M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.rows_cols_updated[flavor]);
+  shift_helper.det_rat = compute_inverse_matrix_replace_rows_cols_succesive(
+      M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.rows_cols_updated[flavor], true);
   return shift_helper.det_rat;
 }
 

@@ -254,16 +254,26 @@ void InteractionExpansion::removal_insertion_update(void)
 
 //Shift updates: shift a vertex.
 void InteractionExpansion::shift_update(void) {
+  //using namespace boost::lambda;
+
   const int pert_order= itime_vertices.size();
   if (pert_order<=1)
     return;
 
-  //choose a vertex
-  const int iv = static_cast<int>(pert_order*random());
+  //choose a truely-non-density-type vertex
+  std::vector<int> vertices_nr;
+  vertices_nr.reserve(pert_order);
+  for (int iv=0; iv<itime_vertices.size(); ++iv) {
+    if (Uijkl.get_is_truely_non_density_type()[itime_vertices[iv].type()])
+      vertices_nr.push_back(iv);
+  }
+  if (vertices_nr.size()==0)
+    return;
+
+  const int iv = vertices_nr[vertices_nr.size()*random()];
+  //std::cout << " debug shift " << itime_vertices[iv].type() << std::endl;
   const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, random.engine());
   const double diff_time = std::abs(new_time-itime_vertices[iv].time());
-
-  //std::cout << std::endl << std::endl << "Try shift type " << itime_vertices[iv].type() << " iv =" << iv << " order " << pert_order << std::endl;
 
   double metropolis_weight = try_shift(iv, new_time);
 

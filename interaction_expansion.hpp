@@ -31,6 +31,7 @@
 #define DMFT_QMC_WEAK_COUPLING_H
 
 #include <algorithm>
+#include <functional>
 
 #include <boost/multi_array.hpp>
 #include <boost/timer/timer.hpp>
@@ -40,7 +41,7 @@
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/exponential_distribution.hpp>
 #include <boost/math/special_functions/sign.hpp>
-#include <boost/lambda/lambda.hpp>
+//#include <boost/lambda/lambda.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
