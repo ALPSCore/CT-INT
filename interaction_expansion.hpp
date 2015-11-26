@@ -509,7 +509,7 @@ protected:
   // in file fastupdate.cpp:
   double fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
   double fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight);
-  double fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated);
+  double fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight);
 
   /*measurement functions*/
   // in file measurements.cpp
