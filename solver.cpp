@@ -35,19 +35,12 @@
 ///This is the heart of InteractionExpansion's code.
 void InteractionExpansion::removal_insertion_update(void)
 {
-  //std::cout << "enetering " << std::endl;
-  //std::cout << "enetering " << std::endl;
   const int nv_updated = update_prop.gen_Nv(random.engine());
-  //std::cout << "enetering " << std::endl;
 
   const int pert_order= itime_vertices.size();   //current order of perturbation series
-  //std::cout << "enetering " << std::endl;
   double metropolis_weight=0.;
-  //std::cout << "enetering " << std::endl;
   double det_rat=0;
-  //std::cout << "enetering " << std::endl;
   if(random()<0.5){  //trying to ADD vertex
-    //std::cout << "try ins " << std::endl;
     M.sanity_check(itime_vertices);
     if(pert_order+nv_updated>max_order)
       return; //we have already reached the highest perturbation order
@@ -72,18 +65,22 @@ void InteractionExpansion::removal_insertion_update(void)
     }
 
     assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
-    std::vector<itime_vertex> itime_vertices_new(itime_vertices);
-    for (std::vector<itime_vertex>::const_iterator it=new_vertices.begin(); it!=new_vertices.end(); ++it) {
-      itime_vertices_new.push_back(*it);
-    }
     if (new_vertices.size()<nv_updated) {
       simple_statistics_ins.not_valid_state(nv_updated-1);
       update_prop.generated_invalid_update(nv_updated);
       return;
     }
 
-    update_prop.generated_valid_update(nv_updated);
+    std::vector<itime_vertex> itime_vertices_new(itime_vertices);
+    for (std::vector<itime_vertex>::const_iterator it=new_vertices.begin(); it!=new_vertices.end(); ++it) {
+      itime_vertices_new.push_back(*it);
+    }
+    if (force_quantum_number_conservation &&
+        (!is_quantum_number_conserved(itime_vertices_new) || !is_quantum_number_within_range(itime_vertices_new))) {
+      return;
+    }
 
+    update_prop.generated_valid_update(nv_updated);
     boost::tie(metropolis_weight,det_rat)=try_add(add_helper, nv_updated, new_vertices);
 
     double p_ins, p_rem;
@@ -184,6 +181,11 @@ void InteractionExpansion::removal_insertion_update(void)
     }
     remove_elements_from_vector(itime_vertices_new, vertices_nr);
 
+    if (force_quantum_number_conservation &&
+        (!is_quantum_number_conserved(itime_vertices_new) || !is_quantum_number_within_range(itime_vertices_new))) {
+      return;
+    }
+
     if (nv_updated==1) {
       if (single_vertex_update_non_density_type) {
         p_ins = 1.0/(beta*Uijkl.n_vertex_type());
@@ -274,6 +276,20 @@ void InteractionExpansion::shift_update(void) {
   //std::cout << " debug shift " << itime_vertices[iv].type() << std::endl;
   const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, random.engine());
   const double diff_time = std::abs(new_time-itime_vertices[iv].time());
+
+  //check quantum number
+  if (force_quantum_number_conservation) {
+    const double old_time = itime_vertices[iv].time();
+    itime_vertices[iv].set_time(new_time);
+
+    if (is_quantum_number_conserved(itime_vertices) && is_quantum_number_within_range(itime_vertices)) {
+      itime_vertices[iv].set_time(old_time);
+    } else {
+      itime_vertices[iv].set_time(old_time);
+      //std::cout << "rejected" << std::endl;
+      return;
+    }
+  }
 
   double metropolis_weight = try_shift(iv, new_time);
 

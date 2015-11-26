@@ -555,7 +555,7 @@ protected:
   const size_t n_multi_vertex_update;
   const int n_ins_rem;
   const int n_shift;
-  //const bool force_quantum_number_conservation;
+  const bool force_quantum_number_conservation;
   //const bool force_quantum_number_within_range;
   const bool single_vertex_update_non_density_type;
   const double alpha_scale_min, alpha_scale_max, alpha_scale_max_meas;
