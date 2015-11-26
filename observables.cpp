@@ -175,6 +175,12 @@ void InteractionExpansion::initialize_observables(void)
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("PerturbationOrderVertex");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion_count");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion_sum");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_count");
+  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_sum");
 #endif
   measurements.reset(true);
 }
@@ -225,12 +231,18 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   if (n_multi_vertex_update>1) {
       measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
       measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
+      measurements["StatisticsDoubleVertexInsertion"] << statistics_dv_ins.get_mean();
+      measurements["StatisticsDoubleVertexRemoval"] << statistics_dv_rem.get_mean();
 
       measurements["StatisticsVertexInsertion_count"] << statistics_ins.get_counter();
       measurements["StatisticsVertexRemoval_count"] << statistics_rem.get_counter();
+      measurements["StatisticsDoubleVertexInsertion_count"] << statistics_dv_ins.get_counter();
+      measurements["StatisticsDoubleVertexRemoval_count"] << statistics_dv_rem.get_counter();
 
       measurements["StatisticsVertexInsertion_sum"] << statistics_ins.get_sumval();
       measurements["StatisticsVertexRemoval_sum"] << statistics_rem.get_sumval();
+      measurements["StatisticsDoubleVertexInsertion_sum"] << statistics_dv_ins.get_sumval();
+      measurements["StatisticsDoubleVertexRemoval_sum"] << statistics_dv_rem.get_sumval();
   }
 
   measurements["StatisticsVertexShift"] << statistics_shift.get_mean();
@@ -240,6 +252,8 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   statistics_ins.reset();
   statistics_rem.reset();
   statistics_shift.reset();
+  statistics_dv_ins.reset();
+  statistics_dv_rem.reset();
 
   for (int iv=0; iv<n_multi_vertex_update; ++iv){
     measurements["VertexInsertion_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_ins.get_result(iv);

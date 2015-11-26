@@ -621,8 +621,8 @@ protected:
   clock_t update_time;
   clock_t measurement_time;
 
-  //Statistics on multi-vertex updates (imaginary time information)
-  scalar_histogram_flavors statistics_rem, statistics_ins, statistics_shift;
+  //Statistics about multi-vertex updates (imaginary time information)
+  scalar_histogram_flavors statistics_rem, statistics_ins, statistics_shift, statistics_dv_rem, statistics_dv_ins;
 
   //only acceptance rate
   simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
