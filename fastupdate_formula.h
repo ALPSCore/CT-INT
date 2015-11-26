@@ -352,7 +352,7 @@ compute_det_ratio_replace_row_col(const alps::numeric::matrix<T>& M, const alps:
 template<class T>
 T
 compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T> Dr, const alps::numeric::matrix<T> Dc, int m,
-    bool assume_intermediate_state_is_singular) {
+    bool assume_intermediate_state_is_singular=false) {
     typedef alps::numeric::matrix<T> matrix_t;
     const double eps = 1E-10;
 
@@ -444,6 +444,68 @@ compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alp
 
 }
 
+//Assuming the intermediate state is singular, one replaces a row and a column.
+template<class T>
+T
+compute_inverse_matrix_replace_row_col2(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T> Dr, const alps::numeric::matrix<T> Dc, int m,
+                                       bool compute_only_det_rat) {
+    typedef alps::numeric::matrix<T> matrix_t;
+    const double eps = 1E-10;
+
+    const int N = num_cols(invG);
+    const int Nm1 = N-1;
+    assert(num_rows(invG)==N);
+    assert(num_rows(Dr)==1);
+    assert(num_cols(Dr)==N);
+    assert(num_rows(Dc)==N);
+    assert(num_cols(Dc)==1);
+    assert(Dr(0,m)==Dc(m,0));
+
+    //original G^{-1}
+    matrix_t tQ(Nm1, 1), tR(1, Nm1);
+    invG.swap_cols(m,N-1);
+    invG.swap_rows(m,N-1);
+    copy_block(invG, 0, Nm1, tQ, 0, 0, Nm1, 1);
+    copy_block(invG, Nm1, 0, tR, 0, 0, 1, Nm1);
+    const T tS = invG(N-1,N-1);
+
+    //new G
+    matrix_t Q(Dc), R(Dr);
+    Q.swap_rows(m,N-1); Q.resize(Nm1,1);
+    R.swap_cols(m,N-1); R.resize(1,Nm1);
+
+    const T R_tQ = mygemm(R, tQ)(0,0);
+    const T tR_Q = mygemm(tR, Q)(0,0);
+    const T lambda = R_tQ*tR_Q;
+
+    if (compute_only_det_rat) {
+        invG.swap_cols(m,N-1);
+        invG.swap_rows(m,N-1);
+        return lambda;
+    }
+
+    matrix_t tP(Nm1, Nm1);
+    copy_block(invG, 0, 0, tP, 0, 0, Nm1, Nm1);
+
+    matrix_t tQp(tQ); tQp /= R_tQ;
+    matrix_t tRp(tR); tRp /= tR_Q;
+
+    matrix_t tPp(tP);
+    tPp += -mygemm(tQp,mygemm(R,tP))-mygemm(mygemm(tP,Q),tRp)+mygemm(mygemm(tQp,mygemm(R,mygemm(tP,Q))),tRp);
+
+    copy_block(tPp, 0, 0, invG, 0, 0, Nm1, Nm1);
+    copy_block(tQp, 0, 0, invG, 0, Nm1, Nm1, 1);
+    copy_block(tRp, 0, 0, invG, Nm1, 0, 1, Nm1);
+    const T tSp = tS/lambda;
+    invG(N-1,N-1) = tSp;
+
+    invG.swap_cols(m,N-1);
+    invG.swap_rows(m,N-1);
+
+    return lambda;
+}
+
+
 template<class T>
 T
 compute_inverse_matrix_replace_rows_cols_succesive(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
@@ -497,6 +559,51 @@ compute_inverse_matrix_replace_rows_cols_succesive(alps::numeric::matrix<T>& inv
 
         double rtmp = compute_inverse_matrix_replace_row_col(invG, Dr, Dc, rows_cols[im], assume_intermediate_state_is_singular);
         //std::cout << " im = " << im << " " << rtmp << std::endl;
+        lambda *= rtmp;
+    }
+    return lambda;
+}
+
+template<class T>
+T
+compute_inverse_matrix_replace_single_row_col(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
+                                                   const std::vector<int>& rows_cols, bool compute_only_det) {
+    typedef alps::numeric::matrix<T> matrix_t;
+
+    const int N = num_cols(invG);
+    const int M = rows_cols.size();
+    if (M!=1)
+        throw std::logic_error("Error in compute_inverse_matrix_replace_single_row_col");
+
+    assert(num_rows(invG)==N);
+    assert(num_rows(Q)==N-M && num_cols(Q)==M);
+    assert(num_rows(R)==M && num_cols(R)==N-M);
+    assert(num_rows(S)==M && num_cols(S)==M);
+
+    matrix_t Dr(1,N), Dc(N,1);
+    std::vector<bool> is_included(N,false);
+    for (int im=0; im<M; ++im) {
+        is_included[rows_cols[im]] = true;
+    }
+
+    T lambda = 1.;
+    for (int im=0; im<M; ++im) {
+        int idx=0, idx2=0;
+        for (int i=0; i<N; ++i) {
+            if (!is_included[i]) {
+                Dr(0,i) = R(im,idx);
+                Dc(i,0) = Q(idx,im);
+                ++idx;
+            } else {
+                Dr(0,i) = S(im,idx2);
+                Dc(i,0) = S(idx2,im);
+                ++idx2;
+            }
+        }
+        assert(idx==N-M);
+        assert(idx2==M);
+
+        double rtmp = compute_inverse_matrix_replace_row_col2(invG, Dr, Dc, rows_cols[im], compute_only_det);
         lambda *= rtmp;
     }
     return lambda;

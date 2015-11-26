@@ -165,6 +165,7 @@ void HubbardInteractionExpansion::reject_remove(fastupdate_remove_helper& helper
   return;
 }
 
+//This is specialized for pair hopping and spin flip.
 double HubbardInteractionExpansion::try_shift(int idx_vertex, double new_time) {
   assert(idx_vertex<itime_vertices.size());
 
@@ -175,10 +176,9 @@ double HubbardInteractionExpansion::try_shift(int idx_vertex, double new_time) {
 
   double lambda_prod = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    if (shift_helper.num_rows_cols_updated[flavor]==0)
-      continue;
+    if (shift_helper.num_rows_cols_updated[flavor]!=1)
+      throw std::logic_error("try shift is specialized for pair hopping and spin flip terms.");
 
-    //std::cout << "Flavor " << flavor << std::endl;
     for (int i=0; i<shift_helper.rows_cols_updated[flavor].size(); ++i) {
       const int idx = shift_helper.rows_cols_updated[flavor][i];
       assert(idx<M[flavor].creators().size());
@@ -187,8 +187,7 @@ double HubbardInteractionExpansion::try_shift(int idx_vertex, double new_time) {
     }
 
     //actual fast update
-    shift_helper.M_old[flavor] = M[flavor].matrix();
-    lambda_prod *= fastupdate_shift(flavor, shift_helper.rows_cols_updated[flavor]);
+    lambda_prod *= fastupdate_shift(flavor, shift_helper.rows_cols_updated[flavor], true);
   }
   return lambda_prod;
 }
@@ -196,23 +195,13 @@ double HubbardInteractionExpansion::try_shift(int idx_vertex, double new_time) {
 void HubbardInteractionExpansion::perform_shift(int idx_vertex) {
   assert(idx_vertex<itime_vertices.size());
 
-  //itime_vertex& v = itime_vertices[idx_vertex];
-  //std::vector<int> rows_cols_updated(v.rank());
-  //for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    //if (shift_helper.num_rows_cols_updated[flavor]==0)
-      //continue;
-    //fastupdate_shift(flavor, shift_helper.rows_cols_updated[flavor], false);
-  //}
+  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    fastupdate_shift(flavor, shift_helper.rows_cols_updated[flavor], false);
+  }
 }
 
 void HubbardInteractionExpansion::reject_shift(int idx_vertex) {
   for (spin_t flavor = 0; flavor < n_flavors; ++flavor) {
-    if (shift_helper.num_rows_cols_updated[flavor] == 0)
-      continue;
-
-    //swap_cols_rows(M[flavor].matrix(), shift_helper.swap_list[flavor].rbegin(), shift_helper.swap_list[flavor].rend());
-    //M[flavor].swap_ops2(shift_helper.swap_list[flavor].rbegin(), shift_helper.swap_list[flavor].rend());
-    M[flavor].matrix() = shift_helper.M_old[flavor];
 
     itime_vertices[idx_vertex].set_time(shift_helper.old_time);
     for (int i=0; i<shift_helper.rows_cols_updated[flavor].size(); ++i) {
@@ -221,5 +210,4 @@ void HubbardInteractionExpansion::reject_shift(int idx_vertex) {
       M[flavor].annihilators()[idx].set_time(shift_helper.old_time);
     }
   }
-  //std::cout << "debug rejected (2) " << std::endl;
 }
