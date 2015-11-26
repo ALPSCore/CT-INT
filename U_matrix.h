@@ -98,6 +98,14 @@ public:
      return flag;
    }
 
+   bool is_truely_non_density_type() const {
+     bool flag = true;
+     for (int i_rank=0; i_rank<rank_; ++i_rank) {
+       flag = flag && (sites_[2*i_rank] != sites_[2*i_rank+1]);
+     }
+     return flag;
+   }
+
    int id() const {return id_;}
 
    //track changes of occupations when this vertex is applied to a vector.
@@ -286,18 +294,23 @@ class general_U_matrix {
       return density_vertices.size();
     }
 
+    const std::vector<bool>& get_is_truely_non_density_type() const {
+      return is_truely_non_density_type;
+    }
 
   private:
     unsigned int ns_, nf_, num_nonzero_;
     std::vector<vertex_definition<T> > vertex_list, non_density_vertices, density_vertices;
     //std::vector<int> non_density_vertices;
-    std::vector<bool> is_density_type;
+    std::vector<bool> is_density_type, is_truely_non_density_type;
 
     void find_non_density_vertices() {
       is_density_type.resize(vertex_list.size());
+      is_truely_non_density_type.resize(vertex_list.size());
       non_density_vertices.clear();
       for (int iv=0; iv<vertex_list.size(); ++iv) {
         is_density_type[iv] = vertex_list[iv].is_density_type();
+        is_truely_non_density_type[iv] = vertex_list[iv].is_truely_non_density_type();
         if (!is_density_type[iv]) {
           non_density_vertices.push_back(vertex_list[iv]);
         } else {
@@ -337,7 +350,7 @@ public:
 private:
   int vertex_type_, af_state_, rank_;
   double time_;
-  bool is_density_type_;
+  bool is_density_type_; //, is_truely_non_density_type_;
 } itime_vertex;
 
 inline bool operator<(const itime_vertex& v1, const itime_vertex& v2) {
@@ -374,6 +387,29 @@ public:
         return random01*beta;
     }
 };
+
+//this does not include correlated hopping.
+/*
+class truely_non_density_type : public std::unary_function<itime_vertex,bool> {
+public:
+    bool operator()(itime_vertex v) {
+      if (v.is_density_type())
+        return false;
+
+      bool flag = true;
+      for (int ir=0; ir<v.rank(); ++ir) {
+        flag = flag && v.
+      }
+      return v.is_truely_non_density_type();
+    }
+
+    double random_time(double random01, double beta) const {
+      assert(random01>=0 && random01<=1);
+      return random01*beta;
+    }
+};
+*/
+
 
 class non_density_type_in_window : public std::unary_function<itime_vertex,bool> {
 public:

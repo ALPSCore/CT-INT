@@ -351,7 +351,8 @@ compute_det_ratio_replace_row_col(const alps::numeric::matrix<T>& M, const alps:
 
 template<class T>
 T
-compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T> Dr, const alps::numeric::matrix<T> Dc, int m) {
+compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T> Dr, const alps::numeric::matrix<T> Dc, int m,
+    bool assume_intermediate_state_is_singular) {
     typedef alps::numeric::matrix<T> matrix_t;
     const double eps = 1E-10;
 
@@ -384,7 +385,7 @@ compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alp
     const T tSp = tS/lambda;
     //std::cout << "lamba split " << tS*(S-mygemm(R,mygemm(tP,Q))(0,0)) << " " <<  mygemm(mygemm(R,tQ),mygemm(tR,Q))(0,0) << std::endl;
     //std::cout << "debug tS/tSp " << tS << " " << tSp << std::endl;
-    if (std::abs(tS)<eps && std::abs(tSp)<eps) {
+    if (assume_intermediate_state_is_singular || (std::abs(tS)<eps && std::abs(tSp)<eps) ) {
         const double R_tQ = mygemm(R, tQ)(0,0);
         const double tR_Q = mygemm(tR, Q)(0,0);
         matrix_t tQp(tQ); tQp /= R_tQ;
@@ -446,7 +447,7 @@ compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alp
 template<class T>
 T
 compute_inverse_matrix_replace_rows_cols_succesive(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
-                                                    const std::vector<int>& rows_cols) {
+                                                    const std::vector<int>& rows_cols, bool assume_intermediate_state_is_singular=false) {
     typedef alps::numeric::matrix<T> matrix_t;
 
     const int N = num_cols(invG);
@@ -494,7 +495,7 @@ compute_inverse_matrix_replace_rows_cols_succesive(alps::numeric::matrix<T>& inv
         assert(idx==N-M);
         assert(idx2==M);
 
-        double rtmp = compute_inverse_matrix_replace_row_col(invG, Dr, Dc, rows_cols[im]);
+        double rtmp = compute_inverse_matrix_replace_row_col(invG, Dr, Dc, rows_cols[im], assume_intermediate_state_is_singular);
         //std::cout << " im = " << im << " " << rtmp << std::endl;
         lambda *= rtmp;
     }
