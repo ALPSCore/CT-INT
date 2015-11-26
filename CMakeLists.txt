@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 project(impsolver)
 
-set(GOOGLE_PROFILER ON)
+#set(GOOGLE_PROFILER ON)
 
 # find ALPS Library
 if(NOT ALPS_DIR AND ALPS_ROOT_DIR)
@@ -67,7 +67,7 @@ set (GTEST_SOURCE legendre.cpp util.cpp)
 add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTEST_SOURCE})
 
 #libraries
-list(APPEND CHYB_LIBRARIES alps boost $ENV{BLAS_LAPACK_LIBRARIES})
+list(APPEND CHYB_LIBRARIES alps $ENV{BLAS_LAPACK_LIBRARIES})
 if(DEFINED GOOGLE_PROFILER)
   list(APPEND CHYB_LIBRARIES profiler)
 endif(DEFINED GOOGLE_PROFILER)
