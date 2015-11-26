@@ -82,6 +82,8 @@ n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
 statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
 statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
 statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, 1),
+statistics_dv_rem(0, 0, 0),
+statistics_dv_ins(0, 0, 0),
 simple_statistics_ins(n_multi_vertex_update),
 simple_statistics_rem(n_multi_vertex_update),
 is_thermalized_in_previous_step_(false),
@@ -153,6 +155,8 @@ single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NO
 
   if (n_multi_vertex_update>1) {
     symm_exp_dist = SymmExpDist(parms["DOUBLE_VERTEX_UPDATE_A"], parms["DOUBLE_VERTEX_UPDATE_B"], beta);
+    statistics_dv_ins = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
+    statistics_dv_rem = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
   }
 
   //set up parameters for updates
@@ -182,6 +186,10 @@ single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NO
     }
     std::cout << std::endl;
     std::cout << std::endl;
+
+    std::cout << std::endl << "Double vertex pairs" << std::endl;
+    for (int i=0; i<mv_update_valid_pair.size(); ++i)
+      std::cout << " type " << mv_update_valid_pair[i].first << ", type " << mv_update_valid_pair[i].second << std::endl;
   }
   vertex_histograms=new simple_hist *[n_flavors];
   vertex_histogram_size=100;
@@ -442,4 +450,6 @@ void HubbardInteractionExpansion::prepare_for_measurement()
   statistics_shift.reset();
   simple_statistics_ins.reset();
   simple_statistics_rem.reset();
+  statistics_dv_ins.reset();
+  statistics_dv_rem.reset();
 }

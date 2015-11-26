@@ -373,8 +373,8 @@ class scalar_histogram_flavors
         }
 
     private:
-        const int flavors, num_bins;
-        const double max_val;
+        int flavors, num_bins;
+        double max_val;
         std::vector<scalar_histogram> histograms;
 };
 

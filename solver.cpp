@@ -57,6 +57,7 @@ void InteractionExpansion::removal_insertion_update(void)
                                                  beta);
     }
     std::vector<itime_vertex> new_vertices;
+    std::pair<int,int> v_pair;
     if (nv_updated==1) {
       if (single_vertex_update_non_density_type) {
         new_vertices = generate_itime_vertices(Uijkl,random,beta,nv_updated,all_type());
@@ -64,7 +65,7 @@ void InteractionExpansion::removal_insertion_update(void)
         new_vertices = generate_itime_vertices(Uijkl,random,beta,nv_updated,density_type());
       }
     } else if (nv_updated==2) {
-      std::pair<int,int> v_pair = mv_update_valid_pair[mv_update_valid_pair.size()*random()];
+      v_pair = mv_update_valid_pair[mv_update_valid_pair.size()*random()];
       new_vertices = generate_valid_vertex_pair2(Uijkl,v_pair,random,beta,symm_exp_dist);
     } else {
       throw std::runtime_error("Not implemented!");
@@ -112,6 +113,12 @@ void InteractionExpansion::removal_insertion_update(void)
 
     if (nv_updated>=2) {
       statistics_ins.add_sample(compute_spread(new_vertices,beta), std::min(fabs(metropolis_weight),1.0), nv_updated-2);
+    }
+    if (nv_updated==2) {
+      statistics_dv_ins.add_sample(mymod(new_vertices[1].time()-new_vertices[0].time(), beta),
+                                   std::min(fabs(metropolis_weight), 1.0),
+                                   std::distance(mv_update_valid_pair.begin(), std::find(mv_update_valid_pair.begin(), mv_update_valid_pair.end(), v_pair))
+      );
     }
     if(fabs(metropolis_weight)> random()){
       perform_add(add_helper,nv_updated);
@@ -201,6 +208,16 @@ void InteractionExpansion::removal_insertion_update(void)
     if (nv_updated>=2) {
       statistics_rem.add_sample(compute_spread(vertices_to_be_removed, beta), std::min(fabs(metropolis_weight), 1.0),
                                 nv_updated - 2);
+    }
+    if (nv_updated==2) {
+      int idx = std::distance(mv_update_valid_pair.begin(),
+                              std::find(
+                                  mv_update_valid_pair.begin(),
+                                  mv_update_valid_pair.end(),
+                                  std::make_pair(vertices_to_be_removed[0].type(),vertices_to_be_removed[1].type())
+                              )
+      );
+      statistics_dv_rem.add_sample(mymod(vertices_to_be_removed[1].time()-vertices_to_be_removed[0].time(), beta), std::min(fabs(metropolis_weight), 1.0), idx);
     }
     if(fabs(metropolis_weight)> random()){ //do the actual update
       perform_remove(vertices_nr, remove_helper);
