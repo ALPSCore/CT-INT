@@ -748,7 +748,7 @@ find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& ve
       if (is_all_zero<int>(quantum_numbers[v2][i_af2]))
         continue;
       qn = quantum_numbers[v1][i_af1] + quantum_numbers[v2][i_af2];
-      bool flag = is_all_zero<int>(qn) && (!vertex_defs[v1].is_density_type()) && (!vertex_defs[v2].is_density_type());
+      bool flag = is_all_zero<int>(qn);
 
       v_pair_flag[v1][v2] = flag;
       if (v1 < v2 && flag)

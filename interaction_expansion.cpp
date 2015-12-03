@@ -139,6 +139,8 @@ single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NO
 
     //for double vertex update
     find_valid_pair_multi_vertex_update(Uijkl.get_vertices(), quantum_number_vertices, mv_update_valid_pair, mv_update_valid_pair_flag);
+    if (mv_update_valid_pair.size()==0)
+      throw std::runtime_error("No valid vertex pair for double vertex update. Please deactivate double vertex update.");
   }
 
   is_density_density_type.resize(Uijkl.n_vertex_type());
@@ -187,9 +189,13 @@ single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NO
     std::cout << std::endl;
     std::cout << std::endl;
 
-    std::cout << std::endl << "Double vertex pairs" << std::endl;
-    for (int i=0; i<mv_update_valid_pair.size(); ++i)
-      std::cout << " type " << mv_update_valid_pair[i].first << ", type " << mv_update_valid_pair[i].second << std::endl;
+    if (mv_update_valid_pair.size()>0) {
+      std::cout << std::endl << "Vertex pairs for double vertex update." << std::endl;
+      for (int i=0; i<mv_update_valid_pair.size(); ++i)
+        std::cout << " type " << mv_update_valid_pair[i].first << ", type " << mv_update_valid_pair[i].second << std::endl;
+    } else {
+      std::cout << std::endl << "No vertex pairs for double vertex update." << std::endl;
+    }
   }
   vertex_histograms=new simple_hist *[n_flavors];
   vertex_histogram_size=100;

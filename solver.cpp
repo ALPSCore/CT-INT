@@ -405,6 +405,9 @@ void InteractionExpansion::removal_insertion_double_vertex_update(void)
 {
   const int nv_updated = 2;
 
+  if (mv_update_valid_pair.size()==0)
+    return;
+
   const int pert_order= itime_vertices.size();   //current order of perturbation series
   double metropolis_weight=0.;
   double det_rat=0;
