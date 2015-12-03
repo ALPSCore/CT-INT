@@ -645,8 +645,8 @@ pick_up_valid_vertex_pair2(const std::vector<itime_vertex>& itime_vertices, std:
   assert(v1.size()==pos_v1.size());
   assert(v2.size()==pos_v2.size());
   assert(v1.size()==v2.size());
-  if (v1.size()!=v2.size())
-    throw std::logic_error("v1.size() != v2.size()");
+  //if (v1.size()!=v2.size())
+    //throw std::logic_error("v1.size() != v2.size()");
   prob.resize(0); prob.reserve(v1.size()*v2.size());
   for (int iv1=0; iv1<v1.size(); ++iv1) {
     for (int iv2=0; iv2<v2.size(); ++iv2) {
@@ -714,7 +714,11 @@ find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& ve
   std::valarray<int> qn(quantum_numbers[0][0].size());
   const int i_af1=0, i_af2=0;
   for (int v1=0; v1<quantum_numbers.size(); ++v1) {
+    if (is_all_zero<int>(quantum_numbers[v1][i_af1]))
+      continue;
     for (int v2=0; v2<quantum_numbers.size(); ++v2) {
+      if (is_all_zero<int>(quantum_numbers[v2][i_af2]))
+        continue;
       qn = quantum_numbers[v1][i_af1] + quantum_numbers[v2][i_af2];
       bool flag = is_all_zero<int>(qn) && (!vertex_defs[v1].is_density_type()) && (!vertex_defs[v2].is_density_type());
 
