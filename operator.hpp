@@ -37,13 +37,40 @@ extern "C" void vdcos_(const int *n, const double *a, double *y);
 extern "C" void vdsincos_(const int *n, const double *a, double *s, double *c);
 extern "C" void vrda_sincos_(const int *n, const double *a, double *s, double *c);
 
+template<class T>
+class operator_time_tmpl
+{
+public:
+    operator_time_tmpl() : time_(0), small_idx_(0) {}
+    operator_time_tmpl(T time, int small_idx) : time_(time), small_idx_(small_idx) {}
 
+    inline T time() const {return time_;}
+    inline int small_index() const {return small_idx_;}
+
+    inline void set_time(T time) { time_ = time;}
+    inline void set_small_index(int small_idx) { small_idx_ = small_idx;}
+
+private:
+    T time_;
+    int small_idx_;
+};
+
+typedef operator_time_tmpl<itime_t> operator_time;
+
+template<class T>
+bool operator<(const operator_time_tmpl<T>& t1, const operator_time_tmpl<T>& t2) {
+  if (t1.time()==t2.time()) {
+    return (t1.small_index()<t2.small_index());
+  } else {
+    return (t1.time()<t2.time());
+  }
+}
 
 /*creation and annihilation operator class*/
 class c_or_cdagger   //represents a creation operator or an annihilation operator
 { 
 public:
-  c_or_cdagger( const spin_t z,const site_t s, const itime_t t, const frequency_t n_matsubara)
+  c_or_cdagger( const spin_t z,const site_t s, const operator_time t, const frequency_t n_matsubara)
   {
     s_ = s;
     z_ = z;
@@ -101,8 +128,8 @@ public:
 
   inline const spin_t &flavor() const {return z_;}
   inline spin_t &flavor() {return z_;}
-  inline const itime_t &t() const{return t_;}
-  inline itime_t &t() {return t_;}
+  inline const operator_time &t() const{return t_;}
+  inline operator_time &t() {return t_;}
   inline const site_t &s() const {return s_;}
   inline void flavor(spin_t z){z_=z;}
   inline void s(site_t s){s_=s;}
@@ -128,7 +155,7 @@ public:
   
 private:
   site_t s_;      //this vertex's site
-  itime_t t_;     //its imaginary time point
+  operator_time t_;     //its imaginary time point
   spin_t z_;      //its flavor or flavor
   static unsigned int nm_;        //number of matsubara frequencies
   std::complex<double> *exp_iomegat_;
@@ -142,7 +169,7 @@ private:
 
 
 public:
-  void set_time(itime_t time) {
+  void set_time(operator_time time) {
     t_ = time;
   }
 
@@ -174,8 +201,8 @@ public:
 #else
         //NO vector functions
         for(frequency_t o=0;o<n_matsubara;++o){
-          cos_array[o]=cos(omegan_[o]*t_);
-          sin_array[o]=sin(omegan_[o]*t_);
+          cos_array[o]=cos(omegan_[o]*t_.time());
+          sin_array[o]=sin(omegan_[o]*t_.time());
         }
 #endif
 #endif    
@@ -187,7 +214,7 @@ public:
         delete[] cos_array;
       }
     } else { //use static exp
-      int taun=(int)(t_*ntau_/beta_);
+      int taun=(int)(t_.time()*ntau_/beta_);
       assert(taun<ntau_);
       if(sign==1) 
         exp_iomegat_=&(exp_iomegan_tau_[taun*2*nm_]);
@@ -202,14 +229,14 @@ public:
 
 class creator : public c_or_cdagger {
 public:
-    creator(const spin_t z,const site_t s, const itime_t t, const frequency_t n_matsubara)
+    creator(const spin_t z,const site_t s, const operator_time t, const frequency_t n_matsubara)
             : c_or_cdagger(z, s, t, n_matsubara){};
     ~creator(){};
 };
 
 class annihilator : public c_or_cdagger {
 public:
-    annihilator(const spin_t z,const site_t s, const itime_t t, const frequency_t n_matsubara)
+    annihilator(const spin_t z,const site_t s, const operator_time t, const frequency_t n_matsubara)
             : c_or_cdagger(z, s, t, n_matsubara){};
     ~annihilator(){};
 };

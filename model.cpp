@@ -49,8 +49,9 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
     for (size_t i_rank=0; i_rank<rank; ++i_rank) {
       const size_t flavor_rank = new_vertex_type.flavors()[i_rank];
 
-      M[flavor_rank].creators().push_back(creator(flavor_rank, new_vertex_type.sites()[2*i_rank], time, n_matsubara));
-      M[flavor_rank].annihilators().push_back(annihilator(flavor_rank, new_vertex_type.sites()[2*i_rank+1], time, n_matsubara));
+      operator_time op_t(time, -i_rank);
+      M[flavor_rank].creators().push_back(creator(flavor_rank, new_vertex_type.sites()[2*i_rank], op_t, n_matsubara));
+      M[flavor_rank].annihilators().push_back(annihilator(flavor_rank, new_vertex_type.sites()[2*i_rank+1], op_t, n_matsubara));
       M[flavor_rank].alpha_push_back(new_vertex_type.get_alpha(af_state, i_rank));
       M[flavor_rank].vertex_info().push_back(std::pair<vertex_t,size_t>(v_type,i_rank));
 
@@ -182,8 +183,12 @@ double HubbardInteractionExpansion::try_shift(int idx_vertex, double new_time) {
     for (int i=0; i<shift_helper.rows_cols_updated[flavor].size(); ++i) {
       const int idx = shift_helper.rows_cols_updated[flavor][i];
       assert(idx<M[flavor].creators().size());
-      M[flavor].creators()[idx].set_time(v.time());
-      M[flavor].annihilators()[idx].set_time(v.time());
+
+      operator_time cr_op_time = M[flavor].creators()[idx].t(); cr_op_time.set_time(v.time());
+      M[flavor].creators()[idx].set_time(cr_op_time);
+
+      operator_time ann_op_time = M[flavor].annihilators()[idx].t(); ann_op_time.set_time(v.time());
+      M[flavor].annihilators()[idx].set_time(ann_op_time);
     }
 
     //actual fast update
@@ -206,8 +211,12 @@ void HubbardInteractionExpansion::reject_shift(int idx_vertex) {
     itime_vertices[idx_vertex].set_time(shift_helper.old_time);
     for (int i=0; i<shift_helper.rows_cols_updated[flavor].size(); ++i) {
       const int idx = shift_helper.rows_cols_updated[flavor][i];
-      M[flavor].creators()[idx].set_time(shift_helper.old_time);
-      M[flavor].annihilators()[idx].set_time(shift_helper.old_time);
+
+      operator_time cr_op_time = M[flavor].creators()[idx].t(); cr_op_time.set_time(shift_helper.old_time);
+      M[flavor].creators()[idx].set_time(cr_op_time);
+
+      operator_time ann_op_time = M[flavor].annihilators()[idx].t(); ann_op_time.set_time(shift_helper.old_time);
+      M[flavor].annihilators()[idx].set_time(ann_op_time);
     }
   }
 }

@@ -215,7 +215,7 @@ void InteractionExpansion::update()
   //std::cout << " node = " << node << " step = " << step << " random= " << random() << std::endl;
   //std::cout << " node = " << node << " step = " << step << std::endl;
 
-  std::vector<itime_vertex> itime_vertices_bak = itime_vertices;
+  itime_vertex_container itime_vertices_bak = itime_vertices;
   big_inverse_m_matrix M_bak(M);
 
   for(std::size_t i=0;i<measurement_period;++i){
@@ -293,7 +293,7 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
   green_itime=bare_green_itime;
 }
 
-bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_vertex>& vertices) {
+bool InteractionExpansion::is_quantum_number_conserved(const itime_vertex_container& vertices) {
   //using namespace boost::lambda;
 
   const int Nv = vertices.size();
@@ -302,7 +302,7 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
     return true;
 
   std::valarray<int> qn_t(0, qn_dim), qn_max(0, qn_dim), qn_min(0, qn_dim);
-  std::vector<itime_vertex> vertices_sorted(vertices);//sort vertices in decreasing order (in time)
+  itime_vertex_container vertices_sorted(vertices);//sort vertices in decreasing order (in time)
   std::sort(vertices_sorted.begin(), vertices_sorted.end());
 
   for (int iv=0; iv<Nv; ++iv) {
@@ -322,7 +322,7 @@ bool InteractionExpansion::is_quantum_number_conserved(const std::vector<itime_v
 
 
 //This makes sence in the absence of a bath
-bool InteractionExpansion::is_quantum_number_within_range(const std::vector<itime_vertex>& vertices) {
+bool InteractionExpansion::is_quantum_number_within_range(const itime_vertex_container& vertices) {
   //using namespace boost::lambda;
 
   const int Nv = vertices.size();
@@ -331,7 +331,7 @@ bool InteractionExpansion::is_quantum_number_within_range(const std::vector<itim
     return true;
 
   std::valarray<int> qn_t(0, qn_dim), qn_max(0, qn_dim), qn_min(0, qn_dim);
-  std::vector<itime_vertex> vertices_sorted(vertices);//sort vertices in decreasing order (in time)
+  itime_vertex_container vertices_sorted(vertices);//sort vertices in decreasing order (in time)
   std::sort(vertices_sorted.begin(), vertices_sorted.end());
 
   for (int iv=0; iv<Nv; ++iv) {
@@ -406,7 +406,7 @@ void InteractionExpansion::sanity_check() {
   assert(sign==sign_exact);
 
   //check itime_vertex list
-  for (std::vector<itime_vertex>::iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+  for (itime_vertex_container::iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
     int type = it->type();
     assert(Uijkl.get_vertices()[type].is_density_type()==it->is_density_type());
   }

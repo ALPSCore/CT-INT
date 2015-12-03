@@ -114,7 +114,7 @@ private:
 
 //compute a spread of vertices in imaginary time
 template<class V>
-double compute_spread(const std::vector<V>& vertices, double beta) {
+double compute_spread(const V& vertices, double beta) {
    double x=0,y =0;
    const double coeff = 2*M_PI/beta;
    const int Nv = vertices.size();

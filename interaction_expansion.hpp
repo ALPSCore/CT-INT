@@ -138,8 +138,10 @@ public:
           int idx = M[flavor].find_row_col(time, type, i_rank);
           //rows_cols_updated[flavor].push_back(M[flavor].find_row_col(time, type, i_rank));
           rows_cols_updated[flavor].push_back(idx);
-          M[flavor].creators()[idx].set_time(new_time);
-          M[flavor].annihilators()[idx].set_time(new_time);
+          operator_time cr_op_time = M[flavor].creators()[idx].t(); cr_op_time.set_time(new_time);
+          M[flavor].creators()[idx].set_time(cr_op_time);
+          operator_time ann_op_time = M[flavor].annihilators()[idx].t(); ann_op_time.set_time(new_time);
+          M[flavor].annihilators()[idx].set_time(ann_op_time);
         }
       }
       std::sort(rows_cols_updated[flavor].begin(), rows_cols_updated[flavor].end());
@@ -330,8 +332,8 @@ public:
   //}
   int find_row_col(double time, vertex_t type, size_t i_rank) const {
     for(std::size_t i=0; i<creators_.size(); ++i) {
-      if (time==creators_[i].t() && vertex_info_[i].first==type && vertex_info_[i].second==i_rank) {
-        assert(annihilators_[i].t()==time);
+      if (time==creators_[i].t().time() && vertex_info_[i].first==type && vertex_info_[i].second==i_rank) {
+        assert(annihilators_[i].t().time()==time);
         return i;
       }
     }
@@ -408,7 +410,7 @@ public:
 
     double alpha_scale() const {return alpha_scale_;}
 
-    void sanity_check(const std::vector<itime_vertex>& itime_vertices) const {
+    void sanity_check(const itime_vertex_container& itime_vertices) const {
 #ifndef NDEBUG
       size_t num_tot_rows = 0;
       for (spin_t flavor=0; flavor<size(); ++flavor) {
@@ -502,6 +504,8 @@ protected:
   /*the actual solver functions*/
   // in file solver.cpp
   void removal_insertion_update(void);
+  void removal_insertion_single_vertex_update(void);
+  void removal_insertion_double_vertex_update(void);
   void shift_update(void);
   void alpha_update(void);
   void reset_perturbation_series(bool verbose=true);
@@ -522,9 +526,9 @@ protected:
   void measure_Wk(Wk_t& Wk, const unsigned int nfreq);
   void measure_densities();
   void sanity_check();
-  bool is_irreducible(const std::vector<itime_vertex>& vertices);
-  bool is_quantum_number_conserved(const std::vector<itime_vertex>& vertices);
-  bool is_quantum_number_within_range(const std::vector<itime_vertex>& vertices);
+  bool is_irreducible(const itime_vertex_container& vertices);
+  bool is_quantum_number_conserved(const itime_vertex_container& vertices);
+  bool is_quantum_number_within_range(const itime_vertex_container& vertices);
 
   /*abstract virtual functions. Implement these for specific models.*/
   virtual std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&)=0;
@@ -597,7 +601,8 @@ protected:
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
   //vertex_array vertices;
-  std::vector<itime_vertex> itime_vertices;
+  //std::vector<itime_vertex> itime_vertices;
+  itime_vertex_container itime_vertices;
   big_inverse_m_matrix M;
   GTYPE det;//determinant of G=M^-1
 

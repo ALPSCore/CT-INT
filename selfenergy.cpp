@@ -121,7 +121,7 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       //GR
       for(unsigned int p=0;p<Nv;++p) {
         const size_t site_p = M[z].annihilators()[p].s();
-        const double phase = M[z].annihilators()[p].t()*(2*i_freq+1)*M_PI/beta;
+        const double phase = M[z].annihilators()[p].t().time()*(2*i_freq+1)*M_PI/beta;
         const std::complex<double> exp = std::complex<double>(std::cos(phase), -std::sin(phase));
         for (size_t site=0; site<n_site; ++site) {
           GR(p, site) = bare_green_matsubara(i_freq, site_p, site, z)*exp;
@@ -131,7 +131,7 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       //GL
       for(unsigned int q=0;q<Nv;++q) {
         const size_t site_q = M[z].creators()[q].s();
-        const double phase = M[z].creators()[q].t()*(2*i_freq+1)*M_PI/beta;
+        const double phase = M[z].creators()[q].t().time()*(2*i_freq+1)*M_PI/beta;
         const std::complex<double> exp = std::complex<double>(std::cos(phase), std::sin(phase));
         for (size_t site=0; site<n_site; ++site) {
           GL(site, q) = bare_green_matsubara(i_freq, site, site_q, z)*exp;
@@ -221,12 +221,12 @@ void InteractionExpansion::compute_Sl() {
       const double time_shift = beta*random();
 
       for(unsigned int q=0;q<Nv;++q) {//annihilation operators
-        double tmp = M[z].annihilators()[q].t()+time_shift;
+        double tmp = M[z].annihilators()[q].t().time()+time_shift;
         time_a_shifted[q] = tmp<beta ? tmp : tmp-beta;
         assert(time_a_shifted[q]<beta+1E-8);
       }
       for(unsigned int p=0;p<Nv;++p) {//creation operators
-        double tmp = M[z].creators()[p].t()+time_shift;
+        double tmp = M[z].creators()[p].t().time()+time_shift;
         time_c_shifted[p] = tmp<beta ? tmp : tmp-beta;
         assert(time_c_shifted[p]<beta+1E-8);
       }
@@ -291,9 +291,9 @@ void InteractionExpansion::measure_densities()
     alps::numeric::vector<double> g0_taui(Nv);
     for (unsigned int s=0;s<n_site;++s) {             
       for (unsigned int j=0;j<Nv;++j)
-        g0_tauj[j] = green0_spline_new(M[z].annihilators()[j].t()-tau, z, M[z].annihilators()[j].s(), s);//CHECK THE TREATMENT OF EQUAL-TIME Green's function
+        g0_tauj[j] = green0_spline_new(M[z].annihilators()[j].t().time()-tau, z, M[z].annihilators()[j].s(), s);//CHECK THE TREATMENT OF EQUAL-TIME Green's function
       for (unsigned int i=0;i<Nv;++i)
-        g0_taui[i] = green0_spline_new(tau-M[z].creators()[i].t(),z, s, M[z].creators()[i].s());
+        g0_taui[i] = green0_spline_new(tau-M[z].creators()[i].t().time(),z, s, M[z].creators()[i].s());
       if (num_rows(M[z].matrix())>0)
           gemv(M[z].matrix(),g0_tauj,M_g0_tauj);
       dens[z][s] += green0_spline_new(-beta*1E-10,z,s,s);//tau=-0

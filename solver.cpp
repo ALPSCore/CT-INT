@@ -1,13 +1,13 @@
 /*****************************************************************************
- *
- * ALPS DMFT Project
- *
- * Copyright (C) 2005 - 2009 by Emanuel Gull <gull@phys.columbia.edu>
- *                              Philipp Werner <werner@itp.phys.ethz.ch>,
- *                              Sebastian Fuchs <fuchs@theorie.physik.uni-goettingen.de>
- *                              Matthias Troyer <troyer@comp-phys.org>
- *
- *
+*
+* ALPS DMFT Project
+*
+* Copyright (C) 2005 - 2009 by Emanuel Gull <gull@phys.columbia.edu>
+*                              Philipp Werner <werner@itp.phys.ethz.ch>,
+*                              Sebastian Fuchs <fuchs@theorie.physik.uni-goettingen.de>
+*                              Matthias Troyer <troyer@comp-phys.org>
+*
+*
 * This software is part of the ALPS Applications, published under the ALPS
 * Application License; you can use, redistribute it and/or modify it under
 * the terms of the license, either version 1 or (at your option) any later
@@ -33,6 +33,23 @@
 
 ///The basic updates for the InteractionExpansion algorithm: adding and removing vertices.
 ///This is the heart of InteractionExpansion's code.
+void InteractionExpansion::removal_insertion_update(void) {
+  const int nv_updated = update_prop.gen_Nv(random.engine());
+
+  if (nv_updated==1) {
+    removal_insertion_single_vertex_update();
+  } else if (nv_updated==2) {
+    removal_insertion_double_vertex_update();
+  } else {
+    throw std::runtime_error("Not implemented");
+  }
+
+  for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
+    vertex_histograms[flavor]->count(num_rows(M[flavor].matrix()));
+  }
+}
+
+/*
 void InteractionExpansion::removal_insertion_update(void)
 {
   const int nv_updated = update_prop.gen_Nv(random.engine());
@@ -71,8 +88,8 @@ void InteractionExpansion::removal_insertion_update(void)
       return;
     }
 
-    std::vector<itime_vertex> itime_vertices_new(itime_vertices);
-    for (std::vector<itime_vertex>::const_iterator it=new_vertices.begin(); it!=new_vertices.end(); ++it) {
+    itime_vertex_container itime_vertices_new(itime_vertices);
+    for (itime_vertex_container::const_iterator it=new_vertices.begin(); it!=new_vertices.end(); ++it) {
       itime_vertices_new.push_back(*it);
     }
     if (force_quantum_number_conservation &&
@@ -174,7 +191,7 @@ void InteractionExpansion::removal_insertion_update(void)
     if (vertices_nr.size()==0)
       return;
 
-    std::vector<itime_vertex> vertices_to_be_removed(nv_updated), itime_vertices_new(itime_vertices);
+    itime_vertex_container vertices_to_be_removed(nv_updated), itime_vertices_new(itime_vertices);
     for (int iv=0; iv<nv_updated; ++iv) {
       assert(vertices_nr[iv]<itime_vertices.size());
       vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
@@ -253,12 +270,293 @@ void InteractionExpansion::removal_insertion_update(void)
     vertex_histograms[flavor]->count(num_rows(M[flavor].matrix()));
   }
 }
+*/
+
+void InteractionExpansion::removal_insertion_single_vertex_update(void)
+{
+  const int nv_updated = 1;
+
+  const int pert_order= itime_vertices.size();   //current order of perturbation series
+  double metropolis_weight=0.;
+  double det_rat=0;
+  if(random()<0.5){  //trying to ADD vertex
+    M.sanity_check(itime_vertices);
+    if(pert_order+nv_updated>max_order)
+      return; //we have already reached the highest perturbation order
+
+    std::vector<itime_vertex> new_vertices;
+    std::pair<int,int> v_pair;
+    if (single_vertex_update_non_density_type) {
+      new_vertices = generate_itime_vertices(Uijkl,random,beta,nv_updated,all_type());
+    } else {
+      new_vertices = generate_itime_vertices(Uijkl,random,beta,nv_updated,density_type());
+    }
+
+    assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
+    if (new_vertices.size()<nv_updated) {
+      simple_statistics_ins.not_valid_state(nv_updated-1);
+      update_prop.generated_invalid_update(nv_updated);
+      return;
+    }
+
+    itime_vertex_container itime_vertices_new(itime_vertices);
+    for (itime_vertex_container::const_iterator it=new_vertices.begin(); it!=new_vertices.end(); ++it) {
+      itime_vertices_new.push_back(*it);
+    }
+    if (force_quantum_number_conservation &&
+        (!is_quantum_number_conserved(itime_vertices_new) || !is_quantum_number_within_range(itime_vertices_new))) {
+      return;
+    }
+
+    update_prop.generated_valid_update(nv_updated);
+    boost::tie(metropolis_weight,det_rat)=try_add(add_helper, nv_updated, new_vertices);
+
+    double p_ins, p_rem;
+    if (single_vertex_update_non_density_type) {
+      p_ins = 1.0 / (beta * Uijkl.n_vertex_type());
+      p_rem = 1.0 / itime_vertices_new.size();
+    } else {
+      p_ins = 1.0 / (beta * Uijkl.num_density_vertex_type());
+      p_rem = 1.0 / std::count_if(itime_vertices_new.begin(),itime_vertices_new.end(),density_type());
+    }
+    metropolis_weight *= p_rem/p_ins;
+
+    if(fabs(metropolis_weight)> random()){
+      perform_add(add_helper,nv_updated);
+      sign*=boost::math::sign(metropolis_weight);
+      det*=det_rat;
+      M.sanity_check(itime_vertices);
+      simple_statistics_ins.accepted(nv_updated-1);
+      if(fabs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
+    }else{
+      reject_add(add_helper,nv_updated);
+      M.sanity_check(itime_vertices);
+      simple_statistics_ins.rejected(nv_updated-1);
+    }
+#ifndef NDEBUG
+    sanity_check();
+#endif
+  }else{ // try to REMOVE a vertex
+    M.sanity_check(itime_vertices);
+    if(pert_order < nv_updated) {
+      return;
+    }
+
+    //choose vertices to be removed
+    std::vector<int> vertices_nr;
+    int n_vpair;
+    double F;
+    double p_ins, p_rem;
+    if (single_vertex_update_non_density_type) {
+      vertices_nr = pick_up_itime_vertices(itime_vertices, random, nv_updated, all_type());
+    } else {
+      vertices_nr = pick_up_itime_vertices(itime_vertices, random, nv_updated, density_type());
+    }
+
+    if (vertices_nr.size()==0)
+      return;
+
+    itime_vertex_container vertices_to_be_removed(nv_updated), itime_vertices_new(itime_vertices);
+    for (int iv=0; iv<nv_updated; ++iv) {
+      assert(vertices_nr[iv]<itime_vertices.size());
+      vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
+    }
+    remove_elements_from_vector(itime_vertices_new, vertices_nr);
+
+    if (force_quantum_number_conservation &&
+        (!is_quantum_number_conserved(itime_vertices_new) || !is_quantum_number_within_range(itime_vertices_new))) {
+      return;
+    }
+
+    if (single_vertex_update_non_density_type) {
+      p_ins = 1.0/(beta*Uijkl.n_vertex_type());
+      p_rem = 1.0/pert_order;
+    } else {
+      p_ins = 1.0/(beta*Uijkl.num_density_vertex_type());
+      p_rem = 1.0/std::count_if(itime_vertices.begin(), itime_vertices.end(), density_type());
+    }
+
+    update_prop.generated_valid_update(nv_updated);
+
+    boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
+    metropolis_weight *= p_ins/p_rem;
+    if(fabs(metropolis_weight)> random()){ //do the actual update
+      perform_remove(vertices_nr, remove_helper);
+      sign*=boost::math::sign(metropolis_weight);
+      det*=det_rat;
+      M.sanity_check(itime_vertices);
+      simple_statistics_rem.accepted(nv_updated-1);
+      if(fabs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
+    }else{
+      reject_remove(remove_helper);
+      M.sanity_check(itime_vertices);
+      simple_statistics_rem.rejected(nv_updated-1);
+    }
+#ifndef NDEBUG
+    sanity_check();
+#endif
+  }//end REMOVE
+  weight=metropolis_weight;
+}
+
+void InteractionExpansion::removal_insertion_double_vertex_update(void)
+{
+  const int nv_updated = 2;
+
+  const int pert_order= itime_vertices.size();   //current order of perturbation series
+  double metropolis_weight=0.;
+  double det_rat=0;
+  if(random()<0.5){  //trying to ADD vertex
+    M.sanity_check(itime_vertices);
+    if(pert_order+nv_updated>max_order)
+      return; //we have already reached the highest perturbation order
+
+    add_helper.op = non_density_type_in_window(beta*random(),
+                                               std::min(beta,window_width+window_dist(random.engine())),
+                                               beta);
+
+    std::vector<itime_vertex> new_vertices;
+    std::pair<int,int> v_pair;
+    v_pair = mv_update_valid_pair[mv_update_valid_pair.size()*random()];
+    new_vertices = generate_valid_vertex_pair2(Uijkl,v_pair,random,beta,symm_exp_dist);
+
+    assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
+    if (new_vertices.size()<nv_updated) {
+      simple_statistics_ins.not_valid_state(nv_updated-1);
+      update_prop.generated_invalid_update(nv_updated);
+      return;
+    }
+
+    itime_vertex_container itime_vertices_new(itime_vertices);
+    for (itime_vertex_container::const_iterator it=new_vertices.begin(); it!=new_vertices.end(); ++it) {
+      itime_vertices_new.push_back(*it);
+    }
+    if (force_quantum_number_conservation &&
+        (!is_quantum_number_conserved(itime_vertices_new) || !is_quantum_number_within_range(itime_vertices_new))) {
+      return;
+    }
+
+    update_prop.generated_valid_update(nv_updated);
+    boost::tie(metropolis_weight,det_rat)=try_add(add_helper, nv_updated, new_vertices);
+
+    //double p_ins, p_rem;
+    const double dtau = mymod(new_vertices[1].time()-new_vertices[0].time(), beta);
+    int n_vpair;
+    double F;
+    pick_up_valid_vertex_pair2(itime_vertices_new,
+                                 std::make_pair(new_vertices[0].type(),new_vertices[1].type()),
+                                 beta, symm_exp_dist, random, n_vpair, F);
+    if (n_vpair==0)
+      throw std::logic_error("v_pair must be larger than 0.");
+    metropolis_weight *= (beta*beta)*symm_exp_dist.coeff_X(dtau)/F;
+
+    statistics_ins.add_sample(compute_spread(new_vertices,beta), std::min(fabs(metropolis_weight),1.0), nv_updated-2);
+    statistics_dv_ins.add_sample(mymod(new_vertices[1].time()-new_vertices[0].time(), beta),
+                                 std::min(fabs(metropolis_weight), 1.0),
+                                 std::distance(mv_update_valid_pair.begin(), std::find(mv_update_valid_pair.begin(), mv_update_valid_pair.end(), v_pair))
+    );
+    if(fabs(metropolis_weight)> random()){
+      perform_add(add_helper,nv_updated);
+      sign*=boost::math::sign(metropolis_weight);
+      det*=det_rat;
+      M.sanity_check(itime_vertices);
+      simple_statistics_ins.accepted(nv_updated-1);
+      if(fabs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
+    }else{
+      reject_add(add_helper,nv_updated);
+      M.sanity_check(itime_vertices);
+      simple_statistics_ins.rejected(nv_updated-1);
+    }
+#ifndef NDEBUG
+    sanity_check();
+#endif
+  }else{ // try to REMOVE a vertex
+    M.sanity_check(itime_vertices);
+    if(pert_order < nv_updated) {
+      return;
+    }
+    remove_helper.op = non_density_type_in_window(beta*random(),
+                                                  std::min(beta,window_width+window_dist(random.engine())),
+                                                  beta);
+
+    //choose vertices to be removed
+    std::vector<int> vertices_nr;
+    int n_vpair;
+    double F;
+    std::pair<int,int> v_pair = mv_update_valid_pair[mv_update_valid_pair.size()*random()];
+    std::pair<int,int> r = pick_up_valid_vertex_pair2(itime_vertices, v_pair, beta, symm_exp_dist, random, n_vpair, F);
+    if (n_vpair>0) {
+      vertices_nr.resize(2);
+      vertices_nr[0]=r.first;
+      vertices_nr[1]=r.second;
+    } else {
+      vertices_nr.resize(0);
+    }
+
+    if (vertices_nr.size()==0)
+      return;
+
+    std::vector<itime_vertex> vertices_to_be_removed(nv_updated);
+    itime_vertex_container itime_vertices_new(itime_vertices);
+    for (int iv=0; iv<nv_updated; ++iv) {
+      assert(vertices_nr[iv]<itime_vertices.size());
+      vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
+    }
+    remove_elements_from_vector(itime_vertices_new, vertices_nr);
+
+    if (force_quantum_number_conservation &&
+        (!is_quantum_number_conserved(itime_vertices_new) || !is_quantum_number_within_range(itime_vertices_new))) {
+      return;
+    }
+
+    assert(vertices_to_be_removed[1].type()>vertices_to_be_removed[0].type());
+
+    update_prop.generated_valid_update(nv_updated);
+
+    boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr, remove_helper); //get the determinant ratio. don't perform fastupdate yet
+    metropolis_weight /= (beta*beta)*
+                         symm_exp_dist.coeff_X(
+                             mymod(vertices_to_be_removed[1].time()-vertices_to_be_removed[0].time(), beta)
+                         )/F;
+    statistics_rem.add_sample(compute_spread(vertices_to_be_removed, beta), std::min(fabs(metropolis_weight), 1.0),
+                              nv_updated - 2);
+    int idx = std::distance(mv_update_valid_pair.begin(),
+                            std::find(
+                                mv_update_valid_pair.begin(),
+                                mv_update_valid_pair.end(),
+                                std::make_pair(vertices_to_be_removed[0].type(),vertices_to_be_removed[1].type())
+                            )
+    );
+    statistics_dv_rem.add_sample(
+        mymod(vertices_to_be_removed[1].time()-vertices_to_be_removed[0].time(), beta),
+        std::min(fabs(metropolis_weight), 1.0),
+        idx);
+    if(fabs(metropolis_weight)> random()){ //do the actual update
+      perform_remove(vertices_nr, remove_helper);
+      sign*=boost::math::sign(metropolis_weight);
+      det*=det_rat;
+      M.sanity_check(itime_vertices);
+      simple_statistics_rem.accepted(nv_updated-1);
+      if(fabs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
+    }else{
+      reject_remove(remove_helper);
+      M.sanity_check(itime_vertices);
+      simple_statistics_rem.rejected(nv_updated-1);
+    }
+#ifndef NDEBUG
+    sanity_check();
+#endif
+  }//end REMOVE
+  weight=metropolis_weight;
+}
 
 //Shift updates: shift a vertex.
 void InteractionExpansion::shift_update(void) {
-  //using namespace boost::lambda;
-
-  const int pert_order= itime_vertices.size();
+  const int pert_order= itime_vertices.size();//CHECKED
   if (pert_order<=1)
     return;
 

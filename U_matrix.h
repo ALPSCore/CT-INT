@@ -353,6 +353,34 @@ private:
   bool is_density_type_; //, is_truely_non_density_type_;
 } itime_vertex;
 
+template<class V>
+class ItimeVertexContainer : private std::vector<V> {
+public:
+    ItimeVertexContainer() : std::vector<V>() {};
+    ItimeVertexContainer(const ItimeVertexContainer& x) : std::vector<V>(x) {};
+    ItimeVertexContainer(size_t count) : std::vector<V>(count) {};
+
+    ItimeVertexContainer<V>& operator=(const ItimeVertexContainer<V>& x) {
+      std::vector<V>::operator=(x);
+      return *this;
+    }
+
+    typedef typename std::vector<V>::iterator iterator;
+    typedef typename std::vector<V>::const_iterator const_iterator;
+
+    //this is to be killed.
+    using std::vector<V>::size;
+
+    using std::vector<V>::operator[];
+    using std::vector<V>::push_back;
+    using std::vector<V>::pop_back;
+    using std::vector<V>::begin;
+    using std::vector<V>::end;
+    using std::vector<V>::erase;
+};
+
+typedef ItimeVertexContainer<itime_vertex> itime_vertex_container;
+
 inline bool operator<(const itime_vertex& v1, const itime_vertex& v2) {
   return (v1.time()<v2.time());
 }
@@ -619,7 +647,7 @@ pick_up_valid_vertex_pair(const std::vector<itime_vertex>& itime_vertices, const
 
 template<class P, class R>
 std::pair<int,int>
-pick_up_valid_vertex_pair2(const std::vector<itime_vertex>& itime_vertices, std::pair<int,int> v_pair,
+pick_up_valid_vertex_pair2(const itime_vertex_container& itime_vertices, std::pair<int,int> v_pair,
                            double beta, P& p, R& random01, int& N_valid_pair, double& F) {
 
   std::vector<itime_vertex> v1, v2;
@@ -667,7 +695,7 @@ pick_up_valid_vertex_pair2(const std::vector<itime_vertex>& itime_vertices, std:
 
 
 template<class R, class UnaryPredicate>
-std::vector<int> pick_up_itime_vertices(const std::vector<itime_vertex>& itime_vertices,
+std::vector<int> pick_up_itime_vertices(const itime_vertex_container& itime_vertices,
                                               R& random01,
                                               int n_vertices_rem,
                                               UnaryPredicate pred) {
@@ -726,7 +754,8 @@ find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& ve
 };
 
 std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
-void print_vertices(std::ostream &os, const std::vector<itime_vertex> &v);
+template<class V>
+void print_vertices(std::ostream &os, const V &v);
 
 //U_MATRIX_H
 #endif 

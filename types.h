@@ -1,12 +1,12 @@
- /*****************************************************************************
- *
- * ALPS DMFT Project
- *
- * Copyright (C) 2005 - 2009 by Emanuel Gull <gull@phys.columbia.edu>
- *                              Philipp Werner <werner@itp.phys.ethz.ch>,
- *                              Matthias Troyer <troyer@comp-phys.org>
- *
- *
+/*****************************************************************************
+*
+* ALPS DMFT Project
+*
+* Copyright (C) 2005 - 2009 by Emanuel Gull <gull@phys.columbia.edu>
+*                              Philipp Werner <werner@itp.phys.ethz.ch>,
+*                              Matthias Troyer <troyer@comp-phys.org>
+*
+*
 * This software is part of the ALPS Applications, published under the ALPS
 * Application License; you can use, redistribute it and/or modify it under
 * the terms of the license, either version 1 or (at your option) any later
@@ -57,6 +57,7 @@ typedef std::vector<double> double_vector;
 ///vector of ints
 typedef std::vector<int> int_vector;
 
+
 ///enum for spin up and spin down
 enum  {up=0, down=1} ;
 ///addressing type for site indices (cluster)
@@ -93,4 +94,5 @@ struct hifreq_moments{
   std::vector<std::vector<std::vector<double> > >c2;
   std::vector<std::vector<std::vector<double> > >c3;
 };
+
 #endif /*TYPES_H_*/

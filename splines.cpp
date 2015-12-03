@@ -49,16 +49,17 @@ double InteractionExpansion::green0_spline_for_M(const spin_t flavor, size_t c_p
   const annihilator& c = M[flavor].annihilators()[c_pos];
   const creator& cdagger = M[flavor].creators()[cdagger_pos];
 
-  if (c.t()!=cdagger.t()) {
-    itime_t delta_t=c.t()-cdagger.t();
+  if (c.t().time()!=cdagger.t().time()) {
+    itime_t delta_t=c.t().time()-cdagger.t().time();
     site_t site1 = c.s();
     site_t site2 = cdagger.s();
     return green0_spline_new(delta_t, flavor, site1, site2);
   } else {
-    itime_t delta_t=c.t()-cdagger.t();
+    itime_t delta_t=c.t().time()-cdagger.t().time();
     site_t site1 = c.s();
     site_t site2 = cdagger.s();
-    itime_t time_shift = (M[flavor].vertex_info()[c_pos].second<M[flavor].vertex_info()[cdagger_pos].second) ? beta*1E-10 : -beta*1E-10;
+    //itime_t time_shift = (M[flavor].vertex_info()[c_pos].second<M[flavor].vertex_info()[cdagger_pos].second) ? beta*1E-10 : -beta*1E-10;
+    itime_t time_shift = c.t().small_index() > cdagger.t().small_index() ? beta*1E-10 : -beta*1E-10;
     return green0_spline_new(delta_t+time_shift, flavor, site1, site2);
   }
 }

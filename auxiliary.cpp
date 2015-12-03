@@ -50,7 +50,7 @@ ostream& operator <<(ostream &os, const vertex &v)
 
 ostream &operator<<(ostream &os, const c_or_cdagger &c)
 {
-  std::cout<<c.flavor()<<" "<<c.s()<<" "<<c.t();
+  std::cout<<c.flavor()<<" "<<c.s()<<" "<<c.t().time()<<" "<<c.t().small_index();
   return os;
 }
 
