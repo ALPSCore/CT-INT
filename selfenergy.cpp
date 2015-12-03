@@ -161,6 +161,11 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
   }
 
   if (params.defined("OUTPUT_Wk") ? params["OUTPUT_Wk"] : false) {
+    std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
+    for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+      assert(it->type()>=0 && it->type()<Uijkl.n_vertex_type());
+      ++pert_vertex[it->type()];
+    }
     std::cout << " Wk_node= " << node << " "
       << Wk[0][0][0][0].real() << " " << Wk[0][0][0][0].imag() << " "
       << Wk[0][1][1][0].real() << " " << Wk[0][1][1][0].imag() << " "
@@ -171,7 +176,7 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       << Wk[1][2][2][0].real() << " " << Wk[1][2][2][0].imag() << " "
       << Wk[1][3][3][0].real() << " " << Wk[1][3][3][0].imag() << " "
       << " step " << step;
-    std::cout << " qn " << is_quantum_number_within_range(itime_vertices) << " " << num_nd << std::endl;
+    std::cout << " pert_PH " << pert_vertex[6] << " " << pert_vertex[4] << " pert_SF " << pert_vertex[8] << " " << pert_vertex[1] << std::endl;
   }
 
   //if (!is_quantum_number_conserved(itime_vertices)) {
