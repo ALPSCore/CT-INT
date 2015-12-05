@@ -133,18 +133,22 @@ void compute_greens_functions(const alps::results_type<HubbardInteractionExpansi
 
   //Legendre measurement
   if (n_legendre>0) {
-    evaluate_selfenergy_measurement_legendre(results, green_matsubara_measured, sigma_green_matsubara_measured, green_itime_measured,
+    itime_green_function_t green_itime_measured_l(n_tau+1, n_site, n_flavors);
+    matsubara_green_function_t green_matsubara_measured_l(n_matsubara, n_site, n_flavors);
+    matsubara_green_function_t sigma_green_matsubara_measured_l(n_matsubara, n_site, n_flavors);
+
+    evaluate_selfenergy_measurement_legendre(results, green_matsubara_measured_l, sigma_green_matsubara_measured_l, green_itime_measured_l,
                                               bare_green_matsubara, densities,
                                               beta, n_site, n_flavors, n_matsubara, n_tau, n_legendre);
 
     //just for test use: G(tau) should be computed directly from S_l to prevent truncation errors.
     FourierTransformer::generate_transformer_lowest_order(alps::make_deprecated_parameters(parms), fourier_ptr);
-    fourier_ptr->append_tail(green_matsubara_measured, bare_green_matsubara, n_matsubara_measurements);
-    fourier_ptr->backward_ft(green_itime_measured, green_matsubara_measured);
+    fourier_ptr->append_tail(green_matsubara_measured_l, bare_green_matsubara, n_matsubara);
+    fourier_ptr->backward_ft(green_itime_measured_l, green_matsubara_measured_l);
 
     alps::hdf5::archive ar(output_file, "a");
-    green_matsubara_measured.write_hdf5(ar, "/G_omega_test");
-    sigma_green_matsubara_measured.write_hdf5(ar, "/SigmaG_omega_test");
-    green_itime_measured.write_hdf5(ar, "/G_tau_test");
+    green_matsubara_measured_l.write_hdf5(ar, "/G_omega_legendre");
+    sigma_green_matsubara_measured_l.write_hdf5(ar, "/SigmaG_omega_legendre");
+    green_itime_measured_l.write_hdf5(ar, "/G_tau_legendre");
   }
 }

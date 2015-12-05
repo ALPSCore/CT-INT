@@ -2,10 +2,8 @@
 <module type="CPP_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/U_matrix.cpp" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/U_matrix.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/auxiliary.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fastupdate.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fastupdate_formula.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fouriertransform.C" isTestSource="false" />
@@ -27,9 +25,12 @@
       <sourceFolder url="file://$MODULE_DIR$/solver.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/solver.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/splines.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/U_matrix.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/U_matrix.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/update_statistics.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/util.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/util.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/wang_landau.h" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

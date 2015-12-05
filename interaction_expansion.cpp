@@ -96,11 +96,12 @@ n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 0),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
 //force_quantum_number_within_range(parms.defined("FORCE_QUANTUM_NUMBER_WITHIN_RANGE") ? parms["FORCE_QUANTUM_NUMBER_WITHIN_RANGE"] : false),
-alpha_scale(1.),
 alpha_scale_min(1),
 alpha_scale_max(parms["ALPHA_SCALE_MAX"] | 1),
+alpha_scale(1.),
 alpha_scale_max_meas(parms["ALPHA_SCALE_MEASURE_MAX"] | 1),
 alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1),
+flat_histogram_alpha(std::log(alpha_scale_max), std::log(alpha_scale_min), 100),
 single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true)
 {
   //initialize measurement method
@@ -228,6 +229,12 @@ void InteractionExpansion::update()
     step++;
     boost::timer::cpu_timer timer;
 
+    //alpha
+    flat_histogram_alpha.measure(std::log(alpha_scale));
+    if (flat_histogram_alpha.count()>1000) {
+      flat_histogram_alpha.update_dos();
+    }
+
     try{
       for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem)
         removal_insertion_update();
@@ -267,6 +274,7 @@ void InteractionExpansion::measure(){
   if (alpha_scale>alpha_scale_max_meas)
     return;
 
+  //In the below, real physical quantities are measured.
   std::valarray<double> timings(2);
   measure_observables(timings);
   measurements["MeasurementTimeMsec"] << timings;

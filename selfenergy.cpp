@@ -78,7 +78,6 @@ inline twocomplex fastcmult(const twocomplex &a, const twocomplex &b)
 void InteractionExpansion::compute_W_matsubara()
 {
   Wk_t Wk(boost::extents[n_flavors][n_site][n_site][n_matsubara]);
-  std::fill(Wk.origin(), Wk.origin()+Wk.num_elements(), 0);
   measure_Wk(Wk, n_matsubara_measurements);
   measure_densities();
 }
@@ -105,12 +104,13 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       continue;
     }
 
-    for(size_t p=0;p<Nv;++p) {
-      M[z].creators()[p].compute_exp(n_matsubara, -1);
-    }
-    for(size_t q=0;q<Nv;++q) {
-      M[z].annihilators()[q].compute_exp(n_matsubara, +1);
-    }
+    //We do not need any more?
+    //for(size_t p=0;p<Nv;++p) {
+      //M[z].creators()[p].compute_exp(n_matsubara, -1);
+    //}
+    //for(size_t q=0;q<Nv;++q) {
+      //M[z].annihilators()[q].compute_exp(n_matsubara, +1);
+    //}
 
     for(unsigned int i_freq=0; i_freq <nfreq; ++i_freq) {
       GR.resize(Nv, n_site);
@@ -120,8 +120,9 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
       //GR
       for(unsigned int p=0;p<Nv;++p) {
-        const size_t site_p = M[z].annihilators()[p].s();
-        const double phase = M[z].annihilators()[p].t().time()*(2*i_freq+1)*M_PI/beta;
+        const size_t site_p = M[z].creators()[p].s();
+        const double phase = M[z].creators()[p].t().time()*(2*i_freq+1)*M_PI/beta;
+        //If sin and cos are too heavy, it's better to use linear interpolation!
         const std::complex<double> exp = std::complex<double>(std::cos(phase), -std::sin(phase));
         for (size_t site=0; site<n_site; ++site) {
           GR(p, site) = bare_green_matsubara(i_freq, site_p, site, z)*exp;
@@ -130,9 +131,10 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
       //GL
       for(unsigned int q=0;q<Nv;++q) {
-        const size_t site_q = M[z].creators()[q].s();
-        const double phase = M[z].creators()[q].t().time()*(2*i_freq+1)*M_PI/beta;
+        const size_t site_q = M[z].annihilators()[q].s();
+        const double phase = M[z].annihilators()[q].t().time()*(2*i_freq+1)*M_PI/beta;
         const std::complex<double> exp = std::complex<double>(std::cos(phase), std::sin(phase));
+        //const std::complex<double> exp = M[z].annihilators()[q].exp_iomegat()[i_freq];
         for (size_t site=0; site<n_site; ++site) {
           GL(site, q) = bare_green_matsubara(i_freq, site, site_q, z)*exp;
         }
@@ -206,78 +208,77 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 }
 
 void InteractionExpansion::compute_Sl() {
-  static boost::multi_array<std::complex<double>,4> Sl(boost::extents[n_flavors][n_site][n_site][n_legendre]);
-  const size_t num_random_walk = 20;
+  static boost::multi_array<std::complex<double>,3> Sl(boost::extents[n_site][n_site][n_legendre]);
+  const size_t num_random_walk = 100;
+
   //Work arrays
+  size_t max_mat_size = 0;
+  for (unsigned int z=0; z<n_flavors; ++z) {
+    assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
+    max_mat_size = std::max(max_mat_size, num_rows(M[z].matrix()));
+  }
   std::vector<double> legendre_vals(n_legendre), sqrt_vals(n_legendre);
-  std::vector<double> time_a_shifted(max_order), time_c_shifted(max_order);
   for(unsigned int i_legendre=0; i_legendre<n_legendre; ++i_legendre) {
     sqrt_vals[i_legendre] = std::sqrt(2.0*i_legendre+1.0);
   }
-  alps::numeric::matrix<GTYPE> g0_c(n_site,n_site);
+  alps::numeric::matrix<GTYPE> gR(max_mat_size, n_site), M_gR(max_mat_size, n_site);
 
-  std::fill(Sl.origin(),Sl.origin()+Sl.num_elements(),0.0);//clear the content for safety
   for (unsigned int z=0; z<n_flavors; ++z) {
-    assert( num_rows(M[z].matrix()) == num_cols(M[z].matrix()) );
     const size_t Nv = num_rows(M[z].matrix());
+    gR.resize(Nv, n_site);
+    M_gR.resize(Nv, n_site);
+    std::fill(Sl.origin(),Sl.origin()+Sl.num_elements(),0.0);//clear the content for safety
 
     //shift times of operators by time_shift
     for (std::size_t random_walk=0; random_walk<num_random_walk; ++random_walk) {
-      const double time_shift = beta*random();
+      const double time_shift = beta * random();
 
-      for(unsigned int q=0;q<Nv;++q) {//annihilation operators
-        double tmp = M[z].annihilators()[q].t().time()+time_shift;
-        time_a_shifted[q] = tmp<beta ? tmp : tmp-beta;
-        assert(time_a_shifted[q]<beta+1E-8);
-      }
-      for(unsigned int p=0;p<Nv;++p) {//creation operators
-        double tmp = M[z].creators()[p].t().time()+time_shift;
-        time_c_shifted[p] = tmp<beta ? tmp : tmp-beta;
-        assert(time_c_shifted[p]<beta+1E-8);
-      }
-
-      for(unsigned int p=0;p<Nv;++p){//creation operators
-        const unsigned int site_c = M[z].creators()[p].s();
+      for (unsigned int p = 0; p < Nv; ++p) {//creation operators
+        const double tmp = M[z].creators()[p].t().time() + time_shift;
+        const double time_c_shifted = tmp < beta ? tmp : tmp - beta;
+        const double coeff = tmp < beta ? 1 : -1;
 
         //interpolate G0
-        for (unsigned int site1=0; site1<n_site; ++site1) {
-          for (unsigned int site2=0; site2<n_site; ++site2) {
-            g0_c(site1, site2) = green0_spline_new(time_c_shifted[p],z,site1,site2);//CHECK THE TREATMENT OF EQUAL-TIME MEASUREMENT
-          }
+        for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
+          gR(p, site_B) = coeff*green0_spline_new(time_c_shifted, z, M[z].creators()[p].s(), site_B);
         }
+      }
 
-        for(unsigned int q=0;q<num_cols(M[z].matrix());++q){//annihilation operators
-          const unsigned int site_a = M[z].annihilators()[q].s();
-          legendre_transformer.compute_legendre(2*time_a_shifted[q]/beta-1.0, legendre_vals);//P_l[x(tau_q)]
+      gemm(M[z].matrix(), gR, M_gR);
 
-          const std::complex<double> Mqp = M[z].matrix()(q,p);
+      for (unsigned int q = 0; q < Nv; ++q) {//annihilation operators
+        const unsigned int site_a = M[z].annihilators()[q].s();
+        const double tmp = M[z].annihilators()[q].t().time() + time_shift;
+        const double time_a_shifted = tmp < beta ? tmp : tmp - beta;
+        const double coeff = tmp < beta ? 1 : -1;
 
-          for(unsigned int i_legendre=0; i_legendre<n_legendre; ++i_legendre) {
-            for (unsigned int site2 = 0; site2 < n_site; ++site2) {
-              Sl[z][site_a][site2][i_legendre] += -sqrt_vals[i_legendre]*legendre_vals[i_legendre]*Mqp*g0_c(site_c,site2);
-            }
+        legendre_transformer.compute_legendre(2 * time_a_shifted/beta - 1.0, legendre_vals);//P_l[x(tau_q)]
+        for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
+          for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
+            Sl[site_a][site_B][i_legendre] -= coeff*sqrt_vals[i_legendre] * legendre_vals[i_legendre] * M_gR(q, site_B);
           }
         }
       }
-    }
-  }
-  for(unsigned int flavor=0;flavor<n_flavors;++flavor) {
+    }//random_walk
+
+    //pass data to ALPS library
     for (unsigned int site1 = 0; site1 < n_site; ++site1) {
       for (unsigned int site2 = 0; site2 < n_site; ++site2) {
         std::stringstream Sl_real_name, Sl_imag_name;
-        Sl_real_name << "Sl_real_" << flavor << "_" << site1 << "_" << site2;
-        Sl_imag_name << "Sl_imag_" << flavor << "_" << site1 << "_" << site2;
+        Sl_real_name << "Sl_real_" << z << "_" << site1 << "_" << site2;
+        Sl_imag_name << "Sl_imag_" << z << "_" << site1 << "_" << site2;
         std::valarray<double> Sl_real(n_legendre);
         std::valarray<double> Sl_imag(n_legendre);
         for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
-          Sl_real[i_legendre] = Sl[flavor][site1][site2][i_legendre].real()/num_random_walk;
-          Sl_imag[i_legendre] = Sl[flavor][site1][site2][i_legendre].imag()/num_random_walk;
+          Sl_real[i_legendre] = Sl[site1][site2][i_legendre].real()/num_random_walk;
+          Sl_imag[i_legendre] = Sl[site1][site2][i_legendre].imag()/num_random_walk;
         }
         measurements[Sl_real_name.str().c_str()] << static_cast<std::valarray<double> > (Sl_real * sign);
         measurements[Sl_imag_name.str().c_str()] << static_cast<std::valarray<double> > (Sl_imag * sign);
-      }
-    }
-  }
+      }//site2
+    }//site1
+
+  }//z
 }
 
 
@@ -416,6 +417,7 @@ void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardIn
 
   //compute S(iomega_n)
   {
+//    std::cout << "n_matsubara " << n_matsubara << std::endl;
     alps::numeric::matrix<std::complex<double> > Sl_vec(n_legendre,1), Sw_vec(n_matsubara,1);//tmp arrays for gemm
     for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
       for (std::size_t site1 = 0; site1 < n_site; ++site1) {
@@ -432,6 +434,9 @@ void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardIn
       }
     }
   }
+//  for(std::size_t w = 0; w < n_matsubara;  ++w) {
+//    std::cout << " w " << w << Sw[w][0][0][0] << std::endl;
+//  }
 
   //compute G(iomega_n) by Dyson eq.
   alps::numeric::matrix<std::complex<double> > g0_mat(n_site, n_site, 0.0), s_mat(n_site, n_site, 0.0);//tmp arrays for gemm

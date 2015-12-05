@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 project(impsolver)
 
-#set(GOOGLE_PROFILER ON)
+set(GOOGLE_PROFILER ON)
 
 # find ALPS Library
 if(NOT ALPS_DIR AND ALPS_ROOT_DIR)
@@ -48,26 +48,26 @@ link_directories(${CHYB_LIBRARY_DIRS})
 #executable
 set(ALPS_ROOT ${ALPS_LIBRARY_DIRS} $ENV{BLAS_LAPACK_DIRS} CACHE STRINGS "CHYB library dirs")
 set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
-       fouriertransform.C
-       auxiliary.cpp
-       observables.cpp
-       fastupdate.cpp
-       selfenergy.cpp
-       solver.cpp
-       io.cpp
-       splines.cpp
-       interaction_expansion.cpp
-       measurements.cpp
-       model.cpp
-       util.cpp
-       legendre.cpp legendre.h fastupdate_formula.h U_matrix.cpp update_statistics.h)
+        fouriertransform.C
+        auxiliary.cpp
+        observables.cpp
+        fastupdate.cpp
+        selfenergy.cpp
+        solver.cpp
+        io.cpp
+        splines.cpp
+        interaction_expansion.cpp
+        measurements.cpp
+        model.cpp
+        util.cpp
+        legendre.cpp legendre.h fastupdate_formula.h U_matrix.cpp update_statistics.h wang_landau.h)
 add_executable(interaction main.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
 
 set (GTEST_SOURCE legendre.cpp util.cpp)
 add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTEST_SOURCE})
 
 #libraries
-list(APPEND CHYB_LIBRARIES alps $ENV{BLAS_LAPACK_LIBRARIES})
+list(APPEND CHYB_LIBRARIES alps boost $ENV{BLAS_LAPACK_LIBRARIES})
 if(DEFINED GOOGLE_PROFILER)
   list(APPEND CHYB_LIBRARIES profiler)
 endif(DEFINED GOOGLE_PROFILER)

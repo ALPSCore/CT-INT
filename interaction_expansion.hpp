@@ -63,6 +63,7 @@
 #include <alps/numeric/matrix.hpp>
 #include "legendre.h"
 #include "update_statistics.h"
+#include "wang_landau.h"
 
 /*types*/
 class c_or_cdagger;
@@ -614,6 +615,7 @@ protected:
   double weight;
   double sign;
   double alpha_scale;
+  FlatHistogram flat_histogram_alpha;
   unsigned int measurement_method;
   //bool thermalized;
   
