@@ -129,7 +129,6 @@ single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NO
   if (n_multi_vertex_update>1) {
     quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
     qn_dim = quantum_number_vertices[0][0].size();
-    std::cout << "qn_dim " << qn_dim << std::endl;
     group_dim.clear(); group_dim.resize(qn_dim, 0);
     const int qn_dim_f = qn_dim/n_flavors;
     for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
@@ -275,6 +274,12 @@ void InteractionExpansion::measure(){
     return;
 
   //In the below, real physical quantities are measured.
+  //if (n_multi_vertex_update>1) {
+    //bool flag = is_quantum_number_conserved(itime_vertices);
+    //measurements["QuantumNumberConserved"] << (int) flag;
+    //if(!flag) return;
+  //}
+
   std::valarray<double> timings(2);
   measure_observables(timings);
   measurements["MeasurementTimeMsec"] << timings;

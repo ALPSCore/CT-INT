@@ -656,8 +656,7 @@ void InteractionExpansion::alpha_update(void) {
     det = det_old;
     M = M_old;
     sign = sign_old;
-    //std::cout << "node " << node << " step " << step << " alpha_update rejected new alpha_scale = " << alpha_scale << std::endl;
-    //std::cout << "step " << step << " alpha_update rejected " << std::endl;
+    std::cout << "node " << node << " step " << step << " alpha_update rejected new alpha_scale = " << alpha_scale << std::endl;
   }
 }
 

@@ -181,6 +181,9 @@ void InteractionExpansion::initialize_observables(void)
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_count");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_sum");
+  if (n_multi_vertex_update>1) {
+    measurements << alps::ngs::SimpleRealObservable("QuantumNumberConserved");
+  }
 #endif
   measurements.reset(true);
 }
