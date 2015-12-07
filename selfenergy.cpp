@@ -120,9 +120,8 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
       //GR
       for(unsigned int p=0;p<Nv;++p) {
-        const size_t site_p = M[z].creators()[p].s();
-        const double phase = M[z].creators()[p].t().time()*(2*i_freq+1)*M_PI/beta;
-        //If sin and cos are too heavy, it's better to use linear interpolation!
+        const size_t site_p = M[z].annihilators()[p].s();
+        const double phase = M[z].annihilators()[p].t().time()*(2*i_freq+1)*M_PI/beta;
         const std::complex<double> exp = std::complex<double>(std::cos(phase), -std::sin(phase));
         for (size_t site=0; site<n_site; ++site) {
           GR(p, site) = bare_green_matsubara(i_freq, site_p, site, z)*exp;
@@ -131,8 +130,8 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
       //GL
       for(unsigned int q=0;q<Nv;++q) {
-        const size_t site_q = M[z].annihilators()[q].s();
-        const double phase = M[z].annihilators()[q].t().time()*(2*i_freq+1)*M_PI/beta;
+        const size_t site_q = M[z].creators()[q].s();
+        const double phase = M[z].creators()[q].t().time()*(2*i_freq+1)*M_PI/beta;
         const std::complex<double> exp = std::complex<double>(std::cos(phase), std::sin(phase));
         //const std::complex<double> exp = M[z].annihilators()[q].exp_iomegat()[i_freq];
         for (size_t site=0; site<n_site; ++site) {
@@ -233,29 +232,29 @@ void InteractionExpansion::compute_Sl() {
     for (std::size_t random_walk=0; random_walk<num_random_walk; ++random_walk) {
       const double time_shift = beta * random();
 
-      for (unsigned int p = 0; p < Nv; ++p) {//creation operators
-        const double tmp = M[z].creators()[p].t().time() + time_shift;
-        const double time_c_shifted = tmp < beta ? tmp : tmp - beta;
+      for (unsigned int p = 0; p < Nv; ++p) {//annihilation operators
+        const double tmp = M[z].annihilators()[p].t().time() + time_shift;
+        const double time_a_shifted = tmp < beta ? tmp : tmp - beta;
         const double coeff = tmp < beta ? 1 : -1;
 
         //interpolate G0
         for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
-          gR(p, site_B) = coeff*green0_spline_new(time_c_shifted, z, M[z].creators()[p].s(), site_B);
+          gR(p, site_B) = coeff*green0_spline_new(time_a_shifted, z, M[z].annihilators()[p].s(), site_B);
         }
       }
 
       gemm(M[z].matrix(), gR, M_gR);
 
-      for (unsigned int q = 0; q < Nv; ++q) {//annihilation operators
-        const unsigned int site_a = M[z].annihilators()[q].s();
-        const double tmp = M[z].annihilators()[q].t().time() + time_shift;
-        const double time_a_shifted = tmp < beta ? tmp : tmp - beta;
+      for (unsigned int q = 0; q < Nv; ++q) {//creation operators
+        const unsigned int site_c = M[z].creators()[q].s();
+        const double tmp = M[z].creators()[q].t().time() + time_shift;
+        const double time_c_shifted = tmp < beta ? tmp : tmp - beta;
         const double coeff = tmp < beta ? 1 : -1;
 
-        legendre_transformer.compute_legendre(2 * time_a_shifted/beta - 1.0, legendre_vals);//P_l[x(tau_q)]
+        legendre_transformer.compute_legendre(2 * time_c_shifted/beta - 1.0, legendre_vals);//P_l[x(tau_q)]
         for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
           for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
-            Sl[site_a][site_B][i_legendre] -= coeff*sqrt_vals[i_legendre] * legendre_vals[i_legendre] * M_gR(q, site_B);
+            Sl[site_c][site_B][i_legendre] -= coeff*sqrt_vals[i_legendre] * legendre_vals[i_legendre] * M_gR(q, site_B);
           }
         }
       }
