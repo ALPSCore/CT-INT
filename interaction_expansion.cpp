@@ -102,7 +102,8 @@ alpha_scale(1.),
 alpha_scale_max_meas(parms["ALPHA_SCALE_MEASURE_MAX"] | 1),
 alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1),
 flat_histogram_alpha(std::log(alpha_scale_max), std::log(alpha_scale_min), 100),
-single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true)
+single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
+pert_order_hist(max_order)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -225,6 +226,7 @@ void InteractionExpansion::update()
   big_inverse_m_matrix M_bak(M);
 
   sign_meas.first=0.; sign_meas.second=0.;
+  pert_order_hist = 0.;
 
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
@@ -262,6 +264,8 @@ void InteractionExpansion::update()
       M = M_bak;
       reset_perturbation_series(false);
     }
+
+    ++pert_order_hist[itime_vertices.size()];
 
     if(step % recalc_period ==0) {
       reset_perturbation_series(true);

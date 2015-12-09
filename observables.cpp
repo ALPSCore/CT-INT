@@ -184,6 +184,7 @@ void InteractionExpansion::initialize_observables(void)
   if (n_multi_vertex_update>1) {
     measurements << alps::ngs::SimpleRealObservable("QuantumNumberConserved");
   }
+  measurements << alps::ngs::SimpleRealVectorObservable("PertOrderHistogram");
 #endif
   measurements.reset(true);
 }
@@ -204,6 +205,9 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   if (params.defined("OUTPUT_Sign") ? params["OUTPUT_Sign"] : false) {
       std::cout << " node= " << node << " Sign= " << sign_meas.first/sign_meas.second << " " << sign << " pert_order= " << itime_vertices.size() << std::endl;
   }
+
+  pert_order_hist /= pert_order_hist.sum();
+  measurements["PertOrderHistogram"] << pert_order_hist;
 
   const double t1 = timer.elapsed().wall*1E-6;
   if (measurement_method == selfenergy_measurement_matsubara) {

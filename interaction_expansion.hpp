@@ -649,6 +649,8 @@ protected:
 
   //for measuring sign
   std::pair<GTYPE,double> sign_meas;
+
+  std::valarray<double> pert_order_hist;
 };
 
 

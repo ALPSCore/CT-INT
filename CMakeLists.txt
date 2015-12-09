@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 project(impsolver)
 
-set(GOOGLE_PROFILER ON)
+#set(GOOGLE_PROFILER ON)
 
 # find ALPS Library
 if(NOT ALPS_DIR AND ALPS_ROOT_DIR)
