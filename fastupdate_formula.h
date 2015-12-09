@@ -127,7 +127,6 @@ compute_inverse_matrix_up2(
         invBigMat = safe_inverse(D);
         return safe_determinant(D);
     } else {
-        //boost::timer::cpu_timer timer;
         static matrix_t E, F, G, H, C_invA, C_invA_B, invA_B;
         E.resize_values_not_retained(N, N);
         F.resize_values_not_retained(N, M);
@@ -137,55 +136,29 @@ compute_inverse_matrix_up2(
         C_invA_B.resize_values_not_retained(M, M);
         invA_B.resize_values_not_retained(N, M);
 
-        //std::cout << "matrix_up check_p = 0 " << timer.elapsed().wall*1E-6 << std::endl;
-
         //compute H
-        //matrix_t C_invA(M, N, 0.0), C_invA_B(M, M, 0.0);
         gemm(C, invA, C_invA);
         gemm(C_invA, B, C_invA_B);
         H = safe_inverse(D - C_invA_B);
 
-        //std::cout << "matrix_up check_p = 1 " << timer.elapsed().wall*1E-6 << std::endl;
-
         //compute G
-        gemm(H, C_invA, G);
-        //std::cout << "matrix_up check_p = 1.1 " << timer.elapsed().wall*1E-6 << std::endl;
-
-        G *= -1.;
-
-        //std::cout << "matrix_up check_p = 2 " << timer.elapsed().wall*1E-6 << std::endl;
+        boost::numeric::bindings::blas::gemm((T)-1.0, H, C_invA, (T)0.0, G);
 
         //compute F
-        //matrix_t invA_B(N, M, 0);
         gemm(invA, B, invA_B);
-        gemm(invA_B, H, F);
-        F *= -1.0;
-
-        //std::cout << "matrix_up check_p = 3 " << timer.elapsed().wall*1E-6 << std::endl;
+        boost::numeric::bindings::blas::gemm((T)-1.0, invA_B, H, (T)0.0, F);
 
         //compute E
-        //gemm(invA_B, G, E);
-        //std::cout << "matrix_up check_p = 3.1 " << timer.elapsed().wall*1E-6 << std::endl;
-        //E *= -1;
-        //std::cout << "matrix_up check_p = 3.2 " << timer.elapsed().wall*1E-6 << std::endl;
-        //E += invA;
-
         copy_block(invA,0,0,E,0,0,N,N);
         boost::numeric::bindings::blas::gemm(static_cast<T>(-1.0), invA_B, G, static_cast<T>(1.0), E);
 
-        //std::cout << "matrix_up check_p = 4 " << timer.elapsed().wall*1E-6 << std::endl;
-
         invBigMat.resize_values_not_retained(N + M, N + M);
-        //std::cout << "matrix_up check_p = 4.1 " << timer.elapsed().wall*1E-6 << std::endl;
         copy_block(E, 0, 0, invBigMat, 0, 0, N, N);
         copy_block(F, 0, 0, invBigMat, 0, N, N, M);
         copy_block(G, 0, 0, invBigMat, N, 0, M, N);
         copy_block(H, 0, 0, invBigMat, N, N, M, M);
 
-        //std::cout << "matrix_up check_p = 5 " << timer.elapsed().wall*1E-6 << std::endl;
-
         T r = 1. / safe_determinant(H);
-        //std::cout << "matrix_up check_p = 6 " << timer.elapsed().wall*1E-6 << std::endl;
         return r;
     }
 }
@@ -267,38 +240,23 @@ compute_inverse_matrix_down(
         invBigMat.resize(0,0);
         return safe_determinant(H);
     } else {
-        //matrix_t E(N, N), F(N, M), G(M, N), H(M, M);
-        //matrix_t invH_G(M, N), F_invH_G(N, N);//one might reuse memories...
-        //boost::timer::cpu_timer timer;
         E.resize_values_not_retained(N, N);
         F.resize_values_not_retained(N, M);
         G.resize_values_not_retained(M, N);
         H.resize_values_not_retained(M, M);
         invH_G.resize_values_not_retained(M, N);
         F_invH_G.resize_values_not_retained(N, N);
-        //std::cout << "matrix_down check_p = 0 " << timer.elapsed().wall*1E-6 << std::endl;
 
         copy_block(invBigMat, 0, 0, E, 0, 0, N, N);
         copy_block(invBigMat, 0, N, F, 0, 0, N, M);
         copy_block(invBigMat, N, 0, G, 0, 0, M, N);
         copy_block(invBigMat, N, N, H, 0, 0, M, M);
-        //std::cout << "matrix_down check_p = 1 " << timer.elapsed().wall*1E-6 << std::endl;
 
         gemm(safe_inverse(H), G, invH_G);
-
-        //std::cout << "matrix_down check_p = 2 " << timer.elapsed().wall*1E-6 << std::endl;
-
         boost::numeric::bindings::blas::gemm((T)-1.0, F, invH_G, (T)1.0, E);
-        //gemm(F, invH_G, F_invH_G);
-        //std::cout << "matrix_down check_p = 3 " << timer.elapsed().wall*1E-6 << std::endl;
-        //invBigMat_new = E - F_invH_G;
-        //std::cout << "matrix_down check_p = 4 " << timer.elapsed().wall*1E-6 << std::endl;
 
         invBigMat.resize(N, N);
-        //std::cout << "matrix_down check_p = 5 " << timer.elapsed().wall*1E-6 << std::endl;
-        //copy_block(invBigMat_new, 0, 0, invBigMat, 0, 0, N, N);
         copy_block(E, 0, 0, invBigMat, 0, 0, N, N);
-        //std::cout << "matrix_down check_p = 6 " << timer.elapsed().wall*1E-6 << std::endl;
         return safe_determinant(H);
     }
 }
