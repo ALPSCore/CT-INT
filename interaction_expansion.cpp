@@ -224,9 +224,13 @@ void InteractionExpansion::update()
   itime_vertex_container itime_vertices_bak = itime_vertices;
   big_inverse_m_matrix M_bak(M);
 
+  sign_meas.first=0.; sign_meas.second=0.;
+
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     boost::timer::cpu_timer timer;
+
+    sign_meas.first += sign; ++sign_meas.second;
 
     //alpha
     flat_histogram_alpha.measure(std::log(alpha_scale));

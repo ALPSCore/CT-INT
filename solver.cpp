@@ -36,13 +36,18 @@
 void InteractionExpansion::removal_insertion_update(void) {
   const int nv_updated = update_prop.gen_Nv(random.engine());
 
+  //boost::timer::cpu_timer timer;
+  //std::cout << "debug capacity before " << M[0].matrix().capacity().first << std::endl;
   if (nv_updated==1) {
     removal_insertion_single_vertex_update();
+    //std::cout << "nv_updated=1 " << timer.elapsed().wall*1E-6 << std::endl;
   } else if (nv_updated==2) {
     removal_insertion_double_vertex_update();
+    //std::cout << "nv_updated=1 " << timer.elapsed().wall*1E-6 << std::endl;
   } else {
     throw std::runtime_error("Not implemented");
   }
+  //std::cout << "debug capacity after " << M[0].matrix().capacity().first << std::endl << std::endl;
 
   for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
     vertex_histograms[flavor]->count(num_rows(M[flavor].matrix()));
@@ -280,6 +285,7 @@ void InteractionExpansion::removal_insertion_single_vertex_update(void)
   double metropolis_weight=0.;
   double det_rat=0;
   if(random()<0.5){  //trying to ADD vertex
+    boost::timer::cpu_timer timer;
     M.sanity_check(itime_vertices);
     if(pert_order+nv_updated>max_order)
       return; //we have already reached the highest perturbation order
@@ -329,10 +335,12 @@ void InteractionExpansion::removal_insertion_single_vertex_update(void)
       simple_statistics_ins.accepted(nv_updated-1);
       if(fabs(metropolis_weight)<1E-5)
         reset_perturbation_series(false);
+      //std::cout << "add accepted " << timer.elapsed().wall*1E-6 << std::endl;
     }else{
       reject_add(add_helper,nv_updated);
       M.sanity_check(itime_vertices);
       simple_statistics_ins.rejected(nv_updated-1);
+      //std::cout << "add rejected " << timer.elapsed().wall*1E-6 << std::endl;
     }
 #ifndef NDEBUG
     sanity_check();
@@ -700,6 +708,10 @@ void InteractionExpansion::reset_perturbation_series(bool verbose)
       M[flavor].matrix() = alps::numeric::inverse(G0);
       det *= alps::numeric::determinant(G0);//the determinant is basically computed in alps::numeric::inverse(G0)
     }
+
+    //reserve bit larger memory to avoid expensive memory reallocation
+    const size_t size_reserved = num_cols(M[flavor].matrix())>0 ? std::min((size_t)max_order, (size_t)num_cols(1.5*M[flavor].matrix())) : 10;
+    M[flavor].matrix().reserve(size_reserved, size_reserved);
   }
 
   sign = boost::math::sign(det);

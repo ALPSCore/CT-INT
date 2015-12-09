@@ -33,6 +33,8 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
 {
   assert(n_vertices_add==new_vertices.size());
 
+  //boost::timer::cpu_timer timer;
+
   //work array
   helper.clear();
 
@@ -60,6 +62,8 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
     itime_vertices.push_back(new_vertices[iv]);
   }
 
+  //std::cout << "try_add : chk_p=0 " << timer.elapsed().wall*1E-6 << std::endl;
+
   //fast update for each flavor
   double lambda_prod = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
@@ -68,12 +72,14 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
     }
   }
   helper.det_rat_ = lambda_prod;
+  //std::cout << "try_add : chk_p=1 " << timer.elapsed().wall*1E-6 << std::endl;
   return std::pair<double,double>(prod_Uval_wm*lambda_prod, lambda_prod);
 }
 
 
 void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
+  //boost::timer::cpu_timer timer;
   double det_rat = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     if (helper.num_new_rows[flavor]>0) {
@@ -82,6 +88,7 @@ void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, siz
   }
   assert(std::abs(det_rat/helper.det_rat_-1)<1E-8);
   M.sanity_check(itime_vertices);
+  //std::cout << "perform_add : chk_p=0 " << timer.elapsed().wall*1E-6 << std::endl;
 }
 
 
@@ -102,6 +109,7 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size
 
 std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
 {
+  //boost::timer::cpu_timer timer;
   //get weight
   //figure out and remember which rows (columns) are to be removed
   // lists of rows and cols will be sorted in ascending order
@@ -135,12 +143,14 @@ std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vect
   //double r2 = vertices_nr.size()== 1 ?
       //pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size()) :
       //pow(-helper.op.width()*Uijkl.num_vertex_type(helper.op),(double)vertices_nr.size());
+  //std::cout << "try_rem : chk_p=0 " << timer.elapsed().wall*1E-6 << std::endl;
   return std::pair<double,double>(lambda_prod/prod_Uval,lambda_prod);
 }
 
 
 void HubbardInteractionExpansion::perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
 {
+  //boost::timer::cpu_timer timer;
   //perform fastupdate down
   double det_rat = 1.0;
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
@@ -157,6 +167,7 @@ void HubbardInteractionExpansion::perform_remove(const std::vector<int>& vertice
   //get rid of vertex list entries.
   remove_elements_from_vector(itime_vertices, vertices_nr);
   M.sanity_check(itime_vertices);
+  //std::cout << "perform_rem : chk_p=0 " << timer.elapsed().wall*1E-6 << std::endl;
 }
 
 

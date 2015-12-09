@@ -5,7 +5,7 @@
 #ifndef IMPSOLVER_FASTUPDATE_FORMULA_H
 #define IMPSOLVER_FASTUPDATE_FORMULA_H
 
-//#include <boost/multiprecision/float128.hpp>
+#include <boost/timer/timer.hpp>
 
 #include <alps/numeric/matrix.hpp>
 #include <alps/numeric/matrix/algorithms.hpp>
@@ -74,9 +74,9 @@ compute_inverse_matrix_up(
         G.resize(M,N);
 
         //fill E, F, G by zero for safety
-        std::fill(E.get_values().begin(), E.get_values().end(),0);
-        std::fill(F.get_values().begin(), F.get_values().end(),0);
-        std::fill(G.get_values().begin(), G.get_values().end(),0);
+        //std::fill(E.get_values().begin(), E.get_values().end(),0);
+        //std::fill(F.get_values().begin(), F.get_values().end(),0);
+        //std::fill(G.get_values().begin(), G.get_values().end(),0);
 
         matrix_t C_invA(M, N, 0.0), C_invA_B(M, M, 0.0);
         gemm(C, invA, C_invA);
@@ -127,36 +127,39 @@ compute_inverse_matrix_up2(
         invBigMat = safe_inverse(D);
         return safe_determinant(D);
     } else {
-        matrix_t E(N, N, 0), F(N, M, 0), G(M, N, 0), H(M, M, 0);
+        static matrix_t E, F, G, H, C_invA, C_invA_B, invA_B;
+        E.resize_values_not_retained(N, N);
+        F.resize_values_not_retained(N, M);
+        G.resize_values_not_retained(M, N);
+        H.resize_values_not_retained(M, M);
+        C_invA.resize_values_not_retained(M, N);
+        C_invA_B.resize_values_not_retained(M, M);
+        invA_B.resize_values_not_retained(N, M);
 
         //compute H
-        matrix_t C_invA(M, N, 0.0), C_invA_B(M, M, 0.0);
         gemm(C, invA, C_invA);
         gemm(C_invA, B, C_invA_B);
         H = safe_inverse(D - C_invA_B);
 
         //compute G
-        gemm(H, C_invA, G);
-        G *= -1.;
+        boost::numeric::bindings::blas::gemm((T)-1.0, H, C_invA, (T)0.0, G);
 
         //compute F
-        matrix_t invA_B(N, M, 0);
         gemm(invA, B, invA_B);
-        gemm(invA_B, H, F);
-        F *= -1.0;
+        boost::numeric::bindings::blas::gemm((T)-1.0, invA_B, H, (T)0.0, F);
 
         //compute E
-        gemm(invA_B, G, E);
-        E *= -1;
-        E += invA;
+        copy_block(invA,0,0,E,0,0,N,N);
+        boost::numeric::bindings::blas::gemm(static_cast<T>(-1.0), invA_B, G, static_cast<T>(1.0), E);
 
-        resize(invBigMat, N + M, N + M);
+        invBigMat.resize_values_not_retained(N + M, N + M);
         copy_block(E, 0, 0, invBigMat, 0, 0, N, N);
         copy_block(F, 0, 0, invBigMat, 0, N, N, M);
         copy_block(G, 0, 0, invBigMat, N, 0, M, N);
         copy_block(H, 0, 0, invBigMat, N, N, M, M);
 
-        return 1. / safe_determinant(H);
+        T r = 1. / safe_determinant(H);
+        return r;
     }
 }
 
@@ -199,6 +202,8 @@ compute_inverse_matrix_down(
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
+    static matrix_t E, F, G, H, invH_G, F_invH_G;
+
     const size_t NpM = num_rows(invBigMat);
     const size_t M = num_rows_cols_removed;
     const size_t N = NpM-M;
@@ -223,29 +228,11 @@ compute_inverse_matrix_down(
 #endif
 
     //move rows and cols to be removed to the end.
-    /*
-    std::vector<size_t> new_index(NpM);
-    {
-        std::vector<int> mark(NpM, 0);
-        //put 1 on rows to be removed
-        for (size_t i=0; i<M; ++i) {
-            mark[rows_cols_removed[i]] = 1;
-        }
-        int pos_remain = 0;
-        int pos_removed = N;
-        for (size_t i=0; i<NpM; ++i) {
-
-        }
-    }
-     */
-
     swap_list.resize(M);
     for (size_t i=0; i<M; ++i) {
-        //if(rows_cols_removed[M-1-i]!=NpM-1-i) {
         invBigMat.swap_cols(rows_cols_removed[M-1-i], NpM-1-i);
         invBigMat.swap_rows(rows_cols_removed[M-1-i], NpM-1-i);
         swap_list[i] = std::pair<size_t,size_t>(rows_cols_removed[M-1-i], NpM-1-i);
-        //}
     }
 
     if (N==0) {
@@ -253,18 +240,23 @@ compute_inverse_matrix_down(
         invBigMat.resize(0,0);
         return safe_determinant(H);
     } else {
-        matrix_t E(N, N), F(N, M), G(M, N), H(M, M);
+        E.resize_values_not_retained(N, N);
+        F.resize_values_not_retained(N, M);
+        G.resize_values_not_retained(M, N);
+        H.resize_values_not_retained(M, M);
+        invH_G.resize_values_not_retained(M, N);
+        F_invH_G.resize_values_not_retained(N, N);
+
         copy_block(invBigMat, 0, 0, E, 0, 0, N, N);
         copy_block(invBigMat, 0, N, F, 0, 0, N, M);
         copy_block(invBigMat, N, 0, G, 0, 0, M, N);
         copy_block(invBigMat, N, N, H, 0, 0, M, M);
 
-        matrix_t invH_G(M, N, 0), F_invH_G(N, N, 0);//one might reuse memories...
         gemm(safe_inverse(H), G, invH_G);
-        gemm(F, invH_G, F_invH_G);
+        boost::numeric::bindings::blas::gemm((T)-1.0, F, invH_G, (T)1.0, E);
 
         invBigMat.resize(N, N);
-        invBigMat = E - F_invH_G;
+        copy_block(E, 0, 0, invBigMat, 0, 0, N, N);
         return safe_determinant(H);
     }
 }
@@ -777,19 +769,19 @@ compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
 
     //tQp
     gemm(Q,tSp,tmp_NM);
-    std::fill(tQp.get_values().begin(), tQp.get_values().end(), 0.0);
+    //std::fill(tQp.get_values().begin(), tQp.get_values().end(), 0.0);
     gemm(Mmat,tmp_NM,tQp);
     tQp *= -1;
 
     //tRp
     gemm(tSp,R,tmp_MN);
-    std::fill(tRp.get_values().begin(), tRp.get_values().end(), 0.0);
+    //std::fill(tRp.get_values().begin(), tRp.get_values().end(), 0.0);
     gemm(tmp_MN,Mmat,tRp);
     tRp *= -1;
 
     //tPp
-    std::fill(tPp.get_values().begin(), tPp.get_values().end(), 0.0);
-    std::fill(tmp_NM.get_values().begin(), tmp_NM.get_values().end(), 0.0);
+    //std::fill(tPp.get_values().begin(), tPp.get_values().end(), 0.0);
+    //std::fill(tmp_NM.get_values().begin(), tmp_NM.get_values().end(), 0.0);
     gemm(Mmat, Q, tmp_NM);
     gemm(tmp_NM, tRp, tPp);
     tPp = Mmat-tPp;

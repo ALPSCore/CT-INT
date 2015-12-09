@@ -646,6 +646,9 @@ protected:
   fastupdate_shift_helper<GTYPE> shift_helper;
 
   LegendreTransformer legendre_transformer;
+
+  //for measuring sign
+  std::pair<GTYPE,double> sign_meas;
 };
 
 
