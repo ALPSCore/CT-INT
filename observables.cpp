@@ -199,7 +199,7 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   //measurements["Sign"]<<sign;
   measurements["Sign"]<<sign_meas.first/sign_meas.second;
   if (params.defined("OUTPUT_Sign") ? params["OUTPUT_Sign"] : false) {
-      std::cout << " node= " << node << " Sign= " << sign_meas.first/sign_meas.second << " " << sign << std::endl;
+      std::cout << " node= " << node << " Sign= " << sign_meas.first/sign_meas.second << " " << sign << " pert_order= " << itime_vertices.size() << std::endl;
   }
 
   const double t1 = timer.elapsed().wall*1E-6;
