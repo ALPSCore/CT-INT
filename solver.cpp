@@ -629,17 +629,8 @@ void InteractionExpansion::alpha_update(void) {
   if (itime_vertices.size()==0 || alpha_scale_max==1.0)
     return;
 
-  std::cout << "current alpha_scale " << alpha_scale << std::endl;
-  double new_alpha_scale = std::exp(random()*(std::log(alpha_scale_max)-std::log(alpha_scale_min))+std::log(alpha_scale_min));
-  const double ratio = 1.05;
-  //const double new_alpha_scale = random()<0.5 ? std::min(alpha_scale*ratio, alpha_scale_max) : std::max(alpha_scale/ratio, alpha_scale_min);
-  //std::cout <<  "random " << 2*(static_cast<int>(random())-1)*boost::random::exponential_distribution<>(1/std::log(ratio))(random.engine()) << std::endl;
-  //double new_alpha_scale = std::exp(
-      //2*(static_cast<int>(random())-1)*boost::random::exponential_distribution<>(1/std::log(ratio))(random.engine())+std::log(alpha_scale)
-  //);
-  //double new_alpha_scale = random()<0.5 ? std::min(alpha_scale*ratio, alpha_scale_max) : std::max(alpha_scale/ratio, alpha_scale_min);
-  if (new_alpha_scale>alpha_scale_max || new_alpha_scale <alpha_scale_min)
-    return;
+  const int new_alpha_scale_idx = static_cast<int>(num_alpha_scale_values*random());
+  const double new_alpha_scale = alpha_scale_values[new_alpha_scale_idx];
 
   const double det_old = det;
   const double sign_old = sign;
@@ -648,23 +639,15 @@ void InteractionExpansion::alpha_update(void) {
   M.set_alpha_scale(new_alpha_scale);
   boost::timer::cpu_timer timer;
   reset_perturbation_series(false);
-  const double metropolis_weight = (det/det_old) * std::exp(-flat_histogram_alpha.log_dos_estimated(std::log(new_alpha_scale))+flat_histogram_alpha.log_dos_estimated(std::log(alpha_scale)));
-  std::cout << "debug " << alpha_scale << " " << new_alpha_scale
-    << " " << flat_histogram_alpha.log_dos_estimated(std::log(alpha_scale))
-    << " " << flat_histogram_alpha.log_dos_estimated(std::log(new_alpha_scale))
-    << " " << flat_histogram_alpha.to_idx(std::log(alpha_scale))
-    << " " << flat_histogram_alpha.to_idx(std::log(new_alpha_scale)) << std::endl;
-  //std::cout << " timing_alpha_update " << timer.elapsed().wall*1E-6 << " msec. pert_order = " << itime_vertices.size() << std::endl;
+  const double metropolis_weight = (det/det_old) * flat_histogram_alpha.weight_ratio(new_alpha_scale_idx, alpha_scale_idx);
 
-  std::cout << "debug " << metropolis_weight << " new_alpha_scale " << new_alpha_scale << " qn " << is_quantum_number_conserved(itime_vertices) << std::endl;
+  //std::cout << "debug " << metropolis_weight << " new_alpha_scale " << new_alpha_scale << std::endl;
   if(fabs(metropolis_weight)> random()){ //do the actual update
-    alpha_scale = new_alpha_scale;
-    //std::cout << "node " << node << " step " << step << " alpha_update accepted new alpha_scale = " << alpha_scale << " " << fabs(metropolis_weight) << std::endl;
+    alpha_scale_idx = new_alpha_scale_idx;
   }else {
     det = det_old;
     M = M_old;
     sign = sign_old;
-    std::cout << "node " << node << " step " << step << " alpha_update rejected new alpha_scale = " << alpha_scale << std::endl;
   }
 }
 

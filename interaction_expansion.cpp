@@ -45,7 +45,7 @@ double *c_or_cdagger::omegan_;
 std::complex<double> *c_or_cdagger::exp_iomegan_tau_;
 
 
-InteractionExpansion::InteractionExpansion(const alps::params &parms, int node)
+InteractionExpansion::InteractionExpansion(const alps::params &parms, int node, const boost::mpi::communicator& communicator)
 : alps::mcbase(parms,node),
 node(node),
 max_order(parms["MAX_ORDER"] | 2048),
@@ -96,14 +96,18 @@ n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 0),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
 //force_quantum_number_within_range(parms.defined("FORCE_QUANTUM_NUMBER_WITHIN_RANGE") ? parms["FORCE_QUANTUM_NUMBER_WITHIN_RANGE"] : false),
+use_alpha_update(parms.defined("USE_ALPHA_UPDATE") ? parms["USE_ALPHA_UPDATE"] : false),
 alpha_scale_min(1),
 alpha_scale_max(parms["ALPHA_SCALE_MAX"] | 1),
-alpha_scale(1.),
 alpha_scale_max_meas(parms["ALPHA_SCALE_MEASURE_MAX"] | 1),
 alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1),
-flat_histogram_alpha(std::log(alpha_scale_max), std::log(alpha_scale_min), 100),
+num_alpha_scale_values(parms["N_ALPHA_SCALE_VALUES"] | 100),
+flat_histogram_alpha(num_alpha_scale_values-1, 0, therm_steps),
+alpha_scale_hist(num_alpha_scale_values),
+alpha_scale_idx(0),
 single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
-pert_order_hist(max_order)
+pert_order_hist(max_order),
+comm(communicator)
 {
   //initialize measurement method
   if (parms["HISTOGRAM_MEASUREMENT"] | false) {
@@ -204,6 +208,20 @@ pert_order_hist(max_order)
     vertex_histograms[i]=new simple_hist(vertex_histogram_size);
   }
   c_or_cdagger::initialize_simulation(parms);
+
+
+  //for alpha update
+  if (use_alpha_update) {
+    alpha_scale_values.resize(num_alpha_scale_values);
+    if(num_alpha_scale_values<2)
+      throw std::runtime_error("N_ALPHA_SCALE_VALUES must be larger than 2.");
+    const double diff = (std::log(alpha_scale_max)-std::log(alpha_scale_min))/(num_alpha_scale_values-1);
+    const double log_min = std::log(alpha_scale_min);
+    for (int ia=0; ia<num_alpha_scale_values; ++ia) {
+      alpha_scale_values[ia] = std::exp(diff*ia+log_min);
+      //std::cout << " ia= " << ia << " " << alpha_scale_values[ia] << std::endl;
+    }
+  }
 }
 
 
@@ -212,33 +230,21 @@ void InteractionExpansion::update()
 {
   //std::cout << " update called  node " << node << std::endl;
   std::valarray<double> t_meas(0.0, 2);
-  const bool is_thermalized_now = is_thermalized();
-  if (!is_thermalized_in_previous_step_ && is_thermalized_now) {
-    prepare_for_measurement();
-  }
-  is_thermalized_in_previous_step_ = is_thermalized_now;
 
   //if (node==0)
   //std::cout << " node = " << node << " step = " << step << " random= " << random() << std::endl;
-  //std::cout << " node = " << node << " step = " << step << std::endl;
+  //std::cout << " node = " << node << " step = " << step <<  " alpha_scale_idx " << alpha_scale_idx << " " << alpha_scale_values[alpha_scale_idx] << std::endl;
 
   itime_vertex_container itime_vertices_bak = itime_vertices;
   big_inverse_m_matrix M_bak(M);
 
-  sign_meas.first=0.; sign_meas.second=0.;
   pert_order_hist = 0.;
+  if (use_alpha_update)
+    alpha_scale_hist = 0.;
 
   for(std::size_t i=0;i<measurement_period;++i){
     step++;
     boost::timer::cpu_timer timer;
-
-    sign_meas.first += sign; ++sign_meas.second;
-
-    //alpha
-    flat_histogram_alpha.measure(std::log(alpha_scale));
-    if (flat_histogram_alpha.count()>1000) {
-      flat_histogram_alpha.update_dos();
-    }
 
     try{
       for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem)
@@ -255,8 +261,13 @@ void InteractionExpansion::update()
         pert_hist[itime_vertices.size()]++;
 
       //update alpha_scale
-      if(alpha_scale_update_period>0 && step%alpha_scale_update_period==0) {
-        alpha_update();
+      if(use_alpha_update) {
+        assert(alpha_scale_idx<num_alpha_scale_values && alpha_scale_idx>=0);
+        ++alpha_scale_hist[alpha_scale_idx];
+        if (step%alpha_scale_update_period==0) {
+          alpha_update();
+          flat_histogram_alpha.measure(alpha_scale_idx);
+        }
       }
     } catch (std::runtime_error e) {
       std::cout << " Runtime error at rank = " << node << " step = " << step << " : " << e.what() << ". This may be because we encountered a singular matrix." << std::endl;
@@ -270,6 +281,15 @@ void InteractionExpansion::update()
     if(step % recalc_period ==0) {
       reset_perturbation_series(true);
     }
+
+    if (use_alpha_update && step%(alpha_scale_update_period*num_alpha_scale_values)==0 && !is_thermalized()) {
+      bool flag;
+      double min,mean;
+      boost::tie(flag,min,mean) = flat_histogram_alpha.flat_enough(comm);
+      std::cout << " step " << step << " min/mean = " << min/mean << std::endl;
+      if (flag)
+        flat_histogram_alpha.update_dos(comm);
+    }
   }
 
 
@@ -278,16 +298,17 @@ void InteractionExpansion::update()
 }
 
 void InteractionExpansion::measure(){
-  if (alpha_scale>alpha_scale_max_meas)
+  //std::cout << "qn_debug " << alpha_scale_values[alpha_scale_idx] << " " << sign << " "  << is_quantum_number_conserved(itime_vertices) << std::endl;
+
+  if (use_alpha_update)
+    measurements["AlphaScaleHistogram"] << alpha_scale_hist;
+
+  if (alpha_scale_values[alpha_scale_idx]>alpha_scale_max_meas)
     return;
 
-  //In the below, real physical quantities are measured.
-  //if (n_multi_vertex_update>1) {
-    //bool flag = is_quantum_number_conserved(itime_vertices);
-    //measurements["QuantumNumberConserved"] << (int) flag;
-    //if(!flag) return;
-  //}
+  //std::cout << "MEasuring " << alpha_scale_values[alpha_scale_idx] << " " << sign << " "  << is_quantum_number_conserved(itime_vertices) << std::endl;
 
+  //In the below, real physical quantities are measured.
   std::valarray<double> timings(2);
   measure_observables(timings);
   measurements["MeasurementTimeMsec"] << timings;
@@ -472,6 +493,8 @@ void HubbardInteractionExpansion::prepare_for_measurement()
 {
   //update_prop.finish_learning((node==0));
   //update_prop.finish_learning(true);//REMOVE AFTER DEBUG
+  flat_histogram_alpha.finish_learning(comm, true);
+
   statistics_ins.reset();
   statistics_rem.reset();
   statistics_shift.reset();

@@ -45,7 +45,7 @@ namespace alps {
                 , boost::mpi::communicator const & comm
                 , ScheduleChecker const & check = ScheduleChecker()
             )
-                : Base(parameters, comm.rank())
+                : Base(parameters, comm.rank(), comm)
                 , communicator(comm)
                 , schedule_checker(check)
                 , clone(comm.rank())
@@ -60,9 +60,17 @@ namespace alps {
 
             bool run(boost::function<bool ()> const & stop_callback) {
                 bool done = false, stopped = false;
+                bool was_thermalized_before = false;
                 do {
+                    const bool is_thermalized = this->is_thermalized();
+                    if (is_thermalized && !was_thermalized_before) {
+                      this->prepare_for_measurement();
+                    }
                     this->update();
-                    this->measure();
+                    if (is_thermalized) {
+                      this->measure();
+                    }
+                    was_thermalized_before = is_thermalized;
                     if (stopped || schedule_checker.pending()) {
                         stopped = stop_callback(); 
                         double local_fraction = stopped ? 1. : Base::fraction_completed();

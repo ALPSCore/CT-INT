@@ -185,6 +185,8 @@ void InteractionExpansion::initialize_observables(void)
     measurements << alps::ngs::SimpleRealObservable("QuantumNumberConserved");
   }
   measurements << alps::ngs::SimpleRealVectorObservable("PertOrderHistogram");
+  if (use_alpha_update)
+    measurements << alps::ngs::SimpleRealVectorObservable("AlphaScaleHistogram");
 #endif
   measurements.reset(true);
 }
@@ -200,10 +202,9 @@ void InteractionExpansion::measure_observables(std::valarray<double>& timings)
   assert(timings.size()>=2);
   boost::timer::cpu_timer timer;
 
-  //measurements["Sign"]<<sign;
-  measurements["Sign"]<<sign_meas.first/sign_meas.second;
+  measurements["Sign"]<<sign;
   if (params.defined("OUTPUT_Sign") ? params["OUTPUT_Sign"] : false) {
-      std::cout << " node= " << node << " Sign= " << sign_meas.first/sign_meas.second << " " << sign << " pert_order= " << itime_vertices.size() << std::endl;
+      std::cout << " node= " << node << " Sign= " << sign << " pert_order= " << itime_vertices.size() << std::endl;
   }
 
   pert_order_hist /= pert_order_hist.sum();

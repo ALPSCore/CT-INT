@@ -41,7 +41,7 @@
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/exponential_distribution.hpp>
 #include <boost/math/special_functions/sign.hpp>
-//#include <boost/lambda/lambda.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
@@ -475,7 +475,7 @@ class InteractionExpansion: public alps::mcbase
 {
 public:
 
-  InteractionExpansion(const alps::params& p, int rank);
+  InteractionExpansion(const alps::params& p, int rank, const boost::mpi::communicator& communicator);
   ~InteractionExpansion() {}
   bool is_thermalized() const {return step>therm_steps;}
   void update();
@@ -563,8 +563,14 @@ protected:
   const bool force_quantum_number_conservation;
   //const bool force_quantum_number_within_range;
   const bool single_vertex_update_non_density_type;
+
+  const bool use_alpha_update;
   const double alpha_scale_min, alpha_scale_max, alpha_scale_max_meas;
-  const int alpha_scale_update_period;
+  std::vector<double> alpha_scale_values;
+  const int alpha_scale_update_period, num_alpha_scale_values;
+  FlatHistogramPertOrder flat_histogram_alpha;
+  int alpha_scale_idx;
+  std::valarray<double> alpha_scale_hist;
 
   const double beta;
   const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
@@ -614,8 +620,6 @@ protected:
 
   double weight;
   double sign;
-  double alpha_scale;
-  FlatHistogram flat_histogram_alpha;
   unsigned int measurement_method;
   //bool thermalized;
   
@@ -647,10 +651,9 @@ protected:
 
   LegendreTransformer legendre_transformer;
 
-  //for measuring sign
-  std::pair<GTYPE,double> sign_meas;
-
   std::valarray<double> pert_order_hist;
+
+  const boost::mpi::communicator& comm;
 };
 
 
@@ -665,8 +668,8 @@ std::ostream& operator << (std::ostream& os, const simple_hist &h);
 
 class HubbardInteractionExpansion: public InteractionExpansion{
 public:
-  HubbardInteractionExpansion(const alps::params& p, int rank)
-    :InteractionExpansion(p, rank)
+  HubbardInteractionExpansion(const alps::params& p, int rank, const boost::mpi::communicator& communicator)
+    :InteractionExpansion(p, rank, communicator)
   {
     if(n_flavors !=2){throw std::invalid_argument("you need a different model for n_flavors!=2.");}
   }
