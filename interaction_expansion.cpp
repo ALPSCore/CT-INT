@@ -300,11 +300,11 @@ void InteractionExpansion::update()
 void InteractionExpansion::measure(){
   //std::cout << "qn_debug " << alpha_scale_values[alpha_scale_idx] << " " << sign << " "  << is_quantum_number_conserved(itime_vertices) << std::endl;
 
-  if (use_alpha_update)
+  if (use_alpha_update) {
     measurements["AlphaScaleHistogram"] << alpha_scale_hist;
-
-  if (alpha_scale_values[alpha_scale_idx]>alpha_scale_max_meas)
-    return;
+    if (alpha_scale_values[alpha_scale_idx]>alpha_scale_max_meas)
+      return;
+  }
 
   //std::cout << "MEasuring " << alpha_scale_values[alpha_scale_idx] << " " << sign << " "  << is_quantum_number_conserved(itime_vertices) << std::endl;
 
@@ -493,7 +493,8 @@ void HubbardInteractionExpansion::prepare_for_measurement()
 {
   //update_prop.finish_learning((node==0));
   //update_prop.finish_learning(true);//REMOVE AFTER DEBUG
-  flat_histogram_alpha.finish_learning(comm, true);
+  if (use_alpha_update)
+    flat_histogram_alpha.finish_learning(comm, true);
 
   statistics_ins.reset();
   statistics_rem.reset();
