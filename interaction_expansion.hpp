@@ -471,6 +471,13 @@ private:
     double a_, b_, beta_, coeff_, coeffX_;
 };
 
+typedef struct real_number_solver {
+  typedef double GTAU_TYPE;
+  typedef double REAL_TYPE;
+  typedef std::complex<double> COMPLEX_TYPE;
+} real_number_solver;
+
+template<class TYPES>
 class InteractionExpansion: public alps::mcbase
 {
 public:
@@ -483,7 +490,7 @@ public:
   double fraction_completed() const;
 
   //type of G(tau) This should be std::complex when G(tau) has imaginary parts. At some point, this will be templatized.
-  typedef double GTYPE;
+  typedef typename TYPES::GTAU_TYPE GTYPE;
 //typedef std::vector<std::vector<std::valarray<std::complex<double> > > > Wk_t;
   typedef boost::multi_array<std::complex<double>, 4> Wk_t;
 
@@ -532,16 +539,16 @@ protected:
   bool is_quantum_number_within_range(const itime_vertex_container& vertices);
 
   /*abstract virtual functions. Implement these for specific models.*/
-  virtual std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&)=0;
-  virtual void perform_add(fastupdate_add_helper&,size_t)=0;
-  virtual void reject_add(fastupdate_add_helper&,size_t)=0;
-  virtual std::pair<double,double> try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper&)=0;
-  virtual void perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper&)=0;
-  virtual void reject_remove(fastupdate_remove_helper&)=0;
-  virtual double try_shift(int idx_vertex, double new_time)=0;
-  virtual void perform_shift(int idx_vertex)=0;
-  virtual void reject_shift(int idx_vertex)=0;
-  virtual void prepare_for_measurement()=0; //called once after thermalization is done
+  std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&);
+  void perform_add(fastupdate_add_helper&,size_t);
+  void reject_add(fastupdate_add_helper&,size_t);
+  std::pair<double,double> try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper&);
+  void perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper&);
+  void reject_remove(fastupdate_remove_helper&);
+  double try_shift(int idx_vertex, double new_time);
+  void perform_shift(int idx_vertex);
+  void reject_shift(int idx_vertex);
+  void prepare_for_measurement(); //called once after thermalization is done
 
   /*private member variables, constant throughout the simulation*/
   const unsigned int node;
@@ -666,12 +673,15 @@ std::ostream& operator << (std::ostream &os, const c_or_cdagger &c);
 std::ostream& operator << (std::ostream& os, const simple_hist &h);
 
 
-class HubbardInteractionExpansion: public InteractionExpansion{
+/*
+template<class TYPES>
+class HubbardInteractionExpansion: public InteractionExpansion<TYPES>{
 public:
+
   HubbardInteractionExpansion(const alps::params& p, int rank, const boost::mpi::communicator& communicator)
-    :InteractionExpansion(p, rank, communicator)
+    :InteractionExpansion<TYPES>(p, rank, communicator)
   {
-    if(n_flavors !=2){throw std::invalid_argument("you need a different model for n_flavors!=2.");}
+    if(this->n_flavors !=2){throw std::invalid_argument("you need a different model for n_flavors!=2.");}
   }
   std::pair<double,double> try_add(fastupdate_add_helper&,size_t,std::vector<itime_vertex>&);
   void perform_add(fastupdate_add_helper&,size_t);
@@ -684,6 +694,16 @@ public:
   void perform_shift(int idx_vertex);
   void reject_shift(int idx_vertex);
 };
+ */
 
+
+#include "interaction_expansion.ipp"
+#include "fastupdate.ipp"
+#include "model.ipp"
+#include "solver.ipp"
+#include "selfenergy.ipp"
+#include "io.ipp"
+#include "splines.ipp"
+#include "observables.ipp"
 
 #endif

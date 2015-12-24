@@ -30,7 +30,8 @@
 #ifndef DMFT_QMC_WEAK_COUPLING_OPERATOR_H
 #define DMFT_QMC_WEAK_COUPLING_OPERATOR_H
 
-
+#include <alps/ngs/params.hpp>
+#include "types.h"
 
 extern "C" void vdsin_(const int *n, const double *a, double *y);
 extern "C" void vdcos_(const int *n, const double *a, double *y);
@@ -229,6 +230,7 @@ public:
 
 class creator : public c_or_cdagger {
 public:
+    using c_or_cdagger::operator=;
     creator(const spin_t z,const site_t s, const operator_time t, const frequency_t n_matsubara)
             : c_or_cdagger(z, s, t, n_matsubara){};
     ~creator(){};
@@ -236,6 +238,7 @@ public:
 
 class annihilator : public c_or_cdagger {
 public:
+    using c_or_cdagger::operator=;
     annihilator(const spin_t z,const site_t s, const operator_time t, const frequency_t n_matsubara)
             : c_or_cdagger(z, s, t, n_matsubara){};
     ~annihilator(){};

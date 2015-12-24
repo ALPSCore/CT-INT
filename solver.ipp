@@ -33,7 +33,8 @@
 
 ///The basic updates for the InteractionExpansion algorithm: adding and removing vertices.
 ///This is the heart of InteractionExpansion's code.
-void InteractionExpansion::removal_insertion_update(void) {
+template<class TYPES>
+void InteractionExpansion<TYPES>::removal_insertion_update(void) {
   const int nv_updated = update_prop.gen_Nv(random.engine());
 
   //boost::timer::cpu_timer timer;
@@ -277,7 +278,8 @@ void InteractionExpansion::removal_insertion_update(void)
 }
 */
 
-void InteractionExpansion::removal_insertion_single_vertex_update(void)
+template<class TYPES>
+void InteractionExpansion<TYPES>::removal_insertion_single_vertex_update(void)
 {
   const int nv_updated = 1;
 
@@ -409,7 +411,8 @@ void InteractionExpansion::removal_insertion_single_vertex_update(void)
   weight=metropolis_weight;
 }
 
-void InteractionExpansion::removal_insertion_double_vertex_update(void)
+template<class TYPES>
+void InteractionExpansion<TYPES>::removal_insertion_double_vertex_update(void)
 {
   const int nv_updated = 2;
 
@@ -566,7 +569,8 @@ void InteractionExpansion::removal_insertion_double_vertex_update(void)
 }
 
 //Shift updates: shift a vertex.
-void InteractionExpansion::shift_update(void) {
+template<class TYPES>
+void InteractionExpansion<TYPES>::shift_update(void) {
   const int pert_order= itime_vertices.size();//CHECKED
   if (pert_order<=1)
     return;
@@ -625,7 +629,8 @@ void InteractionExpansion::shift_update(void) {
 }
 
 //Update alpha for non-density-type vertices
-void InteractionExpansion::alpha_update(void) {
+template<class TYPES>
+void InteractionExpansion<TYPES>::alpha_update(void) {
   if (itime_vertices.size()==0 || alpha_scale_max==1.0)
     return;
 
@@ -653,7 +658,8 @@ void InteractionExpansion::alpha_update(void) {
 
 ///We recreate M from scratch to avoid roundoff error.
 //This is done by constructing a matrix consisting of bare Green's function and invert it.
-void InteractionExpansion::reset_perturbation_series(bool verbose)
+template<class TYPES>
+void InteractionExpansion<TYPES>::reset_perturbation_series(bool verbose)
 {
   typedef alps::numeric::matrix<GTYPE> matrix_t;
   big_inverse_m_matrix M2;

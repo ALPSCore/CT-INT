@@ -29,7 +29,8 @@
 
 #include "interaction_expansion.hpp"
 
-std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_helper& helper, size_t n_vertices_add, std::vector<itime_vertex>& new_vertices)
+template<class TYPES>
+std::pair<double,double> InteractionExpansion<TYPES>::try_add(fastupdate_add_helper& helper, size_t n_vertices_add, std::vector<itime_vertex>& new_vertices)
 {
   assert(n_vertices_add==new_vertices.size());
 
@@ -77,7 +78,8 @@ std::pair<double,double> HubbardInteractionExpansion::try_add(fastupdate_add_hel
 }
 
 
-void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add)
+template<class TYPES>
+void InteractionExpansion<TYPES>::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
   //boost::timer::cpu_timer timer;
   double det_rat = 1.0;
@@ -92,7 +94,8 @@ void HubbardInteractionExpansion::perform_add(fastupdate_add_helper& helper, siz
 }
 
 
-void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size_t n_vertices_add)
+template<class TYPES>
+void InteractionExpansion<TYPES>::reject_add(fastupdate_add_helper& helper, size_t n_vertices_add)
 {
   //get rid of the operators
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
@@ -107,7 +110,8 @@ void HubbardInteractionExpansion::reject_add(fastupdate_add_helper& helper, size
 }
 
 
-std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
+template<class TYPES>
+std::pair<double,double> InteractionExpansion<TYPES>::try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //boost::timer::cpu_timer timer;
   //get weight
@@ -148,7 +152,8 @@ std::pair<double,double> HubbardInteractionExpansion::try_remove(const std::vect
 }
 
 
-void HubbardInteractionExpansion::perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
+template<class TYPES>
+void InteractionExpansion<TYPES>::perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
 {
   //boost::timer::cpu_timer timer;
   //perform fastupdate down
@@ -171,14 +176,16 @@ void HubbardInteractionExpansion::perform_remove(const std::vector<int>& vertice
 }
 
 
-void HubbardInteractionExpansion::reject_remove(fastupdate_remove_helper& helper)
+template<class TYPES>
+void InteractionExpansion<TYPES>::reject_remove(fastupdate_remove_helper& helper)
 {
   //do nothing
   return;
 }
 
 //This is specialized for pair hopping and spin flip.
-double HubbardInteractionExpansion::try_shift(int idx_vertex, double new_time) {
+template<class TYPES>
+double InteractionExpansion<TYPES>::try_shift(int idx_vertex, double new_time) {
   assert(idx_vertex<itime_vertices.size());
 
   itime_vertex& v = itime_vertices[idx_vertex];
@@ -208,7 +215,8 @@ double HubbardInteractionExpansion::try_shift(int idx_vertex, double new_time) {
   return lambda_prod;
 }
 
-void HubbardInteractionExpansion::perform_shift(int idx_vertex) {
+template<class TYPES>
+void InteractionExpansion<TYPES>::perform_shift(int idx_vertex) {
   assert(idx_vertex<itime_vertices.size());
 
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
@@ -216,7 +224,8 @@ void HubbardInteractionExpansion::perform_shift(int idx_vertex) {
   }
 }
 
-void HubbardInteractionExpansion::reject_shift(int idx_vertex) {
+template<class TYPES>
+void InteractionExpansion<TYPES>::reject_shift(int idx_vertex) {
   for (spin_t flavor = 0; flavor < n_flavors; ++flavor) {
 
     itime_vertices[idx_vertex].set_time(shift_helper.old_time);
@@ -231,3 +240,4 @@ void HubbardInteractionExpansion::reject_shift(int idx_vertex) {
     }
   }
 }
+

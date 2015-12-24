@@ -30,8 +30,9 @@
 #include "interaction_expansion.hpp"
 
 ///read in Green's function file. Format:
-/// Frequency \t val \t val.... 
-void InteractionExpansion::read_bare_green(std::ifstream &G0_omega, std::ifstream &G0_tau)
+/// Frequency \t val \t val....
+template<class TYPES>
+void InteractionExpansion<TYPES>::read_bare_green(std::ifstream &G0_omega, std::ifstream &G0_tau)
 {
   assert(G0_omega.is_open() && G0_tau.is_open());
   double ignored;
@@ -64,7 +65,8 @@ void InteractionExpansion::read_bare_green(std::ifstream &G0_omega, std::ifstrea
 }
 
 
-void InteractionExpansion::print(std::ostream &os){
+template<class TYPES>
+void InteractionExpansion<TYPES>::print(std::ostream &os){
   os<<"***********************************************************************************************************"<<std::endl;
   os<<"*** ALPS InteractionExpansion solver                                                                    ***"<<std::endl;
   os<<"*** Emanuel Gull, Philipp Werner, Sebastian Fuchs, Brigitte Surer, Thomas Pruschke, and Matthias Troyer ***"<<std::endl;

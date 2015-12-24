@@ -1,31 +1,6 @@
-/*****************************************************************************
- *
- * ALPS DMFT Project
- *
- * Copyright (C) 2005 - 2009 by Emanuel Gull <gull@phys.columbia.edu>
- *                              Philipp Werner <werner@itp.phys.ethz.ch>,
- *                              Sebastian Fuchs <fuchs@theorie.physik.uni-goettingen.de>
- *                              Matthias Troyer <troyer@comp-phys.org>
- *
- *
- * This software is part of the ALPS Applications, published under the ALPS
- * Application License; you can use, redistribute it and/or modify it under
- * the terms of the license, either version 1 or (at your option) any later
- * version.
- * 
- * You should have received a copy of the ALPS Application License along with
- * the ALPS Applications; see the file LICENSE.txt. If not, the license is also
- * available from http://alps.comp-phys.org/.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
- * FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT 
- * SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE 
- * FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, 
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
- * DEALINGS IN THE SOFTWARE.
- *
- *****************************************************************************/
+
+#ifndef IMPSOLVER_SELFENERGY_HPP
+#define IMPSOLVER_SELFENERGY_HPP
 
 #include "interaction_expansion.hpp"
 #include "operator.hpp"
@@ -75,14 +50,16 @@ inline twocomplex fastcmult(const twocomplex &a, const twocomplex &b)
 
 
 
-void InteractionExpansion::compute_W_matsubara()
+template<class TYPES>
+void InteractionExpansion<TYPES>::compute_W_matsubara()
 {
   Wk_t Wk(boost::extents[n_flavors][n_site][n_site][n_matsubara]);
   measure_Wk(Wk, n_matsubara_measurements);
   measure_densities();
 }
 
-void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
+template<class TYPES>
+void InteractionExpansion<TYPES>::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 {
   //clear contents of Wk
   std::fill(Wk.origin(), Wk.origin()+Wk.num_elements(), 0);
@@ -94,7 +71,7 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
     max_mat_size = std::max(max_mat_size, num_rows(M[z].matrix()));
   }
   alps::numeric::matrix<std::complex<double> > GR(max_mat_size, n_site),
-          GL(n_site, max_mat_size), MGR(max_mat_size, n_site), GLMGR(max_mat_size, max_mat_size);
+      GL(n_site, max_mat_size), MGR(max_mat_size, n_site), GLMGR(max_mat_size, max_mat_size);
 
   //Note: vectorized for the loops over operators (should be optimal for large beta)
   for (size_t z=0; z<n_flavors; ++z) {
@@ -106,10 +83,10 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 
     //We do not need any more?
     //for(size_t p=0;p<Nv;++p) {
-      //M[z].creators()[p].compute_exp(n_matsubara, -1);
+    //M[z].creators()[p].compute_exp(n_matsubara, -1);
     //}
     //for(size_t q=0;q<Nv;++q) {
-      //M[z].annihilators()[q].compute_exp(n_matsubara, +1);
+    //M[z].annihilators()[q].compute_exp(n_matsubara, +1);
     //}
 
     for(unsigned int i_freq=0; i_freq <nfreq; ++i_freq) {
@@ -168,23 +145,23 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       ++pert_vertex[it->type()];
     }
     std::cout << " Wk_node= " << node << " "
-      << Wk[0][0][0][0].real() << " " << Wk[0][0][0][0].imag() << " "
-      << Wk[0][1][1][0].real() << " " << Wk[0][1][1][0].imag() << " "
-      << Wk[0][2][2][0].real() << " " << Wk[0][2][2][0].imag() << " "
-      << Wk[0][3][3][0].real() << " " << Wk[0][3][3][0].imag() << " "
-      << Wk[1][0][0][0].real() << " " << Wk[1][0][0][0].imag() << " "
-      << Wk[1][1][1][0].real() << " " << Wk[1][1][1][0].imag() << " "
-      << Wk[1][2][2][0].real() << " " << Wk[1][2][2][0].imag() << " "
-      << Wk[1][3][3][0].real() << " " << Wk[1][3][3][0].imag() << " "
-      << " step " << step;
+    << Wk[0][0][0][0].real() << " " << Wk[0][0][0][0].imag() << " "
+    << Wk[0][1][1][0].real() << " " << Wk[0][1][1][0].imag() << " "
+    << Wk[0][2][2][0].real() << " " << Wk[0][2][2][0].imag() << " "
+    << Wk[0][3][3][0].real() << " " << Wk[0][3][3][0].imag() << " "
+    << Wk[1][0][0][0].real() << " " << Wk[1][0][0][0].imag() << " "
+    << Wk[1][1][1][0].real() << " " << Wk[1][1][1][0].imag() << " "
+    << Wk[1][2][2][0].real() << " " << Wk[1][2][2][0].imag() << " "
+    << Wk[1][3][3][0].real() << " " << Wk[1][3][3][0].imag() << " "
+    << " step " << step;
     std::cout << " pert_PH " << pert_vertex[6] << " " << pert_vertex[4] << " pert_SF " << pert_vertex[8] << " " << pert_vertex[1] << std::endl;
   }
 
   //if (!is_quantum_number_conserved(itime_vertices)) {
-    //std::cout << "w/o check range " << is_quantum_number_conserved(itime_vertices,false) << std::endl;
-    //std::vector<itime_vertex> itime_vertices_sorted(itime_vertices);
-    //std::sort(itime_vertices_sorted.begin(), itime_vertices_sorted.end());
-    //print_vertices(std::cout, itime_vertices_sorted);
+  //std::cout << "w/o check range " << is_quantum_number_conserved(itime_vertices,false) << std::endl;
+  //std::vector<itime_vertex> itime_vertices_sorted(itime_vertices);
+  //std::sort(itime_vertices_sorted.begin(), itime_vertices_sorted.end());
+  //print_vertices(std::cout, itime_vertices_sorted);
   //}
 
   for(unsigned int flavor=0;flavor<n_flavors;++flavor) {
@@ -206,7 +183,8 @@ void InteractionExpansion::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
   }
 }
 
-void InteractionExpansion::compute_Sl() {
+template<class TYPES>
+void InteractionExpansion<TYPES>::compute_Sl() {
   static boost::multi_array<std::complex<double>,3> Sl(boost::extents[n_site][n_site][n_legendre]);
   const size_t num_random_walk = 100;
 
@@ -281,7 +259,8 @@ void InteractionExpansion::compute_Sl() {
 }
 
 
-void InteractionExpansion::measure_densities()
+template<class TYPES>
+void InteractionExpansion<TYPES>::measure_densities()
 {
   std::vector< std::vector<double> > dens(n_flavors);
   for(unsigned int z=0;z<n_flavors;++z){
@@ -294,20 +273,20 @@ void InteractionExpansion::measure_densities()
     alps::numeric::vector<double> g0_tauj(Nv);
     alps::numeric::vector<double> M_g0_tauj(Nv);
     alps::numeric::vector<double> g0_taui(Nv);
-    for (unsigned int s=0;s<n_site;++s) {             
+    for (unsigned int s=0;s<n_site;++s) {
       for (unsigned int j=0;j<Nv;++j)
         g0_tauj[j] = green0_spline_new(M[z].annihilators()[j].t().time()-tau, z, M[z].annihilators()[j].s(), s);//CHECK THE TREATMENT OF EQUAL-TIME Green's function
       for (unsigned int i=0;i<Nv;++i)
         g0_taui[i] = green0_spline_new(tau-M[z].creators()[i].t().time(),z, s, M[z].creators()[i].s());
       if (num_rows(M[z].matrix())>0)
-          gemv(M[z].matrix(),g0_tauj,M_g0_tauj);
+        gemv(M[z].matrix(),g0_tauj,M_g0_tauj);
       dens[z][s] += green0_spline_new(-beta*1E-10,z,s,s);//tau=-0
       for (unsigned int j=0;j<Nv;++j)
-        dens[z][s] -= g0_taui[j]*M_g0_tauj[j]; 
+        dens[z][s] -= g0_taui[j]*M_g0_tauj[j];
     }
   }
   std::valarray<double> densities(0., n_flavors);
-  for (unsigned int z=0; z<n_flavors; ++z) {                  
+  for (unsigned int z=0; z<n_flavors; ++z) {
     std::valarray<double> densmeas(n_site);
     for (unsigned int i=0; i<n_site; ++i) {
       densities[z] += dens[z][i];
@@ -336,23 +315,24 @@ void InteractionExpansion::measure_densities()
   measurements["n_i n_j"] << static_cast<std::valarray<double> > (ninj*sign);
 }
 
-void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardInteractionExpansion>::type &results,
-                                                                        matsubara_green_function_t &green_matsubara_measured,
-                                                                        const matsubara_green_function_t &bare_green_matsubara,
-                                                                        std::vector<double>& densities,
-                                                                        const double &beta, std::size_t n_site,
-                                                                        std::size_t n_flavors, std::size_t n_matsubara, std::size_t n_matsubara_meas) {
+template<class SOLVER_TYPE>
+void evaluate_selfenergy_measurement_matsubara(const typename alps::results_type<SOLVER_TYPE>::type &results,
+                                               matsubara_green_function_t &green_matsubara_measured,
+                                               const matsubara_green_function_t &bare_green_matsubara,
+                                               std::vector<double>& densities,
+                                               const double &beta, std::size_t n_site,
+                                               std::size_t n_flavors, std::size_t n_matsubara, std::size_t n_matsubara_meas) {
   green_matsubara_measured.clear();
   std::cout << "evaluating self energy measurement: matsubara, reciprocal space" << std::endl;
-  double sign = results["Sign"].mean<double>();
+  double sign = results["Sign"].template mean<double>();
   for (std::size_t flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
     for (std::size_t site1 = 0; site1 < n_site; ++site1) {
       for (std::size_t site2 = 0; site2 < n_site; ++site2) {
         std::stringstream Wk_real_name, Wk_imag_name;
         Wk_real_name << "Wk_real_" << flavor1 << "_" << site1 << "_" << site2;
         Wk_imag_name << "Wk_imag_" << flavor1 << "_" << site1 << "_" << site2;
-        std::vector<double> mean_real = results[Wk_real_name.str().c_str()].mean<std::vector<double> >();
-        std::vector<double> mean_imag = results[Wk_imag_name.str().c_str()].mean<std::vector<double> >();
+        std::vector<double> mean_real = results[Wk_real_name.str().c_str()].template mean<std::vector<double> >();
+        std::vector<double> mean_imag = results[Wk_imag_name.str().c_str()].template mean<std::vector<double> >();
         assert(mean_real.size()==n_matsubara_meas && mean_imag.size()==n_matsubara_meas);
         if (!(mean_real.size()==n_matsubara_meas && mean_imag.size()==n_matsubara_meas)) {
           throw std::logic_error("Logic error in evaluate_selfenergy_measurement_matsubara.");
@@ -372,24 +352,25 @@ void evaluate_selfenergy_measurement_matsubara(const alps::results_type<HubbardI
       }
     }
   }
-  std::vector<double> dens = results["densities"].mean<std::vector<double> >();
+  std::vector<double> dens = results["densities"].template mean<std::vector<double> >();
   for (std::size_t z=0; z<n_flavors; ++z)
     densities[z] = dens[z];
 
 }
 
-void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardInteractionExpansion>::type &results,
-                                               matsubara_green_function_t &green_matsubara_measured,
-                                               matsubara_green_function_t &sigma_green_matsubara_measured,
-                                               itime_green_function_t &green_itime_measured,
-                                               const matsubara_green_function_t &bare_green_matsubara,
-                                               std::vector<double>& densities,
-                                               const double &beta, std::size_t n_site,
-                                               std::size_t n_flavors, std::size_t n_matsubara, std::size_t n_tau, std::size_t n_legendre) {
+template<class SOLVER_TYPE>
+void evaluate_selfenergy_measurement_legendre(const typename alps::results_type<SOLVER_TYPE>::type &results,
+                                              matsubara_green_function_t &green_matsubara_measured,
+                                              matsubara_green_function_t &sigma_green_matsubara_measured,
+                                              itime_green_function_t &green_itime_measured,
+                                              const matsubara_green_function_t &bare_green_matsubara,
+                                              std::vector<double>& densities,
+                                              const double &beta, std::size_t n_site,
+                                              std::size_t n_flavors, std::size_t n_matsubara, std::size_t n_tau, std::size_t n_legendre) {
   green_matsubara_measured.clear();
   green_itime_measured.clear();
   std::cout << "evaluating self energy measurement: lengendre, real space" << std::endl;
-  double sign = results["Sign"].mean<double>();
+  double sign = results["Sign"].template mean<double>();
 
   //Legendre expansion utils
   LegendreTransformer legendre_transformer(n_matsubara,n_legendre);
@@ -405,8 +386,8 @@ void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardIn
         std::stringstream Sl_real_name, Sl_imag_name;
         Sl_real_name << "Sl_real_" << flavor1 << "_" << site1 << "_" << site2;
         Sl_imag_name << "Sl_imag_" << flavor1 << "_" << site1 << "_" << site2;
-        std::vector<double> mean_real = results[Sl_real_name.str().c_str()].mean<std::vector<double> >();
-        std::vector<double> mean_imag = results[Sl_imag_name.str().c_str()].mean<std::vector<double> >();
+        std::vector<double> mean_real = results[Sl_real_name.str().c_str()].template mean<std::vector<double> >();
+        std::vector<double> mean_imag = results[Sl_imag_name.str().c_str()].template mean<std::vector<double> >();
         for (unsigned int i_l = 0; i_l < n_legendre; ++i_l) {
           Sl[i_l][site1][site2][flavor1] = std::complex<double>(mean_real[i_l], mean_imag[i_l])/sign;
         }
@@ -467,8 +448,9 @@ void evaluate_selfenergy_measurement_legendre(const alps::results_type<HubbardIn
   }
 }
 
+//
+//double green0_spline(const itime_green_function_t &green0, const itime_t delta_t,
+//const int s1, const int s2, const spin_t z, int n_tau, double beta);
 
-double green0_spline(const itime_green_function_t &green0, const itime_t delta_t,
-                                              const int s1, const int s2, const spin_t z, int n_tau, double beta);
 
-
+#endif //IMPSOLVER_SELFENERGY_HPP

@@ -42,7 +42,8 @@
 /// @param compute_only_weight Do not perform the fastupdate, but only return the Mnn entry (1/lambda), which is used for the acceptance weight.
 /// @param track_green_matsubara Track Green function in Matsubara frequencies or imaginary time if required.
 
-double InteractionExpansion::fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add=1)
+template<class TYPES>
+double InteractionExpansion<TYPES>::fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add)
 {
   assert(num_rows(M[flavor].matrix()) == num_cols(M[flavor].matrix()));
   unsigned int noperators = num_rows(M[flavor].matrix());
@@ -89,7 +90,8 @@ double InteractionExpansion::fastupdate_up(const int flavor, bool compute_only_w
 
 ///Fastupdate formulas, remove order by one (remove a vertex). If necessary
 ///also take track of the Green's function.
-double InteractionExpansion::fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight)
+template<class TYPES>
+double InteractionExpansion<TYPES>::fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight)
 {
   using std::swap;
   using alps::numeric::column_view;
@@ -115,7 +117,8 @@ double InteractionExpansion::fastupdate_down(const std::vector<size_t>& rows_col
 }
 
 //VERY UGLY IMPLEMENTATION
-double InteractionExpansion::fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight) {
+template<class TYPES>
+double InteractionExpansion<TYPES>::fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight) {
   assert(num_rows(M[flavor].matrix()) == num_cols(M[flavor].matrix()));
   const int num_rows_cols_updated = rows_cols_updated.size();
   const int noperators = num_rows(M[flavor].matrix());
@@ -151,5 +154,3 @@ double InteractionExpansion::fastupdate_shift(const int flavor, const std::vecto
       M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.rows_cols_updated[flavor], compute_only_weight);
   return shift_helper.det_rat;
 }
-
-

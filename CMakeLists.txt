@@ -50,17 +50,15 @@ set(ALPS_ROOT ${ALPS_LIBRARY_DIRS} $ENV{BLAS_LAPACK_DIRS} CACHE STRINGS "CHYB li
 set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
         fouriertransform.C
         auxiliary.cpp
-        observables.cpp
-        fastupdate.cpp
-        selfenergy.cpp
-        solver.cpp
-        io.cpp
-        splines.cpp
-        interaction_expansion.cpp
-        measurements.cpp
-        model.cpp
+        observables.ipp
+        fastupdate.ipp
+        solver.ipp
+        io.ipp
+        splines.ipp
+        interaction_expansion.ipp
+        model.ipp
         util.cpp
-        legendre.cpp legendre.h fastupdate_formula.h U_matrix.cpp update_statistics.h wang_landau.h)
+        legendre.cpp legendre.h fastupdate_formula.h U_matrix.cpp update_statistics.h wang_landau.h measurements.hpp selfenergy.ipp operator.cpp)
 add_executable(interaction main.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
 
 set (GTEST_SOURCE legendre.cpp util.cpp)

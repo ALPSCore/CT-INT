@@ -27,25 +27,28 @@
  *
  *****************************************************************************/
 
-#include "interaction_expansion.hpp"
 #include <ctime>
-#include "xml.h"
-#include "alps/ngs/make_deprecated_parameters.hpp"
 
 #include <boost/lexical_cast.hpp>
 #include "boost/tuple/tuple.hpp"
 
+#include "alps/ngs/make_deprecated_parameters.hpp"
+
+#include "interaction_expansion.hpp"
+#include "xml.h"
+
 //global variables
 
-frequency_t c_or_cdagger::nm_;
-bool c_or_cdagger::use_static_exp_;
-unsigned int c_or_cdagger::ntau_;
-double c_or_cdagger::beta_;
-double *c_or_cdagger::omegan_;
-std::complex<double> *c_or_cdagger::exp_iomegan_tau_;
+//frequency_t c_or_cdagger::nm_;
+//bool c_or_cdagger::use_static_exp_;
+//unsigned int c_or_cdagger::ntau_;
+//double c_or_cdagger::beta_;
+//double *c_or_cdagger::omegan_;
+//std::complex<double> *c_or_cdagger::exp_iomegan_tau_;
 
 
-InteractionExpansion::InteractionExpansion(const alps::params &parms, int node, const boost::mpi::communicator& communicator)
+template<class TYPES>
+InteractionExpansion<TYPES>::InteractionExpansion(const alps::params &parms, int node, const boost::mpi::communicator& communicator)
 : alps::mcbase(parms,node),
 node(node),
 max_order(parms["MAX_ORDER"] | 2048),
@@ -170,7 +173,7 @@ comm(communicator)
   std::vector<double> proposal_prob(n_multi_vertex_update, 1.0);
   if (params.defined("MULTI_VERTEX_UPDATE_PROPOSAL_RATE")) {
     proposal_prob.resize(0);
-    std::stringstream ss(params["MULTI_VERTEX_UPDATE_PROPOSAL_RATE"].cast<std::string>());
+    std::stringstream ss(params["MULTI_VERTEX_UPDATE_PROPOSAL_RATE"].template cast<std::string>());
     double rtmp;
     while (ss >> rtmp) {
       proposal_prob.push_back(rtmp);
@@ -226,7 +229,8 @@ comm(communicator)
 
 
 
-void InteractionExpansion::update()
+template<class TYPES>
+void InteractionExpansion<TYPES>::update()
 {
   //std::cout << " update called  node " << node << std::endl;
   std::valarray<double> t_meas(0.0, 2);
@@ -297,14 +301,15 @@ void InteractionExpansion::update()
   measurements["UpdateTimeMsec"] << t_meas;
 }
 
-void InteractionExpansion::measure(){
+template<class TYPES>
+void InteractionExpansion<TYPES>::measure(){
   //std::cout << "qn_debug " << alpha_scale_values[alpha_scale_idx] << " " << sign << " "  << is_quantum_number_conserved(itime_vertices) << std::endl;
 
-  if (use_alpha_update)
+  if (use_alpha_update) {
     measurements["AlphaScaleHistogram"] << alpha_scale_hist;
-
-  if (alpha_scale_values[alpha_scale_idx]>alpha_scale_max_meas)
-    return;
+    if (alpha_scale_values[alpha_scale_idx]>alpha_scale_max_meas)
+      return;
+  }
 
   //std::cout << "MEasuring " << alpha_scale_values[alpha_scale_idx] << " " << sign << " "  << is_quantum_number_conserved(itime_vertices) << std::endl;
 
@@ -316,7 +321,8 @@ void InteractionExpansion::measure(){
 
 
 
-double InteractionExpansion::fraction_completed() const{
+template<class TYPES>
+double InteractionExpansion<TYPES>::fraction_completed() const{
   if (!is_thermalized()) {
     return 0.;
   } else {
@@ -327,7 +333,8 @@ double InteractionExpansion::fraction_completed() const{
 
 
 ///do all the setup that has to be done before running the simulation.
-void InteractionExpansion::initialize_simulation(const alps::params &parms)
+template<class TYPES>
+void InteractionExpansion<TYPES>::initialize_simulation(const alps::params &parms)
 {
   weight=0;
   sign=1;
@@ -341,7 +348,8 @@ void InteractionExpansion::initialize_simulation(const alps::params &parms)
   green_itime=bare_green_itime;
 }
 
-bool InteractionExpansion::is_quantum_number_conserved(const itime_vertex_container& vertices) {
+template<class TYPES>
+bool InteractionExpansion<TYPES>::is_quantum_number_conserved(const itime_vertex_container& vertices) {
   //using namespace boost::lambda;
 
   const int Nv = vertices.size();
@@ -370,7 +378,8 @@ bool InteractionExpansion::is_quantum_number_conserved(const itime_vertex_contai
 
 
 //This makes sence in the absence of a bath
-bool InteractionExpansion::is_quantum_number_within_range(const itime_vertex_container& vertices) {
+template<class TYPES>
+bool InteractionExpansion<TYPES>::is_quantum_number_within_range(const itime_vertex_container& vertices) {
   //using namespace boost::lambda;
 
   const int Nv = vertices.size();
@@ -398,7 +407,8 @@ bool InteractionExpansion::is_quantum_number_within_range(const itime_vertex_con
   return true;
 }
 
-void InteractionExpansion::sanity_check() {
+template<class TYPES>
+void InteractionExpansion<TYPES>::sanity_check() {
 #ifndef NDEBUG
   M.sanity_check(itime_vertices);
 
@@ -462,44 +472,20 @@ void InteractionExpansion::sanity_check() {
 }
 
 
-void c_or_cdagger::initialize_simulation(const alps::params &p)
-{
-  beta_=p["BETA"];
-  nm_=p["NMATSUBARA_MEASUREMENTS"] | (p["NMATSUBARA"]|p["N_MATSUBARA"]);
-  omegan_ = new double[nm_];
-  for(unsigned int i=0;i<nm_;++i) {
-    omegan_[i]=(2.*i+1.)*M_PI/beta_;
-  }
-  if(p.defined("TAU_DISCRETIZATION_FOR_EXP")) {
-    ntau_=p["TAU_DISCRETIZATION_FOR_EXP"];
-    use_static_exp_=true;
-    exp_iomegan_tau_=new std::complex<double> [2*nm_*ntau_];
-    if(exp_iomegan_tau_==0){throw std::runtime_error("not enough memory for computing exp!"); }
-    std::cout<<"starting computation of exp values for measurement"<<std::endl;
-    for(unsigned int i=0;i<ntau_;++i){
-      double tau=i*beta_/(double)ntau_;
-      for(unsigned int o=0;o<nm_;++o)
-        exp_iomegan_tau_[2*nm_*i + o] = std::complex<double>(cos(omegan_[o]*tau), sin(omegan_[o]*tau));
-      for(unsigned int o=0;o<nm_;++o)
-        exp_iomegan_tau_[2*nm_*i + nm_ + o] = std::complex<double>(cos(omegan_[o]*tau), -sin(omegan_[o]*tau));
-    }
-    std::cout<<"done exp computation."<<std::endl;
-  } else {
-    use_static_exp_=false;
-  }
-}
 
-void HubbardInteractionExpansion::prepare_for_measurement()
+template<class TYPES>
+void InteractionExpansion<TYPES>::prepare_for_measurement()
 {
   //update_prop.finish_learning((node==0));
   //update_prop.finish_learning(true);//REMOVE AFTER DEBUG
-  flat_histogram_alpha.finish_learning(comm, true);
+  if (use_alpha_update)
+    flat_histogram_alpha.finish_learning(comm, true);
 
-  statistics_ins.reset();
-  statistics_rem.reset();
-  statistics_shift.reset();
-  simple_statistics_ins.reset();
-  simple_statistics_rem.reset();
-  statistics_dv_ins.reset();
-  statistics_dv_rem.reset();
+  this->statistics_ins.reset();
+  this->statistics_rem.reset();
+  this->statistics_shift.reset();
+  this->simple_statistics_ins.reset();
+  this->simple_statistics_rem.reset();
+  this->statistics_dv_ins.reset();
+  this->statistics_dv_rem.reset();
 }

@@ -41,7 +41,8 @@ template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, c
 //with correct treatment of equal-time Green's function
 //take care of the ambiguity of the equal-time Green's function.
 //We appreciate the ordering of the creation and annihilation operators in the vertex.
-double InteractionExpansion::green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const
+template<class TYPES>
+double InteractionExpansion<TYPES>::green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const
 {
   assert(c_pos<M[flavor].annihilators().size());
   assert(cdagger_pos<M[flavor].creators().size());
@@ -65,7 +66,8 @@ double InteractionExpansion::green0_spline_for_M(const spin_t flavor, size_t c_p
 }
 
 ///Compute the bare green's function for a given flavor, site, and imaginary time.
-double InteractionExpansion::green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const
+template<class TYPES>
+double InteractionExpansion<TYPES>::green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const
 {
   assert(delta_t<= beta);
   assert(delta_t>=-beta);

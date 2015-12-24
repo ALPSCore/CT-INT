@@ -27,13 +27,17 @@
 #include "interaction_expansion.hpp"
 #include "fouriertransform.h"
 #include <boost/date_time/posix_time/posix_time_types.hpp>
+#include "measurements.hpp"
+
+typedef InteractionExpansion<real_number_solver> SOLVER_TYPE;
+
 #ifdef ALPS_HAVE_MPI
 //#include <alps/mcmpiadapter.hpp>
 #include "my_mcmpiadapter.hpp"
 #include "my_check_schedule.hpp"
-typedef alps::mcmpiadapter<HubbardInteractionExpansion,alps::my_check_schedule> sim_type;
+typedef alps::mcmpiadapter<SOLVER_TYPE, alps::my_check_schedule> sim_type;
 #else
-typedef HubbardInteractionExpansion sim_type;
+typedef SOLVER_TYPE sim_type;
 #endif
 
 #undef BUILD_PYTHON_MODULE
@@ -43,7 +47,7 @@ bool stop_callback(boost::posix_time::ptime const & end_time) {
   static alps::ngs::signal signal;
   return !signal.empty() || boost::posix_time::second_clock::local_time() > end_time;
 }
-void compute_greens_functions(const alps::results_type<HubbardInteractionExpansion>::type &results, const alps::parameters_type<HubbardInteractionExpansion>::type& parms, const std::string &output_file);
+//void compute_greens_functions(const alps::results_type<SOLVER_TYPE>::type &results, const alps::parameters_type<SOLVER_TYPE>::type& parms, const std::string &output_file);
 int global_mpi_rank;
 
 int main(int argc, char** argv)
@@ -58,7 +62,7 @@ int main(int argc, char** argv)
 #endif
 
     //create ALPS parameters from hdf5 parameter file
-    alps::parameters_type<HubbardInteractionExpansion>::type parms(alps::hdf5::archive(options.input_file, alps::hdf5::archive::READ));
+    alps::parameters_type<SOLVER_TYPE>::type parms(alps::hdf5::archive(options.input_file, alps::hdf5::archive::READ));
     //try {
       if(options.time_limit!=0)
         throw std::invalid_argument("time limit is passed in the parameter file!");
@@ -79,13 +83,13 @@ int main(int argc, char** argv)
       //on the master: collect MC results and store them in file, then postprocess
       if (global_mpi_rank==0){
         std::cout << " collecting ... " << std::endl;
-        alps::results_type<HubbardInteractionExpansion>::type results = collect_results(s);
+        alps::results_type<SOLVER_TYPE>::type results = collect_results(s);
         save_results(results, parms, output_file, "/simulation/results");
         //compute the output Green's function and Fourier transform it, store in the right path
         std::cout << " collecting done rank = " << global_mpi_rank << std::endl;
         c.barrier();
         std::cout << " compute GF " << std::endl;
-        compute_greens_functions(results, parms, output_file);
+        compute_greens_functions<SOLVER_TYPE>(results, parms, output_file);
         std::cout << " compute GF  done" << std::endl;
 #ifdef ALPS_HAVE_MPI
       } else{

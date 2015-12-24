@@ -47,7 +47,8 @@ typedef const alps::SimpleObservable<double,alps::DetailedBinning<double> > cons
 ///this function is called at the start of the simulation for allocation of
 ///memory for the ALPS observables. It is also called at the start of every DMFT
 ///iteration.
-void InteractionExpansion::initialize_observables(void) 
+template<class TYPES>
+void InteractionExpansion<TYPES>::initialize_observables(void)
 {
   if(measurements.has("Sign")){
     measurements.clear();
@@ -196,8 +197,9 @@ void InteractionExpansion::initialize_observables(void)
 
 ///this function is called whenever measurements should be performed. Depending
 ///on the value of  measurement_method it will choose one particular
-///measurement function. 
-void InteractionExpansion::measure_observables(std::valarray<double>& timings)
+///measurement function.
+template<class TYPES>
+void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& timings)
 {
   assert(timings.size()>=2);
   boost::timer::cpu_timer timer;
