@@ -59,7 +59,10 @@ set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
         model.ipp
         util.cpp
         legendre.cpp legendre.h fastupdate_formula.h U_matrix.cpp update_statistics.h wang_landau.h measurements.hpp selfenergy.ipp operator.cpp)
-add_executable(interaction main.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
+
+#add_executable(interaction_real main_real.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
+add_executable(interaction_real main_real.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
+add_executable(interaction_complex main_complex.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
 
 set (GTEST_SOURCE legendre.cpp util.cpp)
 add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTEST_SOURCE})
@@ -71,7 +74,8 @@ if(DEFINED GOOGLE_PROFILER)
 endif(DEFINED GOOGLE_PROFILER)
 
 message(CHYB_LIBRARIES "${CHYB_LIBRARIES}")
-target_link_libraries(interaction ${CHYB_LIBRARIES})
+target_link_libraries(interaction_real ${CHYB_LIBRARIES})
+target_link_libraries(interaction_complex ${CHYB_LIBRARIES})
 target_link_libraries(gtest ${CHYB_LIBRARIES})
 
 message("CXX, CC=")
