@@ -461,9 +461,10 @@ template<class TYPES>
 void InteractionExpansion<TYPES>::sanity_check() {
 #ifndef NDEBUG
   M.sanity_check(itime_vertices);
+  const double eps = 1E-5;
 
   //recompute M
-  double sign_exact = 1;
+  M_TYPE sign_exact = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     if (num_rows(M[flavor].matrix())==0) {
       continue;
@@ -474,14 +475,15 @@ void InteractionExpansion<TYPES>::sanity_check() {
     const size_t Nv = M[flavor].matrix().num_rows();
     for (size_t q=0; q<Nv; ++q) {
       for (size_t p=0; p<Nv; ++p) {
-        G0(p, q) = green0_spline_for_M(flavor, p, q);
+        G0(p, q) = mycast<M_TYPE>(green0_spline_for_M(flavor, p, q));
       }
     }
     for (size_t p=0; p<Nv; ++p) {
-      G0(p, p) -= M[flavor].alpha_at(p);
+      G0(p, p) -= mycast<M_TYPE>(M[flavor].alpha_at(p));
     }
 
-    sign_exact *= boost::math::sign(alps::numeric::determinant(G0));
+    M_TYPE det = alps::numeric::determinant(G0);
+    sign_exact *= det/std::abs(det);
 
     alps::numeric::matrix<M_TYPE> tmp = mygemm(G0, M[flavor].matrix());
     bool OK = true;
@@ -491,10 +493,10 @@ void InteractionExpansion<TYPES>::sanity_check() {
         bool flag;
         if (p==q) {
           max_diff = std::max(max_diff, std::abs(tmp(p,q)-1.));
-          flag = (std::abs(tmp(p,q)-1.)<1E-5);
+          flag = (std::abs(tmp(p,q)-1.)<eps);
         } else {
           max_diff = std::max(max_diff, std::abs(tmp(p,q)));
-          flag = (std::abs(tmp(p,q))<1E-5);
+          flag = (std::abs(tmp(p,q))<eps);
         }
         OK = OK && flag;
         if(!flag) {
@@ -508,10 +510,13 @@ void InteractionExpansion<TYPES>::sanity_check() {
   //contribution from (-U)^n
   {
     const std::vector<vertex_definition<M_TYPE> >& vd = Uijkl.get_vertices();
-    for (int iv=0; iv<itime_vertices.size(); ++iv)
-      sign_exact *= boost::math::sign(-vd[itime_vertices[iv].type()].Uval());
+    for (int iv=0; iv<itime_vertices.size(); ++iv) {
+      const M_TYPE Uval = -vd[itime_vertices[iv].type()].Uval();
+      sign_exact *= Uval/std::abs(Uval);
+
+    }
   }
-  assert(sign==sign_exact);
+  assert(std::abs(sign-sign_exact)<eps);
 
   //check itime_vertex list
   for (itime_vertex_container::iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
