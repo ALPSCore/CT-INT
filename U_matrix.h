@@ -71,7 +71,7 @@ public:
      return sites_;
    };
 
-   double Uval() const {
+   T Uval() const {
      return Uval_;
    }
 
@@ -124,11 +124,11 @@ public:
          //std::cout << "site1 " << site1 << std::endl;
          //std::cout << "site2 " << site2 << std::endl;
          //std::cout << "ndim " << ndim_group_per_flavor << std::endl;
-         if (std::min(std::abs(get_alpha(i_af,i_rank)),std::abs(1-get_alpha(i_af,i_rank))) >0.5) {
+         if (std::min(std::abs(get_alpha(i_af,i_rank)),std::abs(1.0-get_alpha(i_af,i_rank))) >0.5) {
            throw std::runtime_error("Please take the value of alpha sufficiently close to 0 or 1 when using quantum number conservation!");
          }
          if(site1==site2) {//if c^dagger c is not of density type.
-           PH = std::abs(get_alpha(i_af, i_rank))<std::abs(1-get_alpha(i_af,i_rank)) ? 1 : -1;
+           PH = std::abs(get_alpha(i_af, i_rank))<std::abs(1.0-get_alpha(i_af,i_rank)) ? 1 : -1;
          }
          if (PH==1) {
            //apply c first, then cdagger.

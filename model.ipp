@@ -30,20 +30,19 @@
 #include "interaction_expansion.hpp"
 
 template<class TYPES>
-std::pair<double,double> InteractionExpansion<TYPES>::try_add(fastupdate_add_helper& helper, size_t n_vertices_add, std::vector<itime_vertex>& new_vertices)
+std::pair<typename TYPES::M_TYPE, typename TYPES::M_TYPE>
+InteractionExpansion<TYPES>::try_add(size_t n_vertices_add, std::vector<itime_vertex>& new_vertices)
 {
   assert(n_vertices_add==new_vertices.size());
 
-  //boost::timer::cpu_timer timer;
-
   //work array
-  helper.clear();
+  add_helper.clear();
 
   //add vertices one by one
-  double prod_Uval_wm = 1.0;
+  M_TYPE prod_Uval_wm = 1.0;
   for (size_t iv=0; iv<n_vertices_add; ++iv) {
     const size_t v_type = new_vertices[iv].type();
-    const vertex_definition<GTYPE> new_vertex_type = Uijkl.get_vertex(v_type);
+    const vertex_definition<M_TYPE> new_vertex_type = Uijkl.get_vertex(v_type);
     const double time = new_vertices[iv].time();
     const size_t rank = new_vertex_type.rank();
     const size_t af_state = new_vertices[iv].af_state();
@@ -58,48 +57,43 @@ std::pair<double,double> InteractionExpansion<TYPES>::try_add(fastupdate_add_hel
       M[flavor_rank].alpha_push_back(new_vertex_type.get_alpha(af_state, i_rank));
       M[flavor_rank].vertex_info().push_back(std::pair<vertex_t,size_t>(v_type,i_rank));
 
-      ++(helper.num_new_rows[flavor_rank]);
+      ++(add_helper.num_new_rows[flavor_rank]);
     }
     itime_vertices.push_back(new_vertices[iv]);
   }
 
-  //std::cout << "try_add : chk_p=0 " << timer.elapsed().wall*1E-6 << std::endl;
-
   //fast update for each flavor
-  double lambda_prod = 1.0;
+  M_TYPE lambda_prod = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    if (helper.num_new_rows[flavor]>0) {
-      lambda_prod *= fastupdate_up(flavor, true, helper.num_new_rows[flavor]); // true means compute_only_weight
+    if (add_helper.num_new_rows[flavor]>0) {
+      lambda_prod *= fastupdate_up(flavor, true, add_helper.num_new_rows[flavor]); // true means compute_only_weight
     }
   }
-  helper.det_rat_ = lambda_prod;
-  //std::cout << "try_add : chk_p=1 " << timer.elapsed().wall*1E-6 << std::endl;
-  return std::pair<double,double>(prod_Uval_wm*lambda_prod, lambda_prod);
+  add_helper.det_rat_ = lambda_prod;
+  return std::pair<M_TYPE,M_TYPE>(prod_Uval_wm*lambda_prod, lambda_prod);
 }
 
 
 template<class TYPES>
-void InteractionExpansion<TYPES>::perform_add(fastupdate_add_helper& helper, size_t n_vertices_add)
+void InteractionExpansion<TYPES>::perform_add(size_t n_vertices_add)
 {
-  //boost::timer::cpu_timer timer;
-  double det_rat = 1.0;
+  M_TYPE det_rat = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    if (helper.num_new_rows[flavor]>0) {
-      det_rat *= fastupdate_up(flavor,false,helper.num_new_rows[flavor]);
+    if (add_helper.num_new_rows[flavor]>0) {
+      det_rat *= fastupdate_up(flavor,false,add_helper.num_new_rows[flavor]);
     }
   }
-  assert(std::abs(det_rat/helper.det_rat_-1)<1E-8);
+  assert(std::abs(det_rat/add_helper.det_rat_-1.0)<1E-8);
   M.sanity_check(itime_vertices);
-  //std::cout << "perform_add : chk_p=0 " << timer.elapsed().wall*1E-6 << std::endl;
 }
 
 
 template<class TYPES>
-void InteractionExpansion<TYPES>::reject_add(fastupdate_add_helper& helper, size_t n_vertices_add)
+void InteractionExpansion<TYPES>::reject_add(size_t n_vertices_add)
 {
   //get rid of the operators
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    for (int i=0; i<helper.num_new_rows[flavor]; ++i) {
+    for (int i=0; i<add_helper.num_new_rows[flavor]; ++i) {
       M[flavor].pop_back_op();
     }
   }
@@ -109,9 +103,9 @@ void InteractionExpansion<TYPES>::reject_add(fastupdate_add_helper& helper, size
   M.sanity_check(itime_vertices);
 }
 
-
 template<class TYPES>
-std::pair<double,double> InteractionExpansion<TYPES>::try_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
+std::pair<typename TYPES::M_TYPE,typename TYPES::M_TYPE>
+InteractionExpansion<TYPES>::try_remove(const std::vector<int>& vertices_nr)
 {
   //boost::timer::cpu_timer timer;
   //get weight
@@ -119,65 +113,57 @@ std::pair<double,double> InteractionExpansion<TYPES>::try_remove(const std::vect
   // lists of rows and cols will be sorted in ascending order
   const size_t nv_old = itime_vertices.size();
   M.sanity_check(itime_vertices);
-  helper.clear();
-  double prod_Uval = 1.0;
+  remove_helper.clear();
+  typename TYPES::M_TYPE prod_Uval = 1.0;
   for (size_t iv=0; iv<vertices_nr.size(); ++iv) {
-    vertex_definition<GTYPE> vertex_def = Uijkl.get_vertex(itime_vertices[vertices_nr[iv]].type());
+    vertex_definition<M_TYPE> vertex_def = Uijkl.get_vertex(itime_vertices[vertices_nr[iv]].type());
     prod_Uval *= -vertex_def.Uval();
     for (size_t i_rank=0; i_rank<vertex_def.rank(); ++i_rank) {
       const size_t flavor = vertex_def.flavors()[i_rank];
       int r = M[flavor].find_row_col(itime_vertices[vertices_nr[iv]].time(), itime_vertices[vertices_nr[iv]].type(), i_rank);
       assert(r<num_rows(M[flavor].matrix()));
-      helper.rows_cols_removed[flavor].push_back(r);
+      remove_helper.rows_cols_removed[flavor].push_back(r);
     }
   }
-  helper.sort_rows_cols();
+  remove_helper.sort_rows_cols();
 
-  GTYPE lambda_prod = 1.0;
+  M_TYPE lambda_prod = 1.0;
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
-    if (helper.rows_cols_removed[flavor].size()>0) {
-      lambda_prod *= fastupdate_down(helper.rows_cols_removed[flavor], flavor, true);  // true means compute_only_weight
+    if (remove_helper.rows_cols_removed[flavor].size()>0) {
+      lambda_prod *= fastupdate_down(remove_helper.rows_cols_removed[flavor], flavor, true);  // true means compute_only_weight
     }
   }
-  helper.det_rat_ = lambda_prod;
+  remove_helper.det_rat_ = lambda_prod;
   assert(itime_vertices.size()==nv_old);
-  //double r1 = vertices_nr.size()== 1 ?
-      //permutation(itime_vertices.size(),vertices_nr.size()) :
-      //permutation(std::count_if(itime_vertices.begin(), itime_vertices.end(), helper.op), vertices_nr.size());
-  //double r2 = vertices_nr.size()== 1 ?
-      //pow(-beta*Uijkl.n_vertex_type(),(double)vertices_nr.size()) :
-      //pow(-helper.op.width()*Uijkl.num_vertex_type(helper.op),(double)vertices_nr.size());
-  //std::cout << "try_rem : chk_p=0 " << timer.elapsed().wall*1E-6 << std::endl;
-  return std::pair<double,double>(lambda_prod/prod_Uval,lambda_prod);
+  return std::pair<typename TYPES::M_TYPE,typename TYPES::M_TYPE>(lambda_prod/prod_Uval,lambda_prod);
 }
 
 
 template<class TYPES>
-void InteractionExpansion<TYPES>::perform_remove(const std::vector<int>& vertices_nr, fastupdate_remove_helper& helper)
+void InteractionExpansion<TYPES>::perform_remove(const std::vector<int>& vertices_nr)
 {
   //boost::timer::cpu_timer timer;
   //perform fastupdate down
-  double det_rat = 1.0;
+  M_TYPE det_rat = 1.0;
   for (size_t flavor=0; flavor<n_flavors; ++flavor) {
-    if (helper.rows_cols_removed[flavor].size()>0) {
+    if (remove_helper.rows_cols_removed[flavor].size()>0) {
       //remove rows and columns
-      det_rat *= fastupdate_down(helper.rows_cols_removed[flavor], flavor, false);  // false means really perform, not only compute weight
+      det_rat *= fastupdate_down(remove_helper.rows_cols_removed[flavor], flavor, false);  // false means really perform, not only compute weight
       //get rid of operators
-      for (int iop=0; iop<helper.rows_cols_removed[flavor].size(); ++iop) {
+      for (int iop=0; iop<remove_helper.rows_cols_removed[flavor].size(); ++iop) {
         M[flavor].pop_back_op();
       }
     }
   }
-  assert(std::abs(det_rat/helper.det_rat_-1)<1E-8);
+  assert(std::abs(det_rat/remove_helper.det_rat_-1.0)<1E-8);
   //get rid of vertex list entries.
   remove_elements_from_vector(itime_vertices, vertices_nr);
   M.sanity_check(itime_vertices);
-  //std::cout << "perform_rem : chk_p=0 " << timer.elapsed().wall*1E-6 << std::endl;
 }
 
 
 template<class TYPES>
-void InteractionExpansion<TYPES>::reject_remove(fastupdate_remove_helper& helper)
+void InteractionExpansion<TYPES>::reject_remove()
 {
   //do nothing
   return;
@@ -185,7 +171,7 @@ void InteractionExpansion<TYPES>::reject_remove(fastupdate_remove_helper& helper
 
 //This is specialized for pair hopping and spin flip.
 template<class TYPES>
-double InteractionExpansion<TYPES>::try_shift(int idx_vertex, double new_time) {
+typename TYPES::M_TYPE InteractionExpansion<TYPES>::try_shift(int idx_vertex, double new_time) {
   assert(idx_vertex<itime_vertices.size());
 
   itime_vertex& v = itime_vertices[idx_vertex];
@@ -193,7 +179,7 @@ double InteractionExpansion<TYPES>::try_shift(int idx_vertex, double new_time) {
   v.set_time(new_time);
   shift_helper.find_rows_cols_set_time(v.rank(), v.type(), Uijkl.get_vertex(v.type()).flavors(), shift_helper.old_time, v.time(), M);
 
-  double lambda_prod = 1.0;
+  typename TYPES::M_TYPE lambda_prod = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     if (shift_helper.num_rows_cols_updated[flavor]!=1)
       throw std::logic_error("try shift is specialized for pair hopping and spin flip terms.");

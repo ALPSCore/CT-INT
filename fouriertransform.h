@@ -49,7 +49,11 @@ inline double f_tau(double tau, double beta, double c1, double c2, double c3) {
 class FourierTransformer
 {
 public:
-  
+  typedef green_function<std::complex<double> > matsubara_green_function_t;
+  //typedef green_function<double> itime_green_function_t;
+  typedef std::complex<double> GTAU_TYPE;
+  typedef green_function<GTAU_TYPE> itime_green_function_t;
+
   FourierTransformer(const double beta, const int n_flavor, const int n_site)
   {
     beta_=beta;

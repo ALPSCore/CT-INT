@@ -49,7 +49,7 @@
 
 template<class TYPES>
 InteractionExpansion<TYPES>::InteractionExpansion(const alps::params &parms, int node, const boost::mpi::communicator& communicator)
-: alps::mcbase(parms,node),
+: InteractionExpansionBase(parms,node,communicator),
 node(node),
 max_order(parms["MAX_ORDER"] | 2048),
 n_flavors(parms["FLAVORS"] | (parms["N_ORBITALS"] | 2)),
@@ -113,11 +113,12 @@ pert_order_hist(max_order),
 comm(communicator)
 {
   //initialize measurement method
-  if (parms["HISTOGRAM_MEASUREMENT"] | false) {
-    measurement_method=selfenergy_measurement_itime_rs;
-  } else {
-    measurement_method=selfenergy_measurement_matsubara;
-  }
+  //if (parms["HISTOGRAM_MEASUREMENT"] | false) {
+    //measurement_method=selfenergy_measurement_itime_rs;
+  //} else {
+    //measurement_method=selfenergy_measurement_matsubara;
+  //}
+
   for(unsigned int i=0;i<n_flavors;++i)
     g0.push_back(green_matrix(n_tau, 20));
 
@@ -131,11 +132,12 @@ comm(communicator)
   update_time=0;
 
   //load bare Green's function
-  boost::tie(bare_green_matsubara,bare_green_itime) = read_bare_green_functions<double>(parms);//G(tau) is assume to be real.
+  boost::tie(bare_green_matsubara,bare_green_itime) =
+      read_bare_green_functions<typename TYPES::COMPLEX_TYPE>(parms);//G(tau) is assume to be complex.
 
   //make quantum numbers
   if (n_multi_vertex_update>1) {
-    quantum_number_vertices = make_quantum_numbers(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
+    quantum_number_vertices = make_quantum_numbers<typename TYPES::COMPLEX_TYPE,typename TYPES::M_TYPE>(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
     qn_dim = quantum_number_vertices[0][0].size();
     group_dim.clear(); group_dim.resize(qn_dim, 0);
     const int qn_dim_f = qn_dim/n_flavors;
@@ -238,9 +240,8 @@ void InteractionExpansion<TYPES>::update()
   //if (node==0)
   //std::cout << " node = " << node << " step = " << step << " random= " << random() << std::endl;
   //std::cout << " node = " << node << " step = " << step <<  " alpha_scale_idx " << alpha_scale_idx << " " << alpha_scale_values[alpha_scale_idx] << std::endl;
-
-  itime_vertex_container itime_vertices_bak = itime_vertices;
-  big_inverse_m_matrix M_bak(M);
+  //itime_vertex_container itime_vertices_bak = itime_vertices;
+  //big_inverse_m_matrix M_bak(M);
 
   pert_order_hist = 0.;
   if (use_alpha_update)
@@ -274,10 +275,11 @@ void InteractionExpansion<TYPES>::update()
         }
       }
     } catch (std::runtime_error e) {
-      std::cout << " Runtime error at rank = " << node << " step = " << step << " : " << e.what() << ". This may be because we encountered a singular matrix." << std::endl;
-      itime_vertices = itime_vertices_bak;
-      M = M_bak;
-      reset_perturbation_series(false);
+      std::cerr << " Runtime error at rank = " << node << " step = " << step << " : " << e.what() << ". This may be because we encountered a singular matrix." << std::endl;
+      exit(-1);
+      //itime_vertices = itime_vertices_bak;
+      //M = M_bak;
+      //reset_perturbation_series(false);
     }
 
     ++pert_order_hist[itime_vertices.size()];
@@ -303,7 +305,17 @@ void InteractionExpansion<TYPES>::update()
 
 template<class TYPES>
 void InteractionExpansion<TYPES>::measure(){
-  //std::cout << "qn_debug " << alpha_scale_values[alpha_scale_idx] << " " << sign << " "  << is_quantum_number_conserved(itime_vertices) << std::endl;
+  //Measure pertubation order
+  {
+    std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
+    for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+      assert(it->type()>=0 && it->type()<Uijkl.n_vertex_type());
+      ++pert_vertex[it->type()];
+    }
+    for (unsigned i_vt=0; i_vt<Uijkl.n_vertex_type(); ++i_vt) {
+      pert_order_dynamics.push_back(static_cast<double>(pert_vertex[i_vt]));
+    }
+  }
 
   if (use_alpha_update) {
     measurements["AlphaScaleHistogram"] << alpha_scale_hist;
@@ -319,6 +331,44 @@ void InteractionExpansion<TYPES>::measure(){
   measurements["MeasurementTimeMsec"] << timings;
 }
 
+/**
+ * Finalize the Monte Carlo simulation, e.g., write some data to disk.
+ */
+template<class TYPES>
+void InteractionExpansion<TYPES>::finalize()
+{
+
+  if (pert_order_dynamics.size()>0) {
+    std::ofstream ofs((std::string("pert_order-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    unsigned int n_data = pert_order_dynamics.size()/Uijkl.n_vertex_type();
+    unsigned int i=0;
+    for (unsigned int i_data=0; i_data<n_data; ++i_data) {
+      ofs << i_data << " ";
+      for (unsigned int i_vt = 0; i_vt < Uijkl.n_vertex_type(); ++i_vt) {
+        ofs << pert_order_dynamics[i] << " ";
+        ++i;
+      }
+      ofs << std::endl;
+    }
+  }
+
+  if (Wk_dynamics.size()>0) {
+    std::ofstream ofs((std::string("Wk-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    unsigned int n_data = Wk_dynamics.size()/(n_flavors*n_site);
+    unsigned int i=0;
+    for (unsigned int i_data=0; i_data<n_data; ++i_data) {
+      ofs << i_data << " ";
+      for (unsigned int flavor=0; flavor<n_flavors; ++flavor) {
+        for (unsigned int site1 = 0; site1 < n_site; ++site1) {
+          ofs << Wk_dynamics[i].real() << " " << Wk_dynamics[i].imag() << "   ";
+          ++i;
+        }
+      }
+      ofs << std::endl;
+    }
+  }
+
+}
 
 
 template<class TYPES>
@@ -340,7 +390,7 @@ void InteractionExpansion<TYPES>::initialize_simulation(const alps::params &parm
   sign=1;
   //set the right dimensions:
   for(spin_t flavor=0;flavor<n_flavors;++flavor)
-    M.push_back(inverse_m_matrix());
+    M.push_back(inverse_m_matrix<M_TYPE>());
   pert_hist.clear();
   //initialize ALPS observables
   initialize_observables();
@@ -362,7 +412,7 @@ bool InteractionExpansion<TYPES>::is_quantum_number_conserved(const itime_vertex
   std::sort(vertices_sorted.begin(), vertices_sorted.end());
 
   for (int iv=0; iv<Nv; ++iv) {
-    const vertex_definition<GTYPE> vd = Uijkl.get_vertex(vertices_sorted[iv].type());
+    const vertex_definition<M_TYPE> vd = Uijkl.get_vertex(vertices_sorted[iv].type());
     vd.apply_occ_change(vertices_sorted[iv].af_state(), qn_t, qn_max, qn_min);
   }
 
@@ -392,7 +442,7 @@ bool InteractionExpansion<TYPES>::is_quantum_number_within_range(const itime_ver
   std::sort(vertices_sorted.begin(), vertices_sorted.end());
 
   for (int iv=0; iv<Nv; ++iv) {
-    const vertex_definition<GTYPE> vd = Uijkl.get_vertex(vertices_sorted[iv].type());
+    const vertex_definition<M_TYPE> vd = Uijkl.get_vertex(vertices_sorted[iv].type());
     vd.apply_occ_change(vertices_sorted[iv].af_state(), qn_t, qn_max, qn_min);
   }
 
@@ -418,7 +468,7 @@ void InteractionExpansion<TYPES>::sanity_check() {
     if (num_rows(M[flavor].matrix())==0) {
       continue;
     }
-    alps::numeric::matrix<GTYPE> G0(M[flavor].matrix());
+    alps::numeric::matrix<M_TYPE> G0(M[flavor].matrix());
     std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
 
     const size_t Nv = M[flavor].matrix().num_rows();
@@ -433,7 +483,7 @@ void InteractionExpansion<TYPES>::sanity_check() {
 
     sign_exact *= boost::math::sign(alps::numeric::determinant(G0));
 
-    alps::numeric::matrix<GTYPE> tmp = mygemm(G0, M[flavor].matrix());
+    alps::numeric::matrix<M_TYPE> tmp = mygemm(G0, M[flavor].matrix());
     bool OK = true;
     double max_diff = 0;
     for (size_t q=0; q<Nv; ++q) {
@@ -457,7 +507,7 @@ void InteractionExpansion<TYPES>::sanity_check() {
 
   //contribution from (-U)^n
   {
-    const std::vector<vertex_definition<GTYPE> >& vd = Uijkl.get_vertices();
+    const std::vector<vertex_definition<M_TYPE> >& vd = Uijkl.get_vertices();
     for (int iv=0; iv<itime_vertices.size(); ++iv)
       sign_exact *= boost::math::sign(-vd[itime_vertices[iv].type()].Uval());
   }

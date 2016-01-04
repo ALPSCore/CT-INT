@@ -42,7 +42,8 @@ template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, c
 //take care of the ambiguity of the equal-time Green's function.
 //We appreciate the ordering of the creation and annihilation operators in the vertex.
 template<class TYPES>
-double InteractionExpansion<TYPES>::green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const
+typename TYPES::COMPLEX_TYPE
+InteractionExpansion<TYPES>::green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const
 {
   assert(c_pos<M[flavor].annihilators().size());
   assert(cdagger_pos<M[flavor].creators().size());
@@ -59,7 +60,6 @@ double InteractionExpansion<TYPES>::green0_spline_for_M(const spin_t flavor, siz
     itime_t delta_t=c.t().time()-cdagger.t().time();
     site_t site1 = c.s();
     site_t site2 = cdagger.s();
-    //itime_t time_shift = (M[flavor].vertex_info()[c_pos].second<M[flavor].vertex_info()[cdagger_pos].second) ? beta*1E-10 : -beta*1E-10;
     itime_t time_shift = c.t().small_index() > cdagger.t().small_index() ? beta*1E-10 : -beta*1E-10;
     return green0_spline_new(delta_t+time_shift, flavor, site1, site2);
   }
@@ -67,7 +67,8 @@ double InteractionExpansion<TYPES>::green0_spline_for_M(const spin_t flavor, siz
 
 ///Compute the bare green's function for a given flavor, site, and imaginary time.
 template<class TYPES>
-double InteractionExpansion<TYPES>::green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const
+typename TYPES::COMPLEX_TYPE
+InteractionExpansion<TYPES>::green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const
 {
   assert(delta_t<= beta);
   assert(delta_t>=-beta);

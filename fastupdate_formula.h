@@ -595,7 +595,7 @@ compute_inverse_matrix_replace_single_row_col(alps::numeric::matrix<T>& invG, co
         assert(idx==N-M);
         assert(idx2==M);
 
-        double rtmp = compute_inverse_matrix_replace_row_col2(invG, Dr, Dc, rows_cols[im], compute_only_det);
+        T rtmp = compute_inverse_matrix_replace_row_col2(invG, Dr, Dc, rows_cols[im], compute_only_det);
         lambda *= rtmp;
     }
     return lambda;

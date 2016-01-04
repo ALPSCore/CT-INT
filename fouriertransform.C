@@ -216,7 +216,9 @@ void evaluate_second_derivatives(double dt/*, double BETA*/, dense_matrix & spli
 
 void FourierTransformer::forward_ft(const itime_green_function_t & gtau, matsubara_green_function_t & gomega) const 
 {
-  std::vector<double> v(gtau.ntime());
+  throw std::runtime_error("Complex version not implemented yet!");
+  /*
+  std::vector<GTAU_TYPE> v(gtau.ntime());
   std::vector<std::complex<double> > v_omega(gomega.nfreq());
   int Np1 = v.size();
   int N = Np1-1;
@@ -234,7 +236,7 @@ void FourierTransformer::forward_ft(const itime_green_function_t & gtau, matsuba
         generate_spline_matrix(spline_matrix, dt);
         // matrix containing the second derivatives y'' of interpolated y=v[tau] at points tau_n 
         std::vector<double> v2(Np1, 0); 
-        evaluate_second_derivatives(dt/*,beta_*/, spline_matrix, v, v2, c1_[f][p][q], c2_[f][p][q], c3_[f][p][q]);
+        evaluate_second_derivatives(dt, spline_matrix, v, v2, c1_[f][p][q], c2_[f][p][q], c3_[f][p][q]);
         v_omega.assign(N_omega, 0);
         
         for (int k=0; k<N_omega; k++) {
@@ -251,6 +253,7 @@ void FourierTransformer::forward_ft(const itime_green_function_t & gtau, matsuba
       }
     }
   }
+  */
 } 
 
 

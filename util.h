@@ -76,7 +76,7 @@ namespace alps {
             if (info != 0)
                 throw std::runtime_error("Error in GETRF !");
 
-            double det = 1.0;
+            typename Matrix::value_type det = 1.0;
             for (size_t i=0; i<N; ++i) {
                 det *= M(i,i);
             }
@@ -105,7 +105,7 @@ namespace alps {
             if (info != 0)
                 throw std::runtime_error("Error in GETRF !");
 
-            double det = 1.0;
+            typename Matrix::value_type det = 1.0;
             for (size_t i=0; i<N; ++i) {
                 det *= M(i,i);
             }

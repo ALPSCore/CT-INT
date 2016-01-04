@@ -35,15 +35,6 @@
 #include <alps/osiris/dump.h>
 #include <alps/osiris/std/vector.h>
 
-typedef alps::SignedObservable<alps::SimpleObservable<double,alps::DetailedBinning<double> > > signed_obs_t;
-typedef alps::SignedObservable<alps::RealVectorObservable> signed_vec_obs_t;
-typedef alps::RealVectorObservable vec_obs_t;
-typedef alps::SimpleObservable<double,alps::DetailedBinning<double> > simple_obs_t;
-typedef const alps::SimpleObservable<double,alps::DetailedBinning<double> > const_simple_obs_t;
-
-
-
-
 ///this function is called at the start of the simulation for allocation of
 ///memory for the ALPS observables. It is also called at the start of every DMFT
 ///iteration.
@@ -60,22 +51,7 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
   measurements << alps::ngs::RealObservable("Sign");
   measurements << alps::ngs::RealVectorObservable("PertOrder");
 #endif
-  if(measurement_method==selfenergy_measurement_itime_rs) {
-    for(unsigned int flavor=0;flavor<n_flavors;++flavor){
-      for(unsigned int i=0;i<n_site;++i){
-        for(unsigned int j=0;j<n_site;++j){
-          std::stringstream obs_name;
-          obs_name<<"W_"<<flavor<<"_"<<i<<"_"<<j;
-#ifndef ALPS_NGS_USE_NEW_ALEA
-          measurements << alps::ngs::RealVectorObservable(obs_name.str().c_str());
-#else
-          throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
-#endif //ALPS_NGS_USE_NEW_ALEA
-        }
-      }
-    }
-  }
-  else {
+  if(n_matsubara_measurements>0) {
     for(unsigned int flavor=0;flavor<n_flavors;++flavor){
       for (unsigned int k = 0; k < n_site; k++) {
         for (unsigned int k2 = 0; k2 < n_site; k2++) {
@@ -192,9 +168,6 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
   measurements.reset(true);
 }
 
-
-
-
 ///this function is called whenever measurements should be performed. Depending
 ///on the value of  measurement_method it will choose one particular
 ///measurement function.
@@ -204,7 +177,7 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
   assert(timings.size()>=2);
   boost::timer::cpu_timer timer;
 
-  measurements["Sign"]<<sign;
+  measurements["Sign"] << mycast<REAL_TYPE>(sign);
   if (params.defined("OUTPUT_Sign") ? params["OUTPUT_Sign"] : false) {
       std::cout << " node= " << node << " Sign= " << sign << " pert_order= " << itime_vertices.size() << std::endl;
   }
@@ -213,18 +186,13 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
   measurements["PertOrderHistogram"] << pert_order_hist;
 
   const double t1 = timer.elapsed().wall*1E-6;
-  if (measurement_method == selfenergy_measurement_matsubara) {
-      compute_W_matsubara();
-  } else if (measurement_method == selfenergy_measurement_itime_rs) {
-      throw std::runtime_error("compute_W_itime is no long implemented!");
-      //compute_W_itime();
+  if (n_matsubara_measurements>0) {
+    compute_W_matsubara();
   }
   const double t2 = timer.elapsed().wall*1E-6;
-
   if (n_legendre>0) {
     compute_Sl();
   }
-
   const double t3 = timer.elapsed().wall*1E-6;
   timings[0] = t2-t1;
   timings[1] = t3-t2;

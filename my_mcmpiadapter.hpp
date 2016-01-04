@@ -77,6 +77,7 @@ namespace alps {
                         fraction = boost::mpi::all_reduce(communicator, local_fraction, std::plus<double>());
                         if (fraction>=1.) {
                             std::cout << "Process with MPI rank " << communicator.rank() << " done with Monte Carlo sampling." << std::endl;
+                            this->finalize();
                             done = true;
                         } else {
                           schedule_checker.update(fraction, communicator.rank()==0);

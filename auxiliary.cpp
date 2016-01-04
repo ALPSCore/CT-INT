@@ -62,6 +62,7 @@ ostream& operator << (ostream& os, const simple_hist &h)
   return os;
 }
 
+/*
 std::ostream & operator<<(std::ostream &os, const inverse_m_matrix &M)
 {
   os << M.matrix() << std::endl;
@@ -77,3 +78,4 @@ std::ostream & operator<<(std::ostream &os, const inverse_m_matrix &M)
   os<<std::endl;
   return os;
 }
+*/

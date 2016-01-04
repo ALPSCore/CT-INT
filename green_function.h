@@ -198,8 +198,8 @@ private:
 };
 
 //diagonal in flavor space
-typedef green_function<std::complex<double> > matsubara_green_function_t;
-typedef green_function<double> itime_green_function_t;
+//typedef green_function<std::complex<double> > matsubara_green_function_t;
+//typedef green_function<double> itime_green_function_t;
 
 //has off-diagonal elements in flavor space
 //typedef full_green_function<std::complex<double> > matsubara_full_green_function_t;
@@ -276,6 +276,7 @@ template<typename T> void green_function<T>::from_multiple_vector(const std::pai
 enum shape_t {diagonal, blockdiagonal, nondiagonal};
 
 
+/*
 void print_all_green_functions(std::string const &basename, const int iteration_ctr, const matsubara_green_function_t &G0_omega,
                                const matsubara_green_function_t &G_omega, const itime_green_function_t &G0_tau, 
                                const itime_green_function_t &G_tau, const double beta, const shape_t shape=diagonal,
@@ -286,6 +287,7 @@ void print_tau_green_functions(std::string const &basename, const int iteration_
                                const shape_t shape=nondiagonal, const std::string suffix="");
 void print_dressed_tau_green_functions(std::string const &basename, const int iteration_ctr, const itime_green_function_t &G_tau, const double beta, 
                                        const shape_t shape=nondiagonal, const std::string suffix="");
+                                       */
 
 
 template<typename T>
@@ -401,9 +403,9 @@ void print_group(const std::vector<std::vector<T> >& group) {
   }
 }
 
-template<typename T>//Expected T=double or T=std::complex<double>
+template<typename T, typename S>//Expected T,S=double or T=std::complex<double>
 std::vector<std::vector<quantum_number_t> >
-make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<T> >& vertices,
+make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<S> >& vertices,
                      std::vector<std::vector<std::vector<size_t> > >& groups,
                      std::vector<std::vector<int> >& group_map,
                      double eps=1E-10) {
@@ -434,7 +436,7 @@ make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_defin
   const size_t Nv = vertices.size();
   std::vector<std::vector<quantum_number_t> > qn_vertices(Nv);
   for (size_t iv=0; iv<Nv; ++iv) {
-    const vertex_definition<T>& vd = vertices[iv];
+    const vertex_definition<S>& vd = vertices[iv];
     const int num_af = vd.num_af_states();
     for (int i_af=0; i_af<num_af; ++i_af) {
       std::valarray<int> qn_diff(0, n_dim*n_flavors);
@@ -447,7 +449,7 @@ make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_defin
         int PH;
         if (site1==site2) {
           //density type
-          PH = std::abs(vd.get_alpha(i_af,i_rank))<std::abs(vd.get_alpha(i_af,i_rank)-1) ? 1 : -1;
+          PH = std::abs(vd.get_alpha(i_af,i_rank))<std::abs(vd.get_alpha(i_af,i_rank)-1.0) ? 1 : -1;
         } else {
           //non-density type
           PH = 1;
