@@ -50,31 +50,32 @@ void FourierTransformer::backward_ft(itime_green_function_t &G_tau,
   unsigned int N_omega = G_omega.nfreq();
   unsigned int N_site = G_omega.nsite();
   matsubara_green_function_t G_omega_no_model(G_omega);
-  matsubara_green_function_t test(G_omega);
-  double dt = beta_/N_tau;
+  itime_green_function_t G_tau_no_model(G_tau);
+  const double dt = beta_/N_tau;
+
   for(unsigned int f=0;f<G_omega.nflavor();++f){
     for (unsigned int s1=0; s1<N_site; ++s1){
       for (unsigned int s2=0; s2<N_site; ++s2) {
-        if(c1_[f][s1][s2]==0 && c2_[f][s1][s2] == 0 && c3_[f][s1][s2]){  //nothing happening in this gf.
-          for (unsigned int i=0; i<=N_tau; i++) {
-            G_tau(i,s1,s2,f)=0.;
+        for (unsigned int k=0; k<N_omega; k++) {
+          std::complex<double> iw(0,(2*k+1)*M_PI/beta_);
+          G_omega_no_model(k,s1,s2,f) -= f_omega(iw, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]);
+        }
+        for (unsigned int i=0; i<N_tau; i++) {
+          G_tau_no_model(i,s1,s2,f) = 0.0;
+          for (unsigned int k=0; k<N_omega; k++) {
+            const double wt((2*k+1)*i*M_PI/N_tau);
+            G_tau_no_model(i,s1,s2,f) += 1/beta_*G_omega_no_model(k,s1,s2,f)*std::complex<double>(cos(wt),-sin(wt));
           }
         }
-        else {
-          for (unsigned int k=0; k<N_omega; k++) {
-            std::complex<double> iw(0,(2*k+1)*M_PI/beta_);
-            G_omega_no_model(k,s1,s2,f) -= f_omega(iw, c1_[f][s1][s2],c2_[f][s1][s2], c3_[f][s1][s2]);
-          }
-          for (unsigned int i=0; i<N_tau; i++) {
-            G_tau(i,s1,s2,f) = f_tau(i*dt, beta_, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]);
-            for (unsigned int k=0; k<N_omega; k++) {
-              double wt((2*k+1)*i*M_PI/N_tau);
-              G_tau(i,s1,s2,f) += 2/beta_*(cos(wt)*G_omega_no_model(k,s1,s2,f).real()+
-                                           sin(wt)*G_omega_no_model(k,s1,s2,f).imag());
-            }
-          }
-          G_tau(N_tau,s1,s2,f)= s1==s2 ? -1. : 0.;
-          G_tau(N_tau,s1,s2,f)-=G_tau(0,s1,s2,f);
+      }
+    }
+  }
+  for(unsigned int f=0;f<G_omega.nflavor();++f){
+    for (unsigned int i=0; i<N_tau; i++) {
+      for (unsigned int s1 = 0; s1 < N_site; ++s1) {
+        for (unsigned int s2 = 0; s2 < N_site; ++s2) {
+          G_tau(i, s1, s2, f) = f_tau(i * dt, beta_, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2])
+                                +G_tau_no_model(i, s1, s2, f)+std::conj(G_tau_no_model(i, s2, s1, f));
         }
       }
     }

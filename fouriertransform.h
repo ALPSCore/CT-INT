@@ -35,13 +35,15 @@
 #include <alps/parameter.h>
 
 
-inline std::complex<double> f_omega(std::complex<double> iw, double c1, double c2, double c3) {
+template<typename T>
+std::complex<double> f_omega(std::complex<double> iw, T c1, T c2, T c3) {
   std::complex<double> iwsq=iw*iw;
   return c1/iw + c2/(iwsq) + c3/(iw*iwsq);
 }
 
 
-inline double f_tau(double tau, double beta, double c1, double c2, double c3) {
+template<typename T>
+double f_tau(double tau, double beta, T c1, T c2, T c3) {
   return -0.5*c1 + (c2*0.25)*(-beta+2.*tau) + (c3*0.25)*(beta*tau-tau*tau);
 }
 
