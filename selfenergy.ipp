@@ -234,22 +234,31 @@ void InteractionExpansion<TYPES>::measure_densities()
     densities[z] = densities[z];
   }
   measurements["densities"] << static_cast<std::valarray<double> > (densities*sign_real);
-  double density_correlation = 0.;
-  for (unsigned int i=0; i<n_site; ++i) {
-    density_correlation += (dens[0][i])*(dens[1][i]);
-  }
-  density_correlation /= n_site;
-  measurements["density_correlation"] << (density_correlation*sign_real);
-  std::valarray<double> ninj(n_site*n_site*4);
-  for (unsigned int i=0; i<n_site; ++i) {
-    for (unsigned int j=0; j<n_site; ++j) {
-      ninj[i*n_site+j] = (dens[0][i])*(dens[0][j]);
-      ninj[i*n_site+j+1] = (dens[0][i])*(dens[1][j]);
-      ninj[i*n_site+j+2] = (dens[1][i])*(dens[0][j]);
-      ninj[i*n_site+j+3] = (dens[1][i])*(dens[1][j]);
+
+  if (n_flavors==2) {
+    double density_correlation = 0.;
+    for (unsigned int i=0; i<n_site; ++i) {
+      density_correlation += (dens[0][i])*(dens[1][i]);
     }
+    density_correlation /= n_site;
+    measurements["density_correlation"] << (density_correlation*sign_real);
   }
-  measurements["n_i n_j"] << static_cast<std::valarray<double> > (ninj*sign_real);
+
+  {
+    std::valarray<double> ninj(n_site*n_site*n_flavors*n_flavors);
+    int pos = 0;
+    for (unsigned int i=0; i<n_site; ++i) {
+      for (unsigned int j=0; j<n_site; ++j) {
+        for (unsigned int flavor1=0; flavor1<n_flavors; ++flavor1) {
+          for (unsigned int flavor2=0; flavor2<n_flavors; ++flavor2) {
+            ninj[pos] = (dens[flavor1][i])*(dens[flavor2][j]);
+            ++pos;
+          }
+        }
+      }
+    }
+    measurements["n_i n_j"] << static_cast<std::valarray<double> > (ninj*sign_real);
+  }
 }
 
 #endif //IMPSOLVER_SELFENERGY_HPP

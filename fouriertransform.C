@@ -60,7 +60,7 @@ void FourierTransformer::backward_ft(itime_green_function_t &G_tau,
           std::complex<double> iw(0,(2*k+1)*M_PI/beta_);
           G_omega_no_model(k,s1,s2,f) -= f_omega(iw, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2]);
         }
-        for (unsigned int i=0; i<N_tau; i++) {
+        for (unsigned int i=0; i<N_tau+1; i++) {
           G_tau_no_model(i,s1,s2,f) = 0.0;
           for (unsigned int k=0; k<N_omega; k++) {
             const double wt((2*k+1)*i*M_PI/N_tau);
@@ -71,7 +71,7 @@ void FourierTransformer::backward_ft(itime_green_function_t &G_tau,
     }
   }
   for(unsigned int f=0;f<G_omega.nflavor();++f){
-    for (unsigned int i=0; i<N_tau; i++) {
+    for (unsigned int i=0; i<N_tau+1; i++) {
       for (unsigned int s1 = 0; s1 < N_site; ++s1) {
         for (unsigned int s2 = 0; s2 < N_site; ++s2) {
           G_tau(i, s1, s2, f) = f_tau(i * dt, beta_, c1_[f][s1][s2], c2_[f][s1][s2], c3_[f][s1][s2])
