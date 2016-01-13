@@ -87,6 +87,9 @@ public:
      return alpha_af_rank_[af_state][idx_rank];
    }
 
+   /**
+    * This returns true if site(2*i)=site(2*i+1) for all i
+    */
    bool is_density_type() const {
      bool flag = true;
      for (int i_rank=0; i_rank<rank_; ++i_rank) {
@@ -672,9 +675,6 @@ pick_up_valid_vertex_pair2(const itime_vertex_container& itime_vertices, std::pa
 
   assert(v1.size()==pos_v1.size());
   assert(v2.size()==pos_v2.size());
-  assert(v1.size()==v2.size());
-  //if (v1.size()!=v2.size())
-    //throw std::logic_error("v1.size() != v2.size()");
   prob.resize(0); prob.reserve(v1.size()*v2.size());
   for (int iv1=0; iv1<v1.size(); ++iv1) {
     for (int iv2=0; iv2<v2.size(); ++iv2) {

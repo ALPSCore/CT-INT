@@ -506,6 +506,7 @@ protected:
   void removal_insertion_update(void);
   void removal_insertion_single_vertex_update(void);
   void removal_insertion_double_vertex_update(void);
+  void multi_vertex_update(int);
   void shift_update(void);
   void alpha_update(void);
   void reset_perturbation_series(bool verbose=true);
@@ -619,7 +620,7 @@ protected:
   boost::random::exponential_distribution<> window_dist;
   SymmExpDist symm_exp_dist;
 
-  double weight;
+  M_TYPE weight;
   M_TYPE sign;
   //unsigned int measurement_method;
 

@@ -36,17 +36,13 @@ void InteractionExpansion<TYPES>::removal_insertion_update(void) {
   const int nv_updated = update_prop.gen_Nv(random.engine());
 
   //boost::timer::cpu_timer timer;
-  //std::cout << "debug capacity before " << M[0].matrix().capacity().first << std::endl;
   if (nv_updated==1) {
     removal_insertion_single_vertex_update();
-    //std::cout << "nv_updated=1 " << timer.elapsed().wall*1E-6 << std::endl;
   } else if (nv_updated==2) {
     removal_insertion_double_vertex_update();
-    //std::cout << "nv_updated=1 " << timer.elapsed().wall*1E-6 << std::endl;
   } else {
-    throw std::runtime_error("Not implemented");
+    multi_vertex_update(nv_updated);
   }
-  //std::cout << "debug capacity after " << M[0].matrix().capacity().first << std::endl << std::endl;
 
   for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
     vertex_histograms[flavor]->count(num_rows(M[flavor].matrix()));
@@ -341,6 +337,126 @@ void InteractionExpansion<TYPES>::removal_insertion_double_vertex_update(void)
 #endif
   }//end REMOVE
   weight=std::abs(metropolis_weight);
+}
+
+template<class TYPES>
+void InteractionExpansion<TYPES>::multi_vertex_update(int nv_updated)
+{
+  const int pert_order= itime_vertices.size();   //current order of perturbation series
+  M_TYPE metropolis_weight=0.;
+  M_TYPE det_rat=0;
+
+  if (nv_updated<2) {
+    throw std::logic_error("Error: nv_updated<2.");
+  }
+
+  if(random()<0.5){  //trying to ADD vertex
+    M.sanity_check(itime_vertices);
+    if(pert_order+nv_updated>max_order) {
+      return; //we have already reached the highest perturbation order
+    }
+
+    add_helper.op = non_density_type_in_window(beta*random(),
+                                               std::min(beta,window_width+window_dist(random.engine())),
+                                               beta);
+    std::vector<itime_vertex> new_vertices =
+      generate_itime_vertices(Uijkl,random,beta,nv_updated,add_helper.op);
+
+    assert(new_vertices.size()==nv_updated || new_vertices.size()==0);
+    itime_vertex_container itime_vertices_new(itime_vertices);
+    for (std::vector<itime_vertex>::const_iterator it=new_vertices.begin(); it!=new_vertices.end(); ++it) {
+      itime_vertices_new.push_back(*it);
+    }
+    //std::cout << "debug " << is_quantum_number_conserved(itime_vertices_new) << std::endl;
+    if (!is_quantum_number_conserved(itime_vertices_new)) {
+      simple_statistics_ins.not_valid_state(nv_updated-1);
+      update_prop.generated_invalid_update(nv_updated);
+      return;
+    }
+
+    update_prop.generated_valid_update(nv_updated);
+
+    boost::tie(metropolis_weight,det_rat)=try_add(nv_updated, new_vertices);
+    statistics_ins.add_sample(compute_spread(new_vertices,beta), std::min(std::abs(metropolis_weight),1.0), nv_updated-2);
+    //std::cout << "mw " << metropolis_weight << std::endl;
+
+    if(std::abs(metropolis_weight)> random()){
+      //std::cout << "accepted ins " << std::endl;
+      perform_add(nv_updated);
+      //std::cout << "accepted ins (2)" << std::endl;
+      sign*=metropolis_weight/std::abs(metropolis_weight);
+      det*=det_rat;
+      M.sanity_check(itime_vertices);
+      //std::cout << "accepted ins (3)" << std::endl;
+      //std::cout << "debug1 " << simple_statistics_ins.counter_[nv_updated-1][2] << std::endl;
+      //std::cout << "debug1 " << simple_statistics_ins.counter_[nv_updated-1][3] << std::endl;
+      simple_statistics_ins.accepted(nv_updated-1);
+      //std::cout << "debug2 " << simple_statistics_ins.counter_[nv_updated-1][2] << std::endl;
+      //std::cout << "debug2 " << simple_statistics_ins.counter_[nv_updated-1][3] << std::endl;
+      if(std::abs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
+    }else{
+      //std::cout << "rejected ins " << std::endl;
+      reject_add(nv_updated);
+      M.sanity_check(itime_vertices);
+      simple_statistics_ins.rejected(nv_updated-1);
+    }
+#ifndef NDEBUG
+    sanity_check();
+#endif
+  }else{ // try to REMOVE a vertex
+    M.sanity_check(itime_vertices);
+    if(pert_order < nv_updated) {
+      return;
+    }
+    remove_helper.op = non_density_type_in_window(beta*random(),
+            std::min(beta,window_width+window_dist(random.engine())),
+            beta);
+
+    //choose vertices to be removed
+    const std::vector<int>& vertices_nr = pick_up_itime_vertices(itime_vertices, random, nv_updated, remove_helper.op);
+    if (vertices_nr.size()==0) {
+      return;
+    }
+    itime_vertex_container vertices_to_be_removed(nv_updated), itime_vertices_new(itime_vertices);
+    for (int iv=0; iv<nv_updated; ++iv) {
+      vertices_to_be_removed[iv] = itime_vertices[vertices_nr[iv]];
+    }
+    remove_elements_from_vector(itime_vertices_new, vertices_nr);
+    //std::cout << "debug " << is_quantum_number_conserved(itime_vertices_new) << std::endl;
+    if (!is_quantum_number_conserved(itime_vertices_new)) {
+      simple_statistics_rem.not_valid_state(nv_updated-1);
+      update_prop.generated_invalid_update(nv_updated);
+      return;
+    }
+
+    update_prop.generated_valid_update(nv_updated);
+
+    boost::tie(metropolis_weight,det_rat)=try_remove(vertices_nr); //get the determinant ratio. don't perform fastupdate yet
+    //std::cout << " mw " << metropolis_weight << std::endl;
+    statistics_rem.add_sample(compute_spread(vertices_to_be_removed, beta), std::min(std::abs(metropolis_weight), 1.0),
+                              nv_updated - 2);
+    if(std::abs(metropolis_weight)> random()){ //do the actual update
+      //std::cout << "accepted rem " << std::endl;
+      perform_remove(vertices_nr);
+      sign*=metropolis_weight/std::abs(metropolis_weight);
+      det*=det_rat;
+      M.sanity_check(itime_vertices);
+      simple_statistics_rem.accepted(nv_updated-1);
+
+      if(std::abs(metropolis_weight)<1E-5)
+        reset_perturbation_series(false);
+    }else{
+      //std::cout << "rejected rem " << std::endl;
+      reject_remove();
+      M.sanity_check(itime_vertices);
+      simple_statistics_rem.rejected(nv_updated-1);
+    }
+#ifndef NDEBUG
+    sanity_check();
+#endif
+  }//end REMOVE
+  weight=metropolis_weight;
 }
 
 //Shift updates: shift a vertex.
