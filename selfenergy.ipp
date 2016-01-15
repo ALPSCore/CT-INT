@@ -133,10 +133,14 @@ void InteractionExpansion<TYPES>::compute_Sl() {
   alps::numeric::matrix<M_TYPE> gR(max_mat_size, n_site), M_gR(max_mat_size, n_site);
 
   for (unsigned int z=0; z<n_flavors; ++z) {
+    std::fill(Sl.origin(),Sl.origin()+Sl.num_elements(),0.0);//clear the content for safety
     const size_t Nv = num_rows(M[z].matrix());
+
+    if (Nv==0) {
+      continue;
+    }
     gR.resize(Nv, n_site);
     M_gR.resize(Nv, n_site);
-    std::fill(Sl.origin(),Sl.origin()+Sl.num_elements(),0.0);//clear the content for safety
 
     //shift times of operators by time_shift
     for (std::size_t random_walk=0; random_walk<num_random_walk; ++random_walk) {

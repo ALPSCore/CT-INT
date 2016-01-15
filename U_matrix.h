@@ -37,6 +37,7 @@
 #include <boost/random.hpp>
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/discrete_distribution.hpp>
+#include <boost/filesystem.hpp>
 
 #include "types.h"
 #include "util.h"
@@ -191,6 +192,9 @@ class general_U_matrix {
         throw std::runtime_error("Error: GENERAL_U_MATRIX_FILE is not defined!");
       }
       std::string ufilename(parms["GENERAL_U_MATRIX_FILE"]);
+      if (!boost::filesystem::exists(boost::filesystem::path(ufilename))) {
+        throw std::runtime_error(ufilename+" does not exist!");
+      }
       std::ifstream ifs(ufilename.c_str());
       size_t num_non_zero_;
       ifs >> num_nonzero_;

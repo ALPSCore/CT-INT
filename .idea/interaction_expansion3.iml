@@ -205,9 +205,10 @@
           <root url="file:///Library/Frameworks/OSXFUSE.framework/Headers" />
           <root url="file:///Library/Frameworks/CUDA.framework/Headers" />
           <root url="file:///Library/Frameworks/iTunesLibrary.framework/Headers" />
-          <root url="file:///Library/Frameworks/AquaTerm.framework/Headers" />
+          <root url="file:///Library/Frameworks/Mono.framework/Headers" />
           <root url="file:///Library/Frameworks/Sparkle.framework/Headers" />
           <root url="file:///Library/Frameworks/cisco-vpnclient.framework/Headers" />
+          <root url="file:///Library/Frameworks/AquaTerm.framework/Headers" />
         </CLASSES>
         <SOURCES>
           <root url="file://$USER_HOME$/work/src/boost_1_54_0" />
@@ -378,9 +379,10 @@
           <root url="file:///Library/Frameworks/OSXFUSE.framework/Headers" />
           <root url="file:///Library/Frameworks/CUDA.framework/Headers" />
           <root url="file:///Library/Frameworks/iTunesLibrary.framework/Headers" />
-          <root url="file:///Library/Frameworks/AquaTerm.framework/Headers" />
+          <root url="file:///Library/Frameworks/Mono.framework/Headers" />
           <root url="file:///Library/Frameworks/Sparkle.framework/Headers" />
           <root url="file:///Library/Frameworks/cisco-vpnclient.framework/Headers" />
+          <root url="file:///Library/Frameworks/AquaTerm.framework/Headers" />
         </SOURCES>
       </library>
     </orderEntry>

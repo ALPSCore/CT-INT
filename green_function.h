@@ -305,7 +305,15 @@ read_bare_green_functions(const alps::params &parms) {
 
   //Load G0 in Matsubara frequency
   {
-    std::ifstream ifs(parms["G0_OMEGA"].cast<std::string>().c_str());
+    if (!parms.defined("G0_OMEGA")) {
+      throw std::runtime_error("Please set G0_OMEGA");
+    }
+    boost::filesystem::path myfile(parms["G0_OMEGA"].cast<std::string>());
+    if (!boost::filesystem::exists(boost::filesystem::path(myfile))) {
+      throw std::runtime_error(myfile.string()+" does not exist!");
+    }
+    //std::ifstream ifs(parms["G0_OMEGA"].cast<std::string>().c_str());
+    std::ifstream ifs(myfile.string().c_str());
     int itmp, itmp2, itmp3;
     double re, imag;
     int line = 0;
@@ -336,7 +344,14 @@ read_bare_green_functions(const alps::params &parms) {
 
   //Load G0 in imaginary time
   {
-    std::ifstream ifs(parms["G0_TAU"].cast<std::string>().c_str());
+    if (!parms.defined("G0_TAU")) {
+      throw std::runtime_error("Please set G0_TAU");
+    }
+    boost::filesystem::path myfile(parms["G0_TAU"].cast<std::string>());
+    if (!boost::filesystem::exists(boost::filesystem::path(myfile))) {
+      throw std::runtime_error(myfile.string()+" does not exist!");
+    }
+    std::ifstream ifs(myfile.string().c_str());
     int itmp, itmp2, itmp3;
     double re, im;
     int line = 0;
