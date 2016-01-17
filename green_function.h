@@ -314,29 +314,29 @@ read_bare_green_functions(const alps::params &parms) {
     }
     //std::ifstream ifs(parms["G0_OMEGA"].cast<std::string>().c_str());
     std::ifstream ifs(myfile.string().c_str());
-    int itmp, itmp2, itmp3;
+    int flavor_tmp, itmp, itmp2, itmp3;
     double re, imag;
     int line = 0;
-    for (std::size_t site1=0; site1<n_site; ++site1) {
-      for (std::size_t site2=0; site2<n_site; ++site2) {
-        for (std::size_t iomega = 0; iomega < n_matsubara; iomega++) {
-          ifs >> itmp >> itmp2 >> itmp3 >> re >> imag;
-          if (itmp!=site1) {
-            throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the first column of the line %2%") % site1 % line).str().c_str());
+    for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+      for (std::size_t site1=0; site1<n_site; ++site1) {
+        for (std::size_t site2=0; site2<n_site; ++site2) {
+          for (std::size_t iomega = 0; iomega < n_matsubara; iomega++) {
+            ifs >> flavor_tmp >> itmp >> itmp2 >> itmp3 >> re >> imag;
+            if (flavor_tmp!=flavor) {
+              throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the first column of the line %2%") % flavor % line).str().c_str());
+            }
+            if (itmp!=site1) {
+              throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the second column of the line %2%") % site1 % line).str().c_str());
+            }
+            if (itmp2!=site2) {
+              throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the third column of the line %2%") % site2 % line).str().c_str());
+            }
+            if (itmp3!=iomega) {
+              throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the fourth column of the line %2%") % iomega % line).str().c_str());
+            }
+            bare_green_matsubara(iomega, site1, site2, flavor) = std::complex<double>(re, imag);
+            ++line;
           }
-          if (itmp2!=site2) {
-            throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the second column of the line %2%") % site2 % line).str().c_str());
-          }
-          if (itmp3!=iomega) {
-            throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the third column of the line %2%") % iomega % line).str().c_str());
-          }
-          //if (!(itmp==site1 && itmp2==site2 && itmp3==iomega)) {
-            //throw std::runtime_error("Ilegal format of G0_OMEGA0");
-          //}
-          for(std::size_t orb1=0; orb1 <n_flavors; orb1++) {
-            bare_green_matsubara(iomega, site1, site2, orb1) = std::complex<double>(re, imag);
-          }
-          ++line;
         }
       }
     }
@@ -352,30 +352,38 @@ read_bare_green_functions(const alps::params &parms) {
       throw std::runtime_error(myfile.string()+" does not exist!");
     }
     std::ifstream ifs(myfile.string().c_str());
-    int itmp, itmp2, itmp3;
+    int flavor_tmp, itmp, itmp2, itmp3;
     double re, im;
     int line = 0;
-    for (std::size_t site1=0; site1<n_site; ++site1) {
-      for (std::size_t site2=0; site2<n_site; ++site2) {
-        for (std::size_t itau = 0; itau < n_tau+1; itau++) {
-          ifs >> itmp >> itmp2 >> itmp3 >> re >> im;
+    for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
+      for (std::size_t site1=0; site1<n_site; ++site1) {
+        for (std::size_t site2=0; site2<n_site; ++site2) {
+          for (std::size_t itau = 0; itau < n_tau+1; itau++) {
+            ifs >> flavor_tmp >> itmp >> itmp2 >> itmp3 >> re >> im;
 
-          if (itmp!=site1) {
-            throw std::runtime_error((boost::format("Ilegal format of G0_TAU: We expect %1% at the first column of the line %2%") % site1 % line).str().c_str());
+            if (flavor_tmp != flavor) {
+              throw std::runtime_error(
+                  (boost::format("Ilegal format of G0_TAU: We expect %1% at the first column of the line %2%") % flavor %
+                   line).str().c_str());
+            }
+            if (itmp != site1) {
+              throw std::runtime_error(
+                  (boost::format("Ilegal format of G0_TAU: We expect %1% at the second column of the line %2%") % site1 %
+                   line).str().c_str());
+            }
+            if (itmp2 != site2) {
+              throw std::runtime_error(
+                  (boost::format("Ilegal format of G0_TAU: We expect %1% at the third column of the line %2%") %
+                   site2 % line).str().c_str());
+            }
+            if (itmp3 != itau) {
+              throw std::runtime_error(
+                  (boost::format("Ilegal format of G0_TAU: We expect %1% at the fourth column of the line %2%") % itau %
+                   line).str().c_str());
+            }
+            bare_green_itime(itau, site1, site2, flavor) = mycast<T>(std::complex<double>(re, im));
+            ++line;
           }
-          if (itmp2!=site2) {
-            throw std::runtime_error((boost::format("Ilegal format of G0_TAU: We expect %1% at the second column of the line %2%") % site2 % line).str().c_str());
-          }
-          if (itmp3!=itau) {
-            throw std::runtime_error((boost::format("Ilegal format of G0_TAU: We expect %1% at the third column of the line %2%") % itau % line).str().c_str());
-          }
-          //if (!(itmp==site1 && itmp2==site2 && itmp3==itau)) {
-            //throw std::runtime_error("Ilegal format of G0_TAU");
-          //}
-          for (std::size_t orb1 = 0; orb1 < n_flavors; orb1++) {
-            bare_green_itime(itau, site1, site2, orb1) = mycast<T>(std::complex<double>(re,im));
-          }
-          ++line;
         }
       }
     }

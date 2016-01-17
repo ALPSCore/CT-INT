@@ -75,10 +75,10 @@ measurement_period(parms["MEASUREMENT_PERIOD"] | 500*n_flavors*n_site),
 convergence_check_period(parms["CONVERGENCE_CHECK_PERIOD"] | (int)recalc_period),
 almost_zero(parms["ALMOSTZERO"] | 1.e-16),
 seed(parms["SEED"] | 0),
-green_matsubara(n_matsubara, n_site, n_flavors),
-bare_green_matsubara(n_matsubara,n_site, n_flavors), 
+//green_matsubara(n_matsubara, n_site, n_flavors),
+bare_green_matsubara(n_matsubara,n_site, n_flavors),
 bare_green_itime(n_tau+1, n_site, n_flavors),
-green_itime(n_tau+1, n_site, n_flavors),
+//green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
 legendre_transformer(n_matsubara,n_legendre),
 n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
@@ -394,8 +394,8 @@ void InteractionExpansion<TYPES>::initialize_simulation(const alps::params &parm
   pert_hist.clear();
   //initialize ALPS observables
   initialize_observables();
-  green_matsubara=bare_green_matsubara;
-  green_itime=bare_green_itime;
+  //green_matsubara=bare_green_matsubara;
+  //green_itime=bare_green_itime;
 }
 
 template<class TYPES>

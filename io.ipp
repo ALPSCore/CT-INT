@@ -29,7 +29,7 @@
 
 #include "interaction_expansion.hpp"
 
-///read in Green's function file. Format:
+/*///read in Green's function file. Format:
 /// Frequency \t val \t val....
 template<class TYPES>
 void InteractionExpansion<TYPES>::read_bare_green(std::ifstream &G0_omega, std::ifstream &G0_tau)
@@ -62,7 +62,7 @@ void InteractionExpansion<TYPES>::read_bare_green(std::ifstream &G0_omega, std::
   // There is no operator<<(ostream&,ifstream&) in the std
   // std::cout<<"G0_omega: "<<G0_omega<<std::endl;
   // std::cout<<"G0_tau: "<<G0_tau<<std::endl;
-}
+}*/
 
 
 template<class TYPES>

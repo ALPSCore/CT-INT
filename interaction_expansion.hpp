@@ -493,7 +493,7 @@ protected:
   void initialize_simulation(const alps::params &parms); // called by constructor
 
   // in file io.cpp
-  void read_bare_green(std::ifstream &G0_omega, std::ifstream &G0_tau);
+  //void read_bare_green(std::ifstream &G0_omega, std::ifstream &G0_tau);
   void print(std::ostream &os);
   
   /*green's function*/
@@ -603,10 +603,10 @@ protected:
   bool is_thermalized_in_previous_step_;
 
   /*private member variables*/
-  matsubara_green_function_t green_matsubara;
+  //matsubara_green_function_t green_matsubara;
   matsubara_green_function_t bare_green_matsubara;
   itime_green_function_t bare_green_itime;
-  itime_green_function_t green_itime;
+  //itime_green_function_t green_itime;
   std::vector<green_matrix> g0;
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
