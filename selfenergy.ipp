@@ -83,7 +83,7 @@ void InteractionExpansion<TYPES>::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       ++num_nd;
   }
 
-  if (params.defined("OUTPUT_Wk") ? params["OUTPUT_Wk"] : false) {
+  if (params.defined("PREFIX_OUTPUT_TIME_SERIES")) {
     for (unsigned int flavor=0; flavor<n_flavors; ++flavor) {
       for (unsigned int site1 = 0; site1 < n_site; ++site1) {
         Wk_dynamics.push_back(Wk[flavor][site1][site1][0]*sign);

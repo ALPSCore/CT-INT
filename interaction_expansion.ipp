@@ -298,15 +298,8 @@ void InteractionExpansion<TYPES>::update()
     }
   }
 
-
-  t_meas *= 1E-6/measurement_period;
-  measurements["UpdateTimeMsec"] << t_meas;
-}
-
-template<class TYPES>
-void InteractionExpansion<TYPES>::measure(){
-  //Measure pertubation order
-  {
+  //Save pertubation order
+  if (params.defined("PREFIX_OUTPUT_TIME_SERIES")) {
     std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
     for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
       assert(it->type()>=0 && it->type()<Uijkl.n_vertex_type());
@@ -317,6 +310,12 @@ void InteractionExpansion<TYPES>::measure(){
     }
   }
 
+  t_meas *= 1E-6/measurement_period;
+  measurements["UpdateTimeMsec"] << t_meas;
+}
+
+template<class TYPES>
+void InteractionExpansion<TYPES>::measure(){
   if (use_alpha_update) {
     measurements["AlphaScaleHistogram"] << alpha_scale_hist;
     if (alpha_scale_values[alpha_scale_idx]>alpha_scale_max_meas)
@@ -339,7 +338,7 @@ void InteractionExpansion<TYPES>::finalize()
 {
 
   if (pert_order_dynamics.size()>0) {
-    std::ofstream ofs((std::string("pert_order-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    std::ofstream ofs((params["PREFIX_OUTPUT_TIME_SERIES"].template cast<std::string>()+std::string("-pert_order-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     unsigned int n_data = pert_order_dynamics.size()/Uijkl.n_vertex_type();
     unsigned int i=0;
     for (unsigned int i_data=0; i_data<n_data; ++i_data) {
@@ -353,7 +352,7 @@ void InteractionExpansion<TYPES>::finalize()
   }
 
   if (Wk_dynamics.size()>0) {
-    std::ofstream ofs((std::string("Wk-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    std::ofstream ofs((params["PREFIX_OUTPUT_TIME_SERIES"].template cast<std::string>()+std::string("-Wk-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     unsigned int n_data = Wk_dynamics.size()/(n_flavors*n_site);
     unsigned int i=0;
     for (unsigned int i_data=0; i_data<n_data; ++i_data) {
