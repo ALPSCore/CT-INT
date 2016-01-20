@@ -11,10 +11,12 @@
 
 #include <alps/numeric/matrix.hpp>
 #include <boost/numeric/bindings/lapack/computational/getrf.hpp>
+#include <boost/numeric/bindings/stride.hpp>
 #include <alps/numeric/matrix/algorithms.hpp>
 
 template<typename T> T mycast(std::complex<double> val);
 template<typename T> T myconj(T val);
+
 
 //typedef alps::numeric::matrix<double> dense_matrix;
 //typedef alps::numeric::matrix<std::complex<double> > complex_dense_matrix;
@@ -132,8 +134,162 @@ namespace alps {
             A_norm /= norm;
             return A_norm;
         }
+
+        //a view for a submatrix of alps::matrix<T> for using gemm in blas
+        //Assumed column major order
+        template<typename T>
+        class submatrix_view {
+        public:
+            typedef T value_type;
+            typedef typename alps::numeric::matrix<T>::size_type size_type;
+            typedef typename alps::numeric::matrix<T>::difference_type difference_type;
+
+            //types for iterators
+            typedef value_type*
+                col_element_iterator;                         ///< Iterator to iterate through the elements of a columns of the matrix
+            typedef value_type const*
+                const_col_element_iterator;                   ///< Const version of col_element_iterator
+
+            submatrix_view(alps::numeric::matrix<T>& matrix, std::size_t start_row, std::size_t start_col, std::size_t num_rows, std::size_t num_cols)
+                : value(&matrix(start_row,start_col)),
+                  num_rows_(num_rows),
+                  num_cols_(num_cols),
+                  stride1_(matrix.stride1()),
+                  stride2_(matrix.stride2()) {
+                assert(matrix.stride1()==1);
+                assert(matrix.num_rows()>=start_row+num_rows);
+                assert(matrix.num_cols()>=start_col+num_cols);
+            }
+
+            T* get_value() const {
+                return value;
+            }
+
+            size_t stride1() const {
+                return stride1_;
+            }
+
+            size_t stride2() const {
+                return stride2_;
+            }
+
+            size_t num_cols() const {
+                return num_cols_;
+            }
+
+            size_t num_rows() const {
+                return num_rows_;
+            }
+
+            value_type& operator()(const std::size_t i, const std::size_t j) {
+                assert(i<num_rows());
+                assert(j<num_cols());
+                return *(value+i+stride2_*j);
+            }
+
+            value_type operator()(const std::size_t i, const std::size_t j) const {
+                assert(i<num_rows());
+                assert(j<num_cols());
+                return *(value+i+stride2_*j);
+            }
+
+            std::pair<col_element_iterator,col_element_iterator> col(size_type col = 0 )
+            {
+                assert(col < num_cols());
+                return std::make_pair(col_element_iterator(value+stride2_*col), col_element_iterator(value+stride2_*col+num_rows_));
+            }
+
+            std::pair<const_col_element_iterator,const_col_element_iterator> col(size_type col = 0 ) const
+            {
+                assert(col < num_cols());
+                return std::make_pair(col_element_iterator(value+stride2_*col), col_element_iterator(value+stride2_*col+num_rows_));
+            }
+
+        private:
+            T* const value;
+            std::size_t num_rows_, num_cols_, stride1_, stride2_;
+        };
+
+        template<typename T>
+        size_t num_cols(const submatrix_view<T>& matrix) {
+            return matrix.num_cols();
+        }
+
+        template<typename T>
+        size_t num_rows(const submatrix_view<T>& matrix) {
+            return matrix.num_rows();
+        }
+
+
+        //it's modified from alps::numeric::copy_block so that it accepcts a submatrix view
+        template <typename MatrixA, typename MatrixB>
+        void my_copy_block(MatrixA const& A, typename MatrixA::size_type ai, typename MatrixA::size_type aj,
+                        MatrixB& B, typename MatrixB::size_type bi, typename MatrixB::size_type bj,
+                        typename MatrixA::difference_type m, typename MatrixA::difference_type n)
+        {
+            assert(num_cols(B) >= bj+n);
+            assert(num_rows(B) >= bi+m);
+            for(typename MatrixA::difference_type j=0; j<n; ++j)
+                std::copy(A.col(aj+j).first + ai, A.col(aj+j).first + ai + m, B.col(bj+j).first + bi);
+        }
     }
 }
+
+//
+// An adaptor for the matrix to the boost::numeric::bindings
+//
+
+namespace boost { namespace numeric { namespace bindings { namespace detail {
+
+    template <typename T, typename Id, typename Enable>
+    struct adaptor< ::alps::numeric::submatrix_view<T>, Id, Enable>
+    {
+        typedef typename copy_const< Id, T >::type              value_type;
+        // TODO: fix the types of size and stride -> currently it's a workaround, since std::size_t causes problems with boost::numeric::bindings
+        //typedef typename ::alps::numeric::matrix<T,Alloc>::size_type         size_type;
+        //typedef typename ::alps::numeric::matrix<T,Alloc>::difference_type   difference_type;
+        typedef std::ptrdiff_t  size_type;
+        typedef std::ptrdiff_t  difference_type;
+
+        typedef mpl::map<
+            mpl::pair< tag::value_type,      value_type >,
+            mpl::pair< tag::entity,          tag::matrix >,
+            mpl::pair< tag::size_type<1>,    size_type >,
+            mpl::pair< tag::size_type<2>,    size_type >,
+            mpl::pair< tag::data_structure,  tag::linear_array >,
+            mpl::pair< tag::data_order,      tag::column_major >,
+            mpl::pair< tag::data_side,       tag::upper >,
+            mpl::pair< tag::stride_type<1>,  tag::contiguous >,
+            mpl::pair< tag::stride_type<2>,  difference_type >
+        > property_map;
+
+        static size_type size1( const Id& id ) {
+            return id.num_rows();
+        }
+
+        static size_type size2( const Id& id ) {
+            return id.num_cols();
+        }
+
+        static value_type* begin_value( Id& id ) {
+            return id.get_value();
+        }
+
+        //static value_type* end_value( Id& id ) {
+            //return &(*(id.col(id.num_cols()-1).second-1));
+        //}
+
+        static difference_type stride1( const Id& id ) {
+            return id.stride1();
+        }
+
+        static difference_type stride2( const Id& id ) {
+            return id.stride2();
+        }
+
+    };
+
+ }}}}
 
 //template<class T>
 //void swap_cols_rows(alps::numeric::matrix<T>& mat, const std::vector<std::pair<int,int> >& swap_list) {

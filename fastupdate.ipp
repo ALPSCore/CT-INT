@@ -80,9 +80,9 @@ InteractionExpansion<TYPES>::fastupdate_up(const int flavor, bool compute_only_w
   if(compute_only_weight){
     return compute_det_ratio_up(Green0_j_n, Green0_n_j, Green0_n_n, M[flavor].matrix());
   } else {
-    //boost::timer::cpu_timer timer;
+    boost::timer::cpu_timer timer;
     const M_TYPE r = compute_inverse_matrix_up2(Green0_j_n, Green0_n_j, Green0_n_n, M[flavor].matrix(), M[flavor].matrix());
-    //std::cout << "matrix_up " << timer.elapsed().wall*1E-6 << std::endl;
+    std::cout << "matrix_up " << timer.elapsed().wall*1E-6 << std::endl;
     return r;
   }
 }

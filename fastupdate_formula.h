@@ -9,6 +9,7 @@
 
 #include <alps/numeric/matrix.hpp>
 #include <alps/numeric/matrix/algorithms.hpp>
+#include "util.h"
 
 //Implementing equations in Appendix B.1.1 of Luitz's thesis
 template<class T>
@@ -127,14 +128,17 @@ compute_inverse_matrix_up2(
         invBigMat = safe_inverse(D);
         return safe_determinant(D);
     } else {
-        static matrix_t E, F, G, H, C_invA, C_invA_B, invA_B;
-        E.resize_values_not_retained(N, N);
-        F.resize_values_not_retained(N, M);
-        G.resize_values_not_retained(M, N);
+        static matrix_t H, C_invA, C_invA_B, invA_B;
         H.resize_values_not_retained(M, M);
         C_invA.resize_values_not_retained(M, N);
         C_invA_B.resize_values_not_retained(M, M);
         invA_B.resize_values_not_retained(N, M);
+        invBigMat.resize_values_not_retained(N + M, N + M);
+
+        //submatrix views to invBigMat
+        submatrix_view<T> E_view(invBigMat, 0, 0, N, N);
+        submatrix_view<T> F_view(invBigMat, 0, N, N, M);
+        submatrix_view<T> G_view(invBigMat, N, 0, M, N);
 
         //compute H
         gemm(C, invA, C_invA);
@@ -142,20 +146,16 @@ compute_inverse_matrix_up2(
         H = safe_inverse(D - C_invA_B);
 
         //compute G
-        boost::numeric::bindings::blas::gemm((T)-1.0, H, C_invA, (T)0.0, G);
+        boost::numeric::bindings::blas::gemm((T)-1.0, H, C_invA, (T)0.0, G_view);
 
         //compute F
         gemm(invA, B, invA_B);
-        boost::numeric::bindings::blas::gemm((T)-1.0, invA_B, H, (T)0.0, F);
+        boost::numeric::bindings::blas::gemm((T)-1.0, invA_B, H, (T)0.0, F_view);
 
         //compute E
-        copy_block(invA,0,0,E,0,0,N,N);
-        boost::numeric::bindings::blas::gemm(static_cast<T>(-1.0), invA_B, G, static_cast<T>(1.0), E);
+        my_copy_block(invA,0,0,E_view,0,0,N,N);
+        boost::numeric::bindings::blas::gemm(static_cast<T>(-1.0), invA_B, G_view, static_cast<T>(1.0), E_view);
 
-        invBigMat.resize_values_not_retained(N + M, N + M);
-        copy_block(E, 0, 0, invBigMat, 0, 0, N, N);
-        copy_block(F, 0, 0, invBigMat, 0, N, N, M);
-        copy_block(G, 0, 0, invBigMat, N, 0, M, N);
         copy_block(H, 0, 0, invBigMat, N, N, M, M);
 
         T r = 1. / safe_determinant(H);
@@ -202,7 +202,7 @@ compute_inverse_matrix_down(
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
-    static matrix_t E, F, G, H, invH_G, F_invH_G;
+    static matrix_t H, invH_G, F_invH_G;
 
     const size_t NpM = num_rows(invBigMat);
     const size_t M = num_rows_cols_removed;
@@ -240,23 +240,19 @@ compute_inverse_matrix_down(
         invBigMat.resize(0,0);
         return safe_determinant(H);
     } else {
-        E.resize_values_not_retained(N, N);
-        F.resize_values_not_retained(N, M);
-        G.resize_values_not_retained(M, N);
         H.resize_values_not_retained(M, M);
         invH_G.resize_values_not_retained(M, N);
         F_invH_G.resize_values_not_retained(N, N);
 
-        copy_block(invBigMat, 0, 0, E, 0, 0, N, N);
-        copy_block(invBigMat, 0, N, F, 0, 0, N, M);
-        copy_block(invBigMat, N, 0, G, 0, 0, M, N);
-        copy_block(invBigMat, N, N, H, 0, 0, M, M);
+        submatrix_view<T> E_view(invBigMat, 0, 0, N, N);
+        submatrix_view<T> F_view(invBigMat, 0, N, N, M);
+        submatrix_view<T> G_view(invBigMat, N, 0, M, N);
+        copy_block(invBigMat, N, N, H, 0, 0, M, M);//we need to copy a submatrix to H because save_determinant() does not support a matrix view.
 
-        gemm(safe_inverse(H), G, invH_G);
-        boost::numeric::bindings::blas::gemm((T)-1.0, F, invH_G, (T)1.0, E);
+        gemm(safe_inverse(H), G_view, invH_G);
+        boost::numeric::bindings::blas::gemm((T)-1.0, F_view, invH_G, (T)1.0, E_view);
 
         invBigMat.resize(N, N);
-        copy_block(E, 0, 0, invBigMat, 0, 0, N, N);
         return safe_determinant(H);
     }
 }

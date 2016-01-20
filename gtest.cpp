@@ -525,10 +525,42 @@ TEST(FastUpdate, BlockMatrixReplaceRowsColsSingular) {
     }
 }
 
-//TEST(Boost, Binomial) {
-    //const size_t k = 2;
-    //for (size_t N=k; N<10; ++N) {
-        ////const double tmp = boost::math::binomial_coefficient<double>(N,k);
-        //ASSERT_TRUE(std::abs(tmp-0.5*N*(N-1.0))<1E-8);
-    //}
-//}
+TEST(MatrixLibrary, submatrix_view) {
+    typedef double T;
+    const size_t M = 50, N1 = 10, N2 = 20, start_row=5, start_col=10;
+    alps::numeric::matrix<T> A(M,M, 1.0), B(M,M, 1.0), C_subcopy(M,M,1.0), C(2*M,2*M, 0.0), C_sub(N1,N2);
+
+    randomize_matrix(A, 100);//100 is a seed
+    randomize_matrix(B, 200);//200 is a seed
+
+    A.resize(N1,N1);
+    B.resize(N1,N2);
+    C.resize(M,M);
+
+    alps::numeric::submatrix_view<T> C_subview(C, start_row, start_col, N1, N2);
+    boost::numeric::bindings::blas::gemm(1.0, A, B, (T)0.0, C_subview);
+    boost::numeric::bindings::blas::gemm(1.0, A, B, (T)0.0, C_sub);
+
+    for (int j=0; j<N2; ++j) {
+        for (int i=0; i<N1; ++i) {
+            ASSERT_TRUE(C_sub(i,j)==C(i+start_row,j+start_col));
+            ASSERT_TRUE(C_subview(i,j)==C(i+start_row,j+start_col));
+        }
+    }
+
+    //copy from a view to a matrix
+    alps::numeric::my_copy_block(C_subview, 0, 0, C_subcopy, start_row, start_col, N1, N2);
+    for (int j=0; j<N2; ++j) {
+        for (int i = 0; i < N1; ++i) {
+            ASSERT_TRUE(C_subview(i,j)==C_subcopy(i+start_row,j+start_col));
+        }
+    }
+
+    //copy from a matrix to a view
+    alps::numeric::my_copy_block(C_subcopy, start_row, start_col, C_subview, 0, 0, N1, N2);
+    for (int j=0; j<N2; ++j) {
+        for (int i = 0; i < N1; ++i) {
+            ASSERT_TRUE(C_subview(i,j)==C_subcopy(i+start_row,j+start_col));
+        }
+    }
+}
