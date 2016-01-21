@@ -835,4 +835,61 @@ compute_det_ratio_replace_rows_cols_safe(const alps::numeric::matrix<T>& invBigM
     //inv_tSp = S-RMQ;
     //return determinant(tS)*determinant(inv_tSp);
 }
+
+template<typename T>
+T
+compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat, int num_elem_updated, const std::vector<int>& pos, const std::vector<double>& elems_diff, bool compute_only_det_rat) {
+    using namespace alps::numeric;
+
+    assert(invBigMat.num_cols()==invBigMat.num_rows());
+
+    //work space (static!)
+    static matrix<T> x, invC_plus_x, invC_plus_x_times_zx;
+    static std::vector<std::pair<int,int> > swap_list;
+
+    const int N = invBigMat.num_cols();
+
+    x.resize_values_not_retained(num_elem_updated, num_elem_updated);
+    for (int j=0; j<num_elem_updated; ++j) {
+        for (int i=0; i<num_elem_updated; ++i) {
+            assert(pos[i]>=0 && pos[i]<invBigMat.num_cols());
+            assert(pos[j]>=0 && pos[j]<invBigMat.num_cols());
+            x(i,j) = invBigMat(pos[i],pos[j])*elems_diff[j];
+        }
+        x(j,j) += (T) 1;
+    }
+
+    const T det_rat = determinant(x);
+    if (compute_only_det_rat) {
+        return det_rat;
+    }
+
+    //swap rows and cols to move all diagonal elements to be updated to the end rows and cols
+    swap_list.resize(num_elem_updated);
+    for (int i=0; i<num_elem_updated; ++i) {
+        invBigMat.swap_cols(pos[num_elem_updated-1-i], N-1-i);
+        invBigMat.swap_rows(pos[num_elem_updated-1-i], N-1-i);
+        swap_list[i] = std::pair<int,int>(pos[num_elem_updated-1-i], N-1-i);
+    }
+    submatrix_view<T> yx_view(invBigMat, 0, N-num_elem_updated,     N, num_elem_updated);
+    submatrix_view<T> zx_view(invBigMat, N-num_elem_updated, 0,     num_elem_updated, N);
+    invC_plus_x.resize_values_not_retained(num_elem_updated, num_elem_updated);
+    invC_plus_x_times_zx.resize_values_not_retained(num_elem_updated, N);
+
+    copy_block(invBigMat, N-num_elem_updated, N-num_elem_updated, invC_plus_x, 0, 0, num_elem_updated, num_elem_updated);
+    for (int i=0; i<num_elem_updated; ++i) {
+        invC_plus_x(i,i) += 1.0/elems_diff[i];
+    }
+    inverse_in_place(invC_plus_x);
+    boost::numeric::bindings::blas::gemm((T) 1.0, invC_plus_x, zx_view, (T) 0.0, invC_plus_x_times_zx);
+    boost::numeric::bindings::blas::gemm((T) -1.0, yx_view, invC_plus_x_times_zx, (T) 1.0, invBigMat);
+
+    for(std::vector<std::pair<int,int> >::reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
+        invBigMat.swap_cols(it->first, it->second);
+        invBigMat.swap_rows(it->first, it->second);
+    }
+
+    return det_rat;
+}
 #endif //IMPSOLVER_FASTUPDATE_FORMULA_H
+

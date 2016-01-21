@@ -525,6 +525,41 @@ TEST(FastUpdate, BlockMatrixReplaceRowsColsSingular) {
     }
 }
 
+TEST(FastUpdate, ReplaceDiagonalElements) {
+    typedef double T;
+    typedef alps::numeric::matrix<T> matrix_t;
+
+    const int N=10, m=2, offset=2;
+    assert(m+offset<=N);
+
+    matrix_t A_old(N,N), A_new(N,N), new_elems(m,1);
+    std::vector<T> elems_diff(m);
+    std::vector<int> pos(m);
+
+    randomize_matrix(A_old, 100);
+    randomize_matrix(new_elems, 200);
+    A_new = A_old;
+    matrix_t invA_old = inverse(A_old);
+    for (int i=0; i<m; ++i) {
+        pos[i] = i+offset;
+    }
+    for (int i=0; i<m; ++i) {
+        elems_diff[i] = new_elems(i,0)-A_old(pos[i],pos[i]);
+        A_new(pos[i],pos[i]) = new_elems(i,0);
+    }
+
+    const T det_rat = determinant(A_new)/determinant(A_old);
+    const T det_rat_fast = compute_det_ratio_replace_diaognal_elements(invA_old, m, pos, elems_diff, true);
+    ASSERT_TRUE(std::abs((det_rat-det_rat_fast)/det_rat)<1E-8);
+
+    /* inverse matrix update */
+    matrix_t invA_new = inverse(A_new);
+    matrix_t invA_new_fast = invA_old;
+    compute_det_ratio_replace_diaognal_elements(invA_new_fast, m, pos, elems_diff, false);
+
+    ASSERT_TRUE(std::abs(alps::numeric::norm_square(invA_new-invA_new_fast))<1E-5);
+}
+
 TEST(MatrixLibrary, submatrix_view) {
     typedef double T;
     const size_t M = 50, N1 = 10, N2 = 20, start_row=5, start_col=10;

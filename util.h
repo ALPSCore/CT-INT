@@ -135,6 +135,20 @@ namespace alps {
             return A_norm;
         }
 
+        template<class Matrix>
+        void inverse_in_place(Matrix& M)
+        {
+            std::vector<int> ipiv(num_rows(M));
+
+            int info = boost::numeric::bindings::lapack::getrf(M,ipiv);
+            if (info != 0)
+                throw std::runtime_error("Error in GETRF !");
+
+            info = boost::numeric::bindings::lapack::getri(M,ipiv);
+            if (info != 0)
+                throw std::runtime_error("Error in GETRI !");
+        }
+
         //a view for a submatrix of alps::matrix<T> for using gemm in blas
         //Assumed column major order
         template<typename T>
