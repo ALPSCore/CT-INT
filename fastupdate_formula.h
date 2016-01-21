@@ -128,35 +128,37 @@ compute_inverse_matrix_up2(
         invBigMat = safe_inverse(D);
         return safe_determinant(D);
     } else {
-        static matrix_t H, C_invA, C_invA_B, invA_B;
+        static matrix_t H, C_invA, C_invA_B, invA_B, F;
         H.resize_values_not_retained(M, M);
         C_invA.resize_values_not_retained(M, N);
         C_invA_B.resize_values_not_retained(M, M);
         invA_B.resize_values_not_retained(N, M);
-        invBigMat.resize_values_not_retained(N + M, N + M);
-
-        //submatrix views to invBigMat
-        submatrix_view<T> E_view(invBigMat, 0, 0, N, N);
-        submatrix_view<T> F_view(invBigMat, 0, N, N, M);
-        submatrix_view<T> G_view(invBigMat, N, 0, M, N);
+        F.resize_values_not_retained(N,M);
 
         //compute H
         gemm(C, invA, C_invA);
         gemm(C_invA, B, C_invA_B);
+        gemm(C_invA, B, C_invA_B);
         H = safe_inverse(D - C_invA_B);
-
-        //compute G
-        boost::numeric::bindings::blas::gemm((T)-1.0, H, C_invA, (T)0.0, G_view);
 
         //compute F
         gemm(invA, B, invA_B);
-        boost::numeric::bindings::blas::gemm((T)-1.0, invA_B, H, (T)0.0, F_view);
+        boost::numeric::bindings::blas::gemm((T)-1.0, invA_B, H, (T)0.0, F);
+
+        //submatrix views to invBigMat
+        invBigMat.resize_values_not_retained(N + M, N + M);//this may destroy the contents of invA as well
+        submatrix_view<T> E_view(invBigMat, 0, 0, N, N);
+        submatrix_view<T> G_view(invBigMat, N, 0, M, N);
+
+        //compute G
+        boost::numeric::bindings::blas::gemm((T)-1.0, H, C_invA, (T)0.0, G_view);
 
         //compute E
         my_copy_block(invA,0,0,E_view,0,0,N,N);
         boost::numeric::bindings::blas::gemm(static_cast<T>(-1.0), invA_B, G_view, static_cast<T>(1.0), E_view);
 
         copy_block(H, 0, 0, invBigMat, N, N, M, M);
+        copy_block(F, 0, 0, invBigMat, 0, N, N, M);
 
         T r = 1. / safe_determinant(H);
         return r;
