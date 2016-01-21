@@ -156,3 +156,26 @@ InteractionExpansion<TYPES>::fastupdate_shift(const int flavor, const std::vecto
       M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.rows_cols_updated[flavor], compute_only_weight);
   return shift_helper.det_rat;
 }
+
+template<class TYPES>
+typename TYPES::M_TYPE
+InteractionExpansion<TYPES>::fastupdate_spin_flip(const int flavor, const std::vector<int>& rows_cols_updated, const std::vector<M_TYPE>& old_alpha,
+                                                  bool compute_only_weight) {
+  assert(num_rows(M[flavor].matrix()) == num_cols(M[flavor].matrix()));
+  assert(old_alpha.size()==rows_cols_updated.size());
+
+  const int num_rows_cols_updated = rows_cols_updated.size();
+
+  std::vector<M_TYPE> diff(num_rows_cols_updated);
+
+  for (int iv=0; iv<num_rows_cols_updated; ++iv) {
+    diff[iv] = M[flavor].alpha_at(rows_cols_updated[iv])-old_alpha[iv];
+    std::cout << " debug pos " << rows_cols_updated[iv] << " diff " << diff[iv] << std::endl;
+  }
+
+  if (compute_only_weight) {
+    return compute_det_ratio_replace_diaognal_elements(M[flavor].matrix(), num_rows_cols_updated, rows_cols_updated, diff, true);
+  } else {
+    compute_det_ratio_replace_diaognal_elements(M[flavor].matrix(), num_rows_cols_updated, rows_cols_updated, diff, false);
+  }
+}

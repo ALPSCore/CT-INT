@@ -519,6 +519,87 @@ void InteractionExpansion<TYPES>::shift_update(void) {
 #endif
 }
 
+//Spin flip updates: change the spin of a vertex
+template<class TYPES>
+void InteractionExpansion<TYPES>::spin_flip_update(void) {
+  const int pert_order = itime_vertices.size();
+  if (pert_order==0) {
+    return;
+  }
+
+  //choose a vertex and a new af state
+  const int iv = (int) pert_order*random();
+  itime_vertex& v = itime_vertices[iv];
+  const vertex_definition<M_TYPE> v_def = Uijkl.get_vertex(v.type());
+  if (Uijkl.get_vertex(v.type()).num_af_states()==1) {
+    return;
+  }
+  int new_af_state;
+  const int old_af_state = v.af_state();
+  while (true) {
+    new_af_state = (int) Uijkl.get_vertex(v.type()).num_af_states()*random();
+    if (new_af_state!=v.af_state()) {
+      break;
+    }
+  }
+
+  std::cout << "debug v.type " << v.type() << std::endl;
+  std::cout << "old_af " << old_af_state << std::endl;
+  std::cout << "new_af " << new_af_state << std::endl;
+  std::cout << "old_M " << M[0].matrix() << std::endl;
+
+  //change status
+  v.set_af_state(new_af_state);
+  std::vector<std::vector<int> > positions(n_flavors);
+  std::vector<std::vector<M_TYPE> > old_alpha(n_flavors);
+  for (int i_rank=0; i_rank<v_def.rank(); ++i_rank) {
+    const int flavor_rank = v_def.flavors()[i_rank];
+    int pos = M[flavor_rank].find_row_col(v.time(), v.type(), i_rank);
+    positions[flavor_rank].push_back(pos);
+    old_alpha[flavor_rank].push_back(M[flavor_rank].bare_alpha_at(pos));
+    std::cout << "debug i_rank " << i_rank << " flavor " << flavor_rank << " " << M[flavor_rank].bare_alpha_at(pos) << " new " << v_def.get_alpha(new_af_state,i_rank) << std::endl;
+    if (M[flavor_rank].bare_alpha_at(pos)!=v_def.get_alpha(new_af_state,i_rank)) {
+      M[flavor_rank].set_alpha(pos, v_def.get_alpha(new_af_state,i_rank));
+    }
+  }
+
+  //update M
+  M_TYPE det_rat = 1.0;
+  for (int flavor=0; flavor<n_flavors; ++flavor) {
+    if (positions[flavor].size()>0) {
+      std::cout << "debug flavor " << flavor << std::endl;
+      assert(positions[flavor].size()==old_alpha[flavor].size());
+      det_rat *= fastupdate_spin_flip(flavor, positions[flavor], old_alpha[flavor], true);
+    }
+  }
+
+  std::cout << "debug, det_rat " << det_rat << std::endl;
+
+  if(std::abs(det_rat)> random()) { //do the actual update
+    std::cout << "accepted " << std::endl;
+    sign *= det_rat/std::abs(det_rat);
+    det *= det_rat;
+    for (int flavor=0; flavor<n_flavors; ++flavor) {
+      if (positions[flavor].size()>0) {
+        fastupdate_spin_flip(flavor, positions[flavor], old_alpha[flavor], false);
+      }
+    }
+    std::cout << "new_M " << M[0].matrix() << std::endl;
+  } else {
+    std::cout << "rejected " << std::endl;
+    itime_vertices[iv].set_af_state(old_af_state);
+    for (int flavor=0; flavor<n_flavors; ++flavor) {
+      for (int i_op=0; i_op<positions[flavor].size(); ++i_op) {
+        M[flavor].set_alpha(positions[flavor][i_op], old_alpha[flavor][i_op]);
+      }
+    }
+  }
+  M.sanity_check(itime_vertices);
+  std::cout << "doing sanity check " << std::endl;
+  sanity_check();
+  std::cout << "done sanity check " << std::endl;
+}
+
 //Update alpha for non-density-type vertices
 template<class TYPES>
 void InteractionExpansion<TYPES>::alpha_update(void) {

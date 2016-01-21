@@ -259,6 +259,8 @@ void InteractionExpansion<TYPES>::update()
   
       for (int i_shift=0; i_shift<n_shift; ++i_shift)
         shift_update();
+
+      spin_flip_update();
   
       t_meas[0] += t_m;
       t_meas[1] += (timer.elapsed().wall-t_m);

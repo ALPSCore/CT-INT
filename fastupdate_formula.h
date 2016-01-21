@@ -859,6 +859,7 @@ compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat,
         x(j,j) += (T) 1;
     }
 
+    std::cout << "debug x, " << x << std::endl;
     const T det_rat = determinant(x);
     if (compute_only_det_rat) {
         return det_rat;

@@ -352,6 +352,7 @@ public:
   int rank() const {return rank_;}
   double time() const {return time_;}
   void set_time(double new_time) {time_ = new_time;}
+  void set_af_state(int new_af_state) {af_state_ = new_af_state;}
   bool is_density_type() const {return is_density_type_;}
 
 private:

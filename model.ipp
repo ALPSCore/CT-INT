@@ -227,3 +227,28 @@ void InteractionExpansion<TYPES>::reject_shift(int idx_vertex) {
   }
 }
 
+/*
+template<class TYPES>
+void InteractionExpansion<TYPES>::try_spin_flip(int iv, int new_af_state) {
+  itime_vertex& v = itime_vertices[iv];
+  const vertex_definition<M_TYPE> v_def = Uijkl.get_vertex(v.type());
+
+  //change status
+  v.set_af_state(new_af_state);
+  std::vector<bool> updated(n_flavors, false);
+  for (int i_rank=0; i_rank<v_def.rank(); ++i_rank) {
+    const int flavor_rank = v_def.flavors()[i_rank];
+    int pos = M[flavor_rank].find_row_col(v.time(), v.type(), i_rank);
+    if (M[flavor_rank].bare_alpha_at(pos)!=v_def.get_alpha(new_af_state,i_rank)) {
+      M[flavor_rank].set_alpha(pos, v_def.get_alpha(new_af_state,i_rank));
+      updated[flavor_rank] = true;
+    }
+  }
+
+  //update M
+  double det_rat = 1.0;
+  for (int flavor=0; flavor<n_flavors; ++flavor) {
+
+  }
+}
+ */

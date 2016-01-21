@@ -301,6 +301,14 @@ public:
     assert(pos>=0 && pos<creators_.size());
     return creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_scale_*alpha_[pos];
   }
+  T bare_alpha_at(int pos) const {
+    assert(pos>=0 && pos<creators_.size());
+    return alpha_[pos];
+  }
+  void set_alpha(int pos, T new_val) {
+    assert(pos>=0 && pos<creators_.size());
+    alpha_[pos] = new_val;
+  }
   void alpha_push_back(T new_elem) {alpha_.push_back(new_elem);}
   double alpha_scale() const {return alpha_scale_;}
   void set_alpha_scale(double alpha_scale) {alpha_scale_ = alpha_scale;}
@@ -508,6 +516,7 @@ protected:
   void removal_insertion_double_vertex_update(void);
   void multi_vertex_update(int);
   void shift_update(void);
+  void spin_flip_update(void);
   void alpha_update(void);
   void reset_perturbation_series(bool verbose=true);
   
@@ -515,6 +524,8 @@ protected:
   M_TYPE fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
   M_TYPE fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight);
   M_TYPE fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight);
+  M_TYPE fastupdate_spin_flip(const int flavor, const std::vector<int>& rows_cols_updated, const std::vector<M_TYPE>& old_alpha,
+                              bool compute_only_weight);
 
   // in file observables.ipp
   void measure_observables(std::valarray<double>& timings);
@@ -544,6 +555,9 @@ protected:
   M_TYPE try_shift(int idx_vertex, double new_time);
   void perform_shift(int idx_vertex);
   void reject_shift(int idx_vertex);
+
+  //M_TYPE try_spin_flip(int iv, int new_af_state);
+
   void prepare_for_measurement(); //called once after thermalization is done
 
   /*private member variables, constant throughout the simulation*/
