@@ -233,7 +233,7 @@ class general_U_matrix {
         }
         for (size_t i_rank=0; i_rank<rank; ++i_rank) {
           for (size_t iaf = 0; iaf < num_af_states; ++iaf) {
-              alpha_[iaf][i_rank] = mycast<T>(static_cast<std::complex<double> >(alpha_cmplx[iaf][i_rank]));
+            alpha_[iaf][i_rank] = mycast<T>(static_cast<std::complex<double> >(alpha_cmplx[iaf][i_rank]));
           }
         }
 

@@ -169,8 +169,8 @@ InteractionExpansion<TYPES>::fastupdate_spin_flip(const int flavor, const std::v
   std::vector<M_TYPE> diff(num_rows_cols_updated);
 
   for (int iv=0; iv<num_rows_cols_updated; ++iv) {
-    diff[iv] = M[flavor].alpha_at(rows_cols_updated[iv])-old_alpha[iv];
-    std::cout << " debug pos " << rows_cols_updated[iv] << " diff " << diff[iv] << std::endl;
+    diff[iv] = -M[flavor].alpha_at(rows_cols_updated[iv])+old_alpha[iv];
+    //std::cout << " debug pos " << rows_cols_updated[iv] << " diff " << diff[iv] << std::endl;
   }
 
   if (compute_only_weight) {

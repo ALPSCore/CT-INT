@@ -97,6 +97,7 @@ remove_helper(n_flavors),
 shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 0),
+n_spin_flip(parms["N_SPIN_FLIP"] | 0),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
 //force_quantum_number_within_range(parms.defined("FORCE_QUANTUM_NUMBER_WITHIN_RANGE") ? parms["FORCE_QUANTUM_NUMBER_WITHIN_RANGE"] : false),
 use_alpha_update(parms.defined("USE_ALPHA_UPDATE") ? parms["USE_ALPHA_UPDATE"] : false),
@@ -260,7 +261,8 @@ void InteractionExpansion<TYPES>::update()
       for (int i_shift=0; i_shift<n_shift; ++i_shift)
         shift_update();
 
-      spin_flip_update();
+      for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip)
+        spin_flip_update();
   
       t_meas[0] += t_m;
       t_meas[1] += (timer.elapsed().wall-t_m);
@@ -487,6 +489,10 @@ void InteractionExpansion<TYPES>::sanity_check() {
     sign_exact *= det/std::abs(det);
 
     alps::numeric::matrix<M_TYPE> tmp = mygemm(G0, M[flavor].matrix());
+    alps::numeric::matrix<M_TYPE> M_scratch = inverse(G0);
+    //std::cout << " debug G0 " << G0 << std::endl;
+    //std::cout << " debug M_scratch " << M_scratch << std::endl;
+
     bool OK = true;
     double max_diff = 0;
     for (size_t q=0; q<Nv; ++q) {
@@ -502,6 +508,7 @@ void InteractionExpansion<TYPES>::sanity_check() {
         OK = OK && flag;
         if(!flag) {
           std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
+          exit(-1);
         }
       }
     }
