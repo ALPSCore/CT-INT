@@ -521,6 +521,8 @@ void InteractionExpansion<TYPES>::shift_update(void) {
 //Spin flip updates: change the spin of a vertex
 template<class TYPES>
 void InteractionExpansion<TYPES>::spin_flip_update(void) {
+  const double eps = 1E-2;
+
   const int pert_order = itime_vertices.size();
   if (pert_order==0) {
     return;
@@ -533,8 +535,18 @@ void InteractionExpansion<TYPES>::spin_flip_update(void) {
   if (Uijkl.get_vertex(v.type()).num_af_states()==1) {
     return;
   }
-  int new_af_state;
   const int old_af_state = v.af_state();
+  {
+    bool all_zero = true;
+    for (int i_rank=0; i_rank<v_def.rank(); ++i_rank) {
+      all_zero = all_zero && (std::abs(v_def.get_alpha(old_af_state,i_rank))<eps);
+    }
+    if (all_zero) {
+      return;
+    }
+  }
+
+  int new_af_state;
   while (true) {
     new_af_state = (int) Uijkl.get_vertex(v.type()).num_af_states()*random();
     if (new_af_state!=v.af_state()) {
