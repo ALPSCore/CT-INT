@@ -838,7 +838,7 @@ compute_det_ratio_replace_rows_cols_safe(const alps::numeric::matrix<T>& invBigM
 
 template<typename T>
 T
-compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat, int num_elem_updated, const std::vector<int>& pos, const std::vector<double>& elems_diff, bool compute_only_det_rat) {
+compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat, int num_elem_updated, const std::vector<int>& pos, const std::vector<T>& elems_diff, bool compute_only_det_rat) {
     using namespace alps::numeric;
 
     assert(invBigMat.num_cols()==invBigMat.num_rows());
