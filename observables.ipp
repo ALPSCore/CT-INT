@@ -151,7 +151,7 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift_sum");
-  measurements << alps::ngs::SimpleRealVectorObservable("PerturbationOrderVertex");
+  measurements << alps::ngs::RealVectorObservable("PerturbationOrderVertex");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion_count");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion_sum");

@@ -62,6 +62,11 @@ void evaluate_selfenergy_measurement_matsubara(const typename alps::results_type
   for (std::size_t z=0; z<n_flavors; ++z)
     densities[z] = dens[z];
 
+  std::vector<double> tau = results["PerturbationOrderVertex"].template tau<std::vector<double> >();
+  std::cout << "Autocorrelation times of PerturbationOrderVertex : " << std::endl;
+  for (int iv=0; iv<tau.size(); ++iv) {
+    std::cout << " iv = " << iv << " tau = " << tau[iv] << std::endl;
+  }
 }
 
 template<class SOLVER_TYPE>
