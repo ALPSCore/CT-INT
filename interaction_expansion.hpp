@@ -607,6 +607,9 @@ protected:
 
   std::vector<bool> is_density_density_type;
 
+  //for shift update
+  std::vector<bool> shift_update_valid;
+
   const unsigned int recalc_period;                
   const unsigned int measurement_period;
   const unsigned int convergence_check_period;

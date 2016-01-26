@@ -461,15 +461,18 @@ void InteractionExpansion<TYPES>::multi_vertex_update(int nv_updated)
 //Shift updates: shift a vertex.
 template<class TYPES>
 void InteractionExpansion<TYPES>::shift_update(void) {
+#ifndef NDEBUG
+  sanity_check();
+#endif
   const int pert_order= itime_vertices.size();//CHECKED
-  if (pert_order<=1)
+  if (pert_order<=1 || n_multi_vertex_update==1)
     return;
 
-  //choose a truely-non-density-type vertex
+  //choose a vertex
   std::vector<int> vertices_nr;
   vertices_nr.reserve(pert_order);
   for (int iv=0; iv<itime_vertices.size(); ++iv) {
-    if (Uijkl.get_is_truely_non_density_type()[itime_vertices[iv].type()])
+    if (shift_update_valid[itime_vertices[iv].type()])
       vertices_nr.push_back(iv);
   }
   if (vertices_nr.size()==0)
@@ -479,25 +482,13 @@ void InteractionExpansion<TYPES>::shift_update(void) {
   //std::cout << " debug shift " << itime_vertices[iv].type() << std::endl;
   const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, random.engine());
   const double diff_time = std::abs(new_time-itime_vertices[iv].time());
-
-  //check quantum number
-  if (force_quantum_number_conservation) {
-    const double old_time = itime_vertices[iv].time();
-    itime_vertices[iv].set_time(new_time);
-
-    if (is_quantum_number_conserved(itime_vertices) && is_quantum_number_within_range(itime_vertices)) {
-      itime_vertices[iv].set_time(old_time);
-    } else {
-      itime_vertices[iv].set_time(old_time);
-      //std::cout << "rejected" << std::endl;
-      return;
-    }
-  }
+  //std::cout << "diff_time " << diff_time << std::endl;
 
   M_TYPE metropolis_weight = try_shift(iv, new_time);
 
   statistics_shift.add_sample(std::min(diff_time,beta-diff_time), std::min(std::abs(metropolis_weight),1.0), 0);
   if(std::abs(metropolis_weight)> random()){ //do the actual update
+    //std::cout << " shift accepted " << std::endl;
     perform_shift(iv);
     sign*=metropolis_weight/std::abs(metropolis_weight);
     det*=metropolis_weight;
@@ -508,6 +499,7 @@ void InteractionExpansion<TYPES>::shift_update(void) {
 #endif
     //std::cout << "Done shift " << metropolis_weight << std::endl;
   }else {
+    //std::cout << " shift rejected " << std::endl;
     reject_shift(iv);
 #ifndef NDEBUG
     M.sanity_check(itime_vertices);
@@ -515,6 +507,7 @@ void InteractionExpansion<TYPES>::shift_update(void) {
   }
 #ifndef NDEBUG
   sanity_check();
+  //std::cout << "sanity check done" << std::endl;
 #endif
 }
 

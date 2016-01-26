@@ -11,8 +11,8 @@
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
  * the terms of the license, either version 1 or (at your option) any later
- * version.
- * 
+ *
+ *
  * You should have received a copy of the ALPS Application License along with
  * the ALPS Applications; see the file LICENSE.txt. If not, the license is also
  * available from http://alps.comp-phys.org/.
@@ -152,6 +152,15 @@ comm(communicator)
     find_valid_pair_multi_vertex_update(Uijkl.get_vertices(), quantum_number_vertices, mv_update_valid_pair, mv_update_valid_pair_flag);
     if (mv_update_valid_pair.size()==0)
       throw std::runtime_error("No valid vertex pair for double vertex update. Please deactivate double vertex update.");
+
+    //for shift update
+    if (n_shift>0) {
+      shift_update_valid.resize(Uijkl.n_vertex_type(), false);
+      for (int i_pair=0; i_pair<mv_update_valid_pair.size(); ++i_pair) {
+        shift_update_valid[mv_update_valid_pair[i_pair].first] = true;
+        shift_update_valid[mv_update_valid_pair[i_pair].second] = true;
+      }
+    }
   }
 
   is_density_density_type.resize(Uijkl.n_vertex_type());
@@ -171,6 +180,7 @@ comm(communicator)
     statistics_dv_ins = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
     statistics_dv_rem = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
   }
+
 
   //set up parameters for updates
   std::vector<double> proposal_prob(n_multi_vertex_update, 1.0);
@@ -214,6 +224,21 @@ comm(communicator)
     vertex_histograms[i]=new simple_hist(vertex_histogram_size);
   }
   c_or_cdagger::initialize_simulation(parms);
+
+  //shift update
+  if (n_shift>0) {
+    int count = 0;
+    std::cout << std::endl << "Shift updates will be performed for the following vertices." << std::endl;
+    for(int iv=0; iv<shift_update_valid.size(); ++iv) {
+      if (shift_update_valid[iv]) {
+        std::cout << " iv = " << iv << std::endl;
+        ++count;
+      }
+    }
+    if (count==0)
+      std::cout << "No vertices found." << std::endl;
+    std::cout << std::endl;
+  }
 
 
   //for alpha update
@@ -508,7 +533,7 @@ void InteractionExpansion<TYPES>::sanity_check() {
         OK = OK && flag;
         if(!flag) {
           std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-          exit(-1);
+          //exit(-1);
         }
       }
     }
