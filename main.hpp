@@ -27,6 +27,7 @@
 #include "interaction_expansion.hpp"
 #include "fouriertransform.h"
 #include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/filesystem.hpp>
 #include "measurements.hpp"
 
 #ifdef ALPS_HAVE_MPI
@@ -69,6 +70,9 @@ int run_simulation(int argc, char** argv) {
         throw std::invalid_argument("time limit is passed in the parameter file!");
       if(!parms.defined("MAX_TIME")) throw std::runtime_error("parameter MAX_TIME is not defined. How long do you want to run the code for? (in seconds)");
 
+      boost::filesystem::path full_path(boost::filesystem::current_path());
+      std::cout << "Current path is : " << full_path << std::endl;
+
 #ifndef ALPS_HAVE_MPI
       global_mpi_rank=0;
       sim_type s(parms,global_mpi_rank);
@@ -83,6 +87,8 @@ int run_simulation(int argc, char** argv) {
 
       //on the master: collect MC results and store them in file, then postprocess
       if (global_mpi_rank==0){
+        boost::filesystem::path full_path = boost::filesystem::system_complete(output_file);
+        std::cout << "Current path of outputfile is : " << full_path << std::endl;
         std::cout << " collecting ... " << std::endl;
         typename alps::results_type<SOLVER_TYPE>::type results = collect_results(s);
         save_results(results, parms, output_file, "/simulation/results");
