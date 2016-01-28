@@ -488,7 +488,7 @@ void InteractionExpansion<TYPES>::shift_update(void) {
 
   statistics_shift.add_sample(std::min(diff_time,beta-diff_time), std::min(std::abs(metropolis_weight),1.0), 0);
   if(std::abs(metropolis_weight)> random()){ //do the actual update
-    //std::cout << " shift accepted " << std::endl;
+    std::cout << " shift accepted " << std::endl;
     perform_shift(iv);
     sign*=metropolis_weight/std::abs(metropolis_weight);
     det*=metropolis_weight;
@@ -499,7 +499,7 @@ void InteractionExpansion<TYPES>::shift_update(void) {
 #endif
     //std::cout << "Done shift " << metropolis_weight << std::endl;
   }else {
-    //std::cout << " shift rejected " << std::endl;
+    std::cout << " shift rejected " << std::endl;
     reject_shift(iv);
 #ifndef NDEBUG
     M.sanity_check(itime_vertices);

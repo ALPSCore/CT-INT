@@ -64,6 +64,10 @@ void remove_elements_from_vector(V& vec, std::vector<int> elements_to_be_removed
 
 namespace alps {
     namespace numeric {
+        template <typename MatrixA, typename MatrixB>
+        void my_copy_block(MatrixA const& A, typename MatrixA::size_type ai, typename MatrixA::size_type aj,
+                           MatrixB& B, typename MatrixB::size_type bi, typename MatrixB::size_type bj,
+                           typename MatrixA::difference_type m, typename MatrixA::difference_type n);
 
         template<class Matrix>
         typename Matrix::value_type determinant(Matrix M) {
@@ -72,6 +76,10 @@ namespace alps {
 
             if (N==0) {
                 return 1.0;
+            } else if (N==1) {
+                return M(0,0);
+            } else if (N==2) {
+                return M(0,0)*M(1,1)-M(0,1)*M(1,0);
             }
 
             int info = boost::numeric::bindings::lapack::getrf(M, ipiv);
@@ -91,17 +99,53 @@ namespace alps {
             return (p%2==0 ? det : -det);
         }
 
+        template<class Matrix, class Matrix2>
+        typename Matrix::value_type determinant_no_copy(const Matrix& M, Matrix2& workspace) {
+            std::vector<int> ipiv(num_rows(M));
+            const size_t N = num_rows(M);
+
+            if (N==0) {
+                return 1.0;
+            } else if (N==1) {
+                return M(0,0);
+            } else if (N==2) {
+                return M(0,0)*M(1,1)-M(0,1)*M(1,0);
+            }
+
+            my_copy_block(M,0,0,workspace,0,0,N,N);
+
+            int info = boost::numeric::bindings::lapack::getrf(workspace, ipiv);
+            if (info != 0)
+                throw std::runtime_error("Error in GETRF !");
+
+            typename Matrix::value_type det = 1.0;
+            for (size_t i=0; i<N; ++i) {
+                det *= workspace(i,i);
+            }
+            int p = 0;
+            for (size_t i=0; i<N-1; ++i) {
+                if (ipiv[i] != i+1) {
+                    ++p;
+                }
+            }
+            return (p%2==0 ? det : -det);
+        }
+
         template<class Matrix>
         typename Matrix::value_type safe_determinant(Matrix M) {
             std::vector<int> ipiv(num_rows(M));
             const int N = num_rows(M);
 
-            double norm = std::sqrt(norm_square(M)/(N*N));
-            M /= norm;
-
             if (N==0) {
                 return 1.0;
+            } else if (N==1) {
+                return M(0,0);
+            } else if (N==2) {
+                return M(0,0)*M(1,1)-M(0,1)*M(1,0);
             }
+
+            double norm = std::sqrt(norm_square(M)/(N*N));
+            M /= norm;
 
             int info = boost::numeric::bindings::lapack::getrf(M, ipiv);
             if (info != 0)
@@ -164,8 +208,8 @@ namespace alps {
             typedef value_type const*
                 const_col_element_iterator;                   ///< Const version of col_element_iterator
 
-            submatrix_view(alps::numeric::matrix<T>& matrix, std::size_t start_row, std::size_t start_col, std::size_t num_rows, std::size_t num_cols)
-                : value(&matrix(start_row,start_col)),
+            submatrix_view(const alps::numeric::matrix<T>& matrix, std::size_t start_row, std::size_t start_col, std::size_t num_rows, std::size_t num_cols)
+                : value(const_cast<T*>(&matrix(start_row,start_col))),
                   num_rows_(num_rows),
                   num_cols_(num_cols),
                   stride1_(matrix.stride1()),
@@ -245,6 +289,16 @@ namespace alps {
             assert(num_rows(B) >= bi+m);
             for(typename MatrixA::difference_type j=0; j<n; ++j)
                 std::copy(A.col(aj+j).first + ai, A.col(aj+j).first + ai + m, B.col(bj+j).first + bi);
+        }
+
+        template <typename T>
+        typename real_type<T>::type norm_square(const submatrix_view<T>& M){
+            using alps::numeric::real;
+            typename real_type<T>::type ret(0);
+            for (std::size_t c = 0; c < num_cols(M); ++c)
+                for (std::size_t r = 0; r < num_rows(M); ++r)
+                    ret += real(conj(M(r,c)) * M(r,c));
+            return ret;
         }
     }
 }

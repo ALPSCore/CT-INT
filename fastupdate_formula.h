@@ -437,7 +437,7 @@ compute_inverse_matrix_replace_row_col(alps::numeric::matrix<T>& invG, const alp
 //Assuming the intermediate state is singular, one replaces a row and a column.
 template<class T>
 T
-compute_inverse_matrix_replace_row_col2(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T> Dr, const alps::numeric::matrix<T> Dc, int m,
+compute_inverse_matrix_replace_row_col2(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T>& Dr, const alps::numeric::matrix<T>& Dc, int m,
                                        bool compute_only_det_rat) {
     typedef alps::numeric::matrix<T> matrix_t;
     const double eps = 1E-10;
@@ -711,38 +711,42 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     assert(num_rows(Q)==N && num_cols(Q)==M);
     assert(num_rows(S)==M && num_cols(S)==M);
 
-    matrix_t tP(N, N), tQ(N, M), tR(M, N), tS(M, M), invtS_tR(M,N,0.), tQ_invtS_tR(N,N,0.);
+    static matrix_t invtS_tR, inv_tS, MQ, RMQ, ws1, ws2;
+    inv_tS.resize_values_not_retained(M,M);
+    invtS_tR.resize_values_not_retained(M,N);
+    MQ.resize_values_not_retained(N,M);
+    RMQ.resize_values_not_retained(M,M);
+    ws1.resize_values_not_retained(M,M);
+    ws2.resize_values_not_retained(M,M);
 
-    copy_block(invBigMat, 0, 0, tP, 0, 0, N, N);
-    copy_block(invBigMat, 0, N, tQ, 0, 0, N, M);
-    copy_block(invBigMat, N, 0, tR, 0, 0, M, N);
-    copy_block(invBigMat, N, N, tS, 0, 0, M, M);
+    submatrix_view<T> tQ_view(invBigMat, 0, N, N, M);
+    submatrix_view<T> tR_view(invBigMat, N, 0, M, N);
+    submatrix_view<T> tS_view(invBigMat, N, N, M, M);
 
-    const double norm = std::sqrt(alps::numeric::norm_square(tS)/(M*M));
-    matrix_t tS_norm(tS);
-    tS_norm /= norm;
+    //compute inv_tS
+    copy_block(invBigMat, N, N, inv_tS, 0, 0, M, M);
+    inverse_in_place(inv_tS);
 
-    gemm(safe_inverse(tS_norm), tR, invtS_tR);
-    gemm(tQ, invtS_tR, tQ_invtS_tR);
-    Mmat = tP-(1/norm)*tQ_invtS_tR;
+    gemm(inv_tS, tR_view, invtS_tR);
 
-    matrix_t MQ(N,M,0.), RMQ(M,M,0.);//, inv_tSp(M,M);
+    Mmat.resize_values_not_retained(N,N);
+    copy_block(invBigMat, 0, 0, Mmat, 0, 0, N, N);
+    boost::numeric::bindings::blas::gemm((T)-1.0, tQ_view, invtS_tR, (T) 1.0, Mmat);
+
+    inv_tSp.resize_values_not_retained(M,M);
     gemm(Mmat, Q, MQ);
-    gemm(R, MQ, RMQ);
-    inv_tSp = S-RMQ;
-    const double norm2 = std::sqrt(alps::numeric::norm_square(inv_tSp)/(M*M));
-    matrix_t inv_tSp_norm(inv_tSp);
-    inv_tSp_norm /= norm2;
-    return safe_determinant(tS_norm)*safe_determinant(inv_tSp_norm)*pow(norm*norm2,(double)M);
+    copy_block(S, 0, 0, inv_tSp, 0, 0, M, M);
+    boost::numeric::bindings::blas::gemm((T) -1.0, R, MQ, (T) 1.0, inv_tSp);
+    return determinant_no_copy(tS_view, ws1)*determinant_no_copy(inv_tSp, ws2);
 }
 
+//Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26).
+//T = double or complex<double>
 template<class T>
 T
 compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
                                     const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
-                                    const alps::numeric::matrix<T>& Mmat, const alps::numeric::matrix<T>& inv_tSp,
-                                    //const std::vector<int>& rows_cols, const std::vector<std::pair<int,int> >& swap_list, const alps::numeric::matrix<T>& Mmat, const alps::numeric::matrix<T>& inv_tSp,
-                                    alps::numeric::matrix<T>& tPp, alps::numeric::matrix<T>& tQp, alps::numeric::matrix<T>& tRp, alps::numeric::matrix<T>& tSp) {
+                                    const alps::numeric::matrix<T>& Mmat, const alps::numeric::matrix<T>& inv_tSp) {
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
@@ -756,45 +760,30 @@ compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
     assert(num_rows(Q)==N && num_cols(Q)==M);
     assert(num_rows(S)==M && num_cols(S)==M);
 
-    matrix_t tmp_NM(N,M,0.), tmp_MN(M,N,0.);
-    tPp.resize(N,N);
-    tQp.resize(N,M);
-    tRp.resize(M,N);
-    //tSp.resize(M,M);
+    static matrix_t tmp_NM, tmp_MN;
+    tmp_NM.resize_values_not_retained(N,M);
+    tmp_MN.resize_values_not_retained(M,N);
+    submatrix_view<T> tPp_view(invBigMat,0,0,N,N);
+    submatrix_view<T> tQp_view(invBigMat,0,N,N,M);
+    submatrix_view<T> tRp_view(invBigMat,N,0,M,N);
+    submatrix_view<T> tSp_view(invBigMat,N,N,M,M);
 
     //tSp
-    tSp = safe_inverse(inv_tSp);
+    my_copy_block(inv_tSp, 0, 0, tSp_view, 0, 0, M, M);
+    inverse_in_place(tSp_view);
 
     //tQp
-    gemm(Q,tSp,tmp_NM);
-    //std::fill(tQp.get_values().begin(), tQp.get_values().end(), 0.0);
-    gemm(Mmat,tmp_NM,tQp);
-    tQp *= -1;
+    gemm(Q,tSp_view,tmp_NM);
+    boost::numeric::bindings::blas::gemm((T)-1.0, Mmat, tmp_NM, (T) 0.0, tQp_view);
 
     //tRp
-    gemm(tSp,R,tmp_MN);
-    //std::fill(tRp.get_values().begin(), tRp.get_values().end(), 0.0);
-    gemm(tmp_MN,Mmat,tRp);
-    tRp *= -1;
+    gemm(tSp_view,R,tmp_MN);
+    boost::numeric::bindings::blas::gemm((T)-1.0, tmp_MN, Mmat, (T) 0.0, tRp_view);
 
     //tPp
-    //std::fill(tPp.get_values().begin(), tPp.get_values().end(), 0.0);
-    //std::fill(tmp_NM.get_values().begin(), tmp_NM.get_values().end(), 0.0);
     gemm(Mmat, Q, tmp_NM);
-    gemm(tmp_NM, tRp, tPp);
-    tPp = Mmat-tPp;
-
-    //write back
-    copy_block(tPp, 0, 0, invBigMat, 0, 0, N, N);
-    copy_block(tQp, 0, 0, invBigMat, 0, N, N, M);
-    copy_block(tRp, 0, 0, invBigMat, N, 0, M, N);
-    copy_block(tSp, 0, 0, invBigMat, N, N, M, M);
-
-    ////swap rows and cols
-    //for (std::vector<std::pair<int,int> >::const_reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
-        //invBigMat.swap_cols(it->first, it->second);
-        //invBigMat.swap_rows(it->first, it->second);
-    //}
+    my_copy_block(Mmat, 0, 0, tPp_view, 0, 0, N, N);
+    boost::numeric::bindings::blas::gemm((T)-1.0, tmp_NM, tRp_view, (T) 1.0, tPp_view);
 }
 
 template<class T>

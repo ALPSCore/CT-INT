@@ -313,7 +313,8 @@ TEST(FastUpdate, BlockMatrixReplaceRowsCols) {
             matrix_t invBigMatrix_fast(invBigMatrix), Mmat, inv_tSp, tPp, tQp, tRp, tSp;
             swap_cols_rows(invBigMatrix_fast, swap_list.begin(), swap_list.end());
             double det_rat_fast = compute_det_ratio_replace_rows_cols(invBigMatrix_fast, Q, R, S, Mmat, inv_tSp);
-            compute_inverse_matrix_replace_rows_cols(invBigMatrix_fast, Q, R, S, Mmat, inv_tSp, tPp, tQp, tRp, tSp);
+            //compute_inverse_matrix_replace_rows_cols(invBigMatrix_fast, Q, R, S, Mmat, inv_tSp, tPp, tQp, tRp, tSp);
+            compute_inverse_matrix_replace_rows_cols(invBigMatrix_fast, Q, R, S, Mmat, inv_tSp);
             swap_cols_rows(invBigMatrix_fast, swap_list.rbegin(), swap_list.rend());
             ASSERT_TRUE(std::abs(det_rat-det_rat_fast)<1E-8);
             ASSERT_TRUE(alps::numeric::norm_square(inverse(BigMatrixReplaced)-invBigMatrix_fast)<1E-8);

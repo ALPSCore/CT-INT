@@ -152,9 +152,13 @@ InteractionExpansion<TYPES>::fastupdate_shift(const int flavor, const std::vecto
     Green0_n_n(iv, iv) -= mycast<M_TYPE>(M[flavor].alpha_at(rows_cols_updated[iv]));
   }
 
-  shift_helper.det_rat = compute_inverse_matrix_replace_single_row_col(
-      M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.rows_cols_updated[flavor], compute_only_weight);
-  return shift_helper.det_rat;
+  if (compute_only_weight) {
+    return shift_helper.det_rat = compute_det_ratio_replace_rows_cols(
+        M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.Mmat[flavor], shift_helper.inv_tSp[flavor]);
+  } else {
+    return shift_helper.det_rat = compute_inverse_matrix_replace_rows_cols(
+        M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.Mmat[flavor], shift_helper.inv_tSp[flavor]);
+  }
 }
 
 template<class TYPES>

@@ -184,8 +184,10 @@ typename TYPES::M_TYPE InteractionExpansion<TYPES>::try_shift(int idx_vertex, do
     if (shift_helper.num_rows_cols_updated[flavor]!=1)
       throw std::logic_error("try shift is specialized for pair hopping and spin flip terms.");
 
+    const int Nv = M[flavor].matrix().num_cols();
     for (int i=0; i<shift_helper.rows_cols_updated[flavor].size(); ++i) {
       const int idx = shift_helper.rows_cols_updated[flavor][i];
+      const int n_rows_cols_updated = shift_helper.rows_cols_updated[flavor].size();
       assert(idx<M[flavor].creators().size());
 
       operator_time cr_op_time = M[flavor].creators()[idx].t(); cr_op_time.set_time(v.time());
@@ -193,6 +195,10 @@ typename TYPES::M_TYPE InteractionExpansion<TYPES>::try_shift(int idx_vertex, do
 
       operator_time ann_op_time = M[flavor].annihilators()[idx].t(); ann_op_time.set_time(v.time());
       M[flavor].annihilators()[idx].set_time(ann_op_time);
+
+      //swap rows and cols in inverse matrix
+      M[flavor].matrix().swap_cols(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
+      M[flavor].matrix().swap_rows(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
     }
 
     //actual fast update
@@ -207,6 +213,12 @@ void InteractionExpansion<TYPES>::perform_shift(int idx_vertex) {
 
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
     fastupdate_shift(flavor, shift_helper.rows_cols_updated[flavor], false);
+    const int Nv = M[flavor].matrix().num_cols();
+    for (int i=shift_helper.rows_cols_updated[flavor].size()-1; i>=0; --i) {
+      const int n_rows_cols_updated = shift_helper.rows_cols_updated[flavor].size();
+      M[flavor].matrix().swap_cols(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
+      M[flavor].matrix().swap_rows(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
+    }
   }
 }
 
@@ -223,6 +235,13 @@ void InteractionExpansion<TYPES>::reject_shift(int idx_vertex) {
 
       operator_time ann_op_time = M[flavor].annihilators()[idx].t(); ann_op_time.set_time(shift_helper.old_time);
       M[flavor].annihilators()[idx].set_time(ann_op_time);
+
+      const int Nv = M[flavor].matrix().num_cols();
+      for (int i=shift_helper.rows_cols_updated[flavor].size()-1; i>=0; --i) {
+        const int n_rows_cols_updated = shift_helper.rows_cols_updated[flavor].size();
+        M[flavor].matrix().swap_cols(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
+        M[flavor].matrix().swap_rows(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
+      }
     }
   }
 }
