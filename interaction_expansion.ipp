@@ -533,7 +533,7 @@ void InteractionExpansion<TYPES>::sanity_check() {
         OK = OK && flag;
         if(!flag) {
           std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-          //exit(-1);
+          exit(-1);
         }
       }
     }

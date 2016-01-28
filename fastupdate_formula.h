@@ -690,7 +690,7 @@ replace_rows_cols_respect_ordering(alps::numeric::matrix<T>& A,
     }
 }
 
-//Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26).
+//Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26) before taking the limit of tS->0
 //T = double or complex<double>
 template<class T>
 T
@@ -740,7 +740,7 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     return determinant_no_copy(tS_view, ws1)*determinant_no_copy(inv_tSp, ws2);
 }
 
-//Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26).
+//Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26) before taking the limit of tS->0
 //T = double or complex<double>
 template<class T>
 T
@@ -833,7 +833,7 @@ compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat,
     assert(invBigMat.num_cols()==invBigMat.num_rows());
 
     //work space (static!)
-    static matrix<T> x, invC_plus_x, invC_plus_x_times_zx;
+    static matrix<T> x, invC_plus_x, invC_plus_x_times_zx, yx;
     static std::vector<std::pair<int,int> > swap_list;
 
     const int N = invBigMat.num_cols();
@@ -860,7 +860,9 @@ compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat,
         invBigMat.swap_rows(pos[num_elem_updated-1-i], N-1-i);
         swap_list[i] = std::pair<int,int>(pos[num_elem_updated-1-i], N-1-i);
     }
-    submatrix_view<T> yx_view(invBigMat, 0, N-num_elem_updated,     N, num_elem_updated);
+    yx.resize_values_not_retained(N, num_elem_updated);
+    copy_block(invBigMat, 0, N-num_elem_updated, yx, 0, 0, N, num_elem_updated);
+
     submatrix_view<T> zx_view(invBigMat, N-num_elem_updated, 0,     num_elem_updated, N);
     invC_plus_x.resize_values_not_retained(num_elem_updated, num_elem_updated);
     invC_plus_x_times_zx.resize_values_not_retained(num_elem_updated, N);
@@ -871,7 +873,7 @@ compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat,
     }
     inverse_in_place(invC_plus_x);
     boost::numeric::bindings::blas::gemm((T) 1.0, invC_plus_x, zx_view, (T) 0.0, invC_plus_x_times_zx);
-    boost::numeric::bindings::blas::gemm((T) -1.0, yx_view, invC_plus_x_times_zx, (T) 1.0, invBigMat);
+    boost::numeric::bindings::blas::gemm((T) -1.0, yx, invC_plus_x_times_zx, (T) 1.0, invBigMat);
 
     for(std::vector<std::pair<int,int> >::reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
         invBigMat.swap_cols(it->first, it->second);

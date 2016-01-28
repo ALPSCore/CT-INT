@@ -531,6 +531,7 @@ TEST(FastUpdate, ReplaceDiagonalElements) {
     typedef alps::numeric::matrix<T> matrix_t;
 
     const int N=10, m=2, offset=2;
+    //const int N=2, m=1, offset=0;
     assert(m+offset<=N);
 
     matrix_t A_old(N,N), A_new(N,N), new_elems(m,1);
@@ -558,6 +559,7 @@ TEST(FastUpdate, ReplaceDiagonalElements) {
     matrix_t invA_new_fast = invA_old;
     compute_det_ratio_replace_diaognal_elements(invA_new_fast, m, pos, elems_diff, false);
 
+    std::cout << std::abs(alps::numeric::norm_square(invA_new-invA_new_fast)) << std::endl;
     ASSERT_TRUE(std::abs(alps::numeric::norm_square(invA_new-invA_new_fast))<1E-5);
 }
 

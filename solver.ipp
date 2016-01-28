@@ -507,7 +507,7 @@ void InteractionExpansion<TYPES>::shift_update(void) {
   }
 #ifndef NDEBUG
   sanity_check();
-  //std::cout << "sanity check done" << std::endl;
+  std::cout << "sanity check done" << std::endl;
 #endif
 }
 

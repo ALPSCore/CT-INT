@@ -338,6 +338,11 @@ public:
      std::swap(alpha_[i1], alpha_[i2]);
      std::swap(vertex_info_[i1], vertex_info_[i2]);
    }
+   void swap_rows_cols(size_t i1, size_t i2) {
+     swap_ops(i1, i2);
+     matrix_.swap_cols(i1, i2);
+     matrix_.swap_rows(i1, i2);
+   }
    template<class InputIterator>
    void swap_ops2(InputIterator first, InputIterator end) {
      for (InputIterator it=first; it!=end; ++it) {
@@ -523,7 +528,9 @@ protected:
   // in file fastupdate.cpp:
   M_TYPE fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
   M_TYPE fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight);
+  M_TYPE fastupdate_shift_init(const int flavor, const std::vector<int>& rows_cols_updated);
   M_TYPE fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight);
+  M_TYPE fastupdate_shift_finalize(const int flavor, const std::vector<int>& rows_cols_updated);
   M_TYPE fastupdate_spin_flip(const int flavor, const std::vector<int>& rows_cols_updated, const std::vector<M_TYPE>& old_alpha,
                               bool compute_only_weight);
 

@@ -117,6 +117,18 @@ InteractionExpansion<TYPES>::fastupdate_down(const std::vector<size_t>& rows_col
   }
 }
 
+template<class TYPES>
+typename TYPES::M_TYPE
+InteractionExpansion<TYPES>::fastupdate_shift_init(const int flavor, const std::vector<int>& rows_cols_updated) {
+  assert(num_rows(M[flavor].matrix()) == num_cols(M[flavor].matrix()));
+  const int num_rows_cols_updated = rows_cols_updated.size();
+  const int noperators = num_rows(M[flavor].matrix());
+
+  for (int i=0; i<num_rows_cols_updated; ++i) {
+    M[flavor].swap_rows_cols(num_rows_cols_updated-1-i, noperators-1-i);
+  }
+}
+
 //VERY UGLY IMPLEMENTATION
 template<class TYPES>
 typename TYPES::M_TYPE
@@ -130,26 +142,26 @@ InteractionExpansion<TYPES>::fastupdate_shift(const int flavor, const std::vecto
   alps::numeric::matrix<M_TYPE> Green0_n_j(num_rows_cols_updated, noperators_rest);//R
   alps::numeric::matrix<M_TYPE> Green0_j_n(noperators_rest, num_rows_cols_updated);//Q
 
-  std::vector<int> rows_cols_rest(noperators_rest);
-  generate_indices(rows_cols_updated,noperators_rest,num_rows_cols_updated,rows_cols_rest);
+  //std::vector<int> rows_cols_rest(noperators_rest);
+  //generate_indices(rows_cols_updated,noperators_rest,num_rows_cols_updated,rows_cols_rest);
 
   for(int i=0;i<noperators_rest;++i) {
     for (int iv=0; iv<num_rows_cols_updated; ++iv) {
-      Green0_n_j(iv,i) = mycast<M_TYPE>(green0_spline_for_M(flavor, rows_cols_updated[iv], rows_cols_rest[i]));
+      Green0_n_j(iv,i) = mycast<M_TYPE>(green0_spline_for_M(flavor, noperators_rest+iv, i));
     }
   }
   for(int i=0;i<noperators_rest;++i){
     for (int iv=0; iv<num_rows_cols_updated; ++iv) {
-      Green0_j_n(i,iv) = mycast<M_TYPE>(green0_spline_for_M(flavor, rows_cols_rest[i], rows_cols_updated[iv]));
+      Green0_j_n(i,iv) = mycast<M_TYPE>(green0_spline_for_M(flavor, i, noperators_rest+iv));
     }
   }
   for (int iv2=0; iv2<num_rows_cols_updated; ++iv2) {
     for (int iv=0; iv<num_rows_cols_updated; ++iv) {
-      Green0_n_n(iv, iv2) = mycast<M_TYPE>(green0_spline_for_M(flavor, rows_cols_updated[iv], rows_cols_updated[iv2]));
+      Green0_n_n(iv, iv2) = mycast<M_TYPE>(green0_spline_for_M(flavor, noperators_rest+iv, noperators_rest+iv2));
     }
   }
   for (int iv=0; iv<num_rows_cols_updated; ++iv) {
-    Green0_n_n(iv, iv) -= mycast<M_TYPE>(M[flavor].alpha_at(rows_cols_updated[iv]));
+    Green0_n_n(iv, iv) -= mycast<M_TYPE>(M[flavor].alpha_at(iv+noperators_rest));
   }
 
   if (compute_only_weight) {
@@ -158,6 +170,18 @@ InteractionExpansion<TYPES>::fastupdate_shift(const int flavor, const std::vecto
   } else {
     return shift_helper.det_rat = compute_inverse_matrix_replace_rows_cols(
         M[flavor].matrix(), Green0_j_n, Green0_n_j, Green0_n_n, shift_helper.Mmat[flavor], shift_helper.inv_tSp[flavor]);
+  }
+}
+
+template<class TYPES>
+typename TYPES::M_TYPE
+InteractionExpansion<TYPES>::fastupdate_shift_finalize(const int flavor, const std::vector<int>& rows_cols_updated) {
+  assert(num_rows(M[flavor].matrix()) == num_cols(M[flavor].matrix()));
+  const int num_rows_cols_updated = rows_cols_updated.size();
+  const int noperators = num_rows(M[flavor].matrix());
+
+  for (int i=num_rows_cols_updated-1; i>=0; --i) {
+    M[flavor].swap_rows_cols(num_rows_cols_updated-1-i, noperators-1-i);
   }
 }
 
