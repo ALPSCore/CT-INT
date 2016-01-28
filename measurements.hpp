@@ -184,7 +184,6 @@ void compute_greens_functions(const typename alps::results_type<SOLVER_TYPE>::ty
   if(parms["HISTOGRAM_MEASUREMENT"] | false) {
     measure_in_matsubara=false;
   }
-  std::cout << "debug: measure_in_matsubara " << measure_in_matsubara << std::endl;
 
   std::vector<double> mean_order=results["PertOrder"].template mean<std::vector<double> >();
 

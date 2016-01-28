@@ -226,7 +226,7 @@ comm(communicator)
   c_or_cdagger::initialize_simulation(parms);
 
   //shift update
-  if (n_shift>0) {
+  if (n_shift>0 && node==0) {
     int count = 0;
     std::cout << std::endl << "Shift updates will be performed for the following vertices." << std::endl;
     for(int iv=0; iv<shift_update_valid.size(); ++iv) {
