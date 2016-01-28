@@ -142,6 +142,7 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
       tmp<<"VertexHistogram_"<<flavor;
       measurements << alps::ngs::SimpleRealVectorObservable(tmp.str().c_str());
   }
+  measurements << alps::ngs::SimpleRealObservable("AcceptanceRateShift");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift");
@@ -226,6 +227,10 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
       measurements["StatisticsVertexRemoval_sum"] << statistics_rem.get_sumval();
       measurements["StatisticsDoubleVertexInsertion_sum"] << statistics_dv_ins.get_sumval();
       measurements["StatisticsDoubleVertexRemoval_sum"] << statistics_dv_rem.get_sumval();
+  }
+
+  if (n_shift>0) {
+    measurements["AcceptanceRateShift"] << num_accepted_shift/((double) measurement_period * (double) n_shift);
   }
 
   measurements["StatisticsVertexShift"] << statistics_shift.get_mean();

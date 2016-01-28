@@ -96,7 +96,7 @@ add_helper(n_flavors),
 remove_helper(n_flavors),
 shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
-n_shift(parms["N_SHIFT_VERTEX"] | 0),
+n_shift(parms["N_SHIFT_VERTEX"] | 1),
 n_spin_flip(parms["N_SPIN_FLIP"] | 1),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
 //force_quantum_number_within_range(parms.defined("FORCE_QUANTUM_NUMBER_WITHIN_RANGE") ? parms["FORCE_QUANTUM_NUMBER_WITHIN_RANGE"] : false),
@@ -110,7 +110,7 @@ flat_histogram_alpha(num_alpha_scale_values-1, 0, therm_steps),
 alpha_scale_hist(num_alpha_scale_values),
 alpha_scale_idx(0),
 single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
-pert_order_hist(max_order),
+pert_order_hist(max_order+1),
 comm(communicator)
 {
   //initialize measurement method
@@ -154,7 +154,7 @@ comm(communicator)
       throw std::runtime_error("No valid vertex pair for double vertex update. Please deactivate double vertex update.");
 
     //for shift update
-    if (n_shift>0) {
+    if (n_shift>0 && n_multi_vertex_update>1) {
       shift_update_valid.resize(Uijkl.n_vertex_type(), false);
       for (int i_pair=0; i_pair<mv_update_valid_pair.size(); ++i_pair) {
         shift_update_valid[mv_update_valid_pair[i_pair].first] = true;
@@ -226,7 +226,7 @@ comm(communicator)
   c_or_cdagger::initialize_simulation(parms);
 
   //shift update
-  if (n_shift>0) {
+  if (n_shift>0 && n_multi_vertex_update>1) {
     int count = 0;
     std::cout << std::endl << "Shift updates will be performed for the following vertices." << std::endl;
     for(int iv=0; iv<shift_update_valid.size(); ++iv) {
@@ -260,20 +260,17 @@ comm(communicator)
 template<class TYPES>
 void InteractionExpansion<TYPES>::update()
 {
-  //std::cout << " update called  node " << node << std::endl;
-  std::valarray<double> t_meas(0.0, 2);
-
-  //if (node==0)
-  //std::cout << " node = " << node << " step = " << step << " random= " << random() << std::endl;
-  //std::cout << " node = " << node << " step = " << step <<  " alpha_scale_idx " << alpha_scale_idx << " " << alpha_scale_values[alpha_scale_idx] << std::endl;
-  //itime_vertex_container itime_vertices_bak = itime_vertices;
-  //big_inverse_m_matrix M_bak(M);
+  std::valarray<double> t_meas(0.0, 3);
 
   pert_order_hist = 0.;
   if (use_alpha_update)
     alpha_scale_hist = 0.;
 
+  num_accepted_shift = 0;
   for(std::size_t i=0;i<measurement_period;++i){
+#ifndef NDEBUG
+    std::cout << " step " << step << std::endl;
+#endif
     step++;
     boost::timer::cpu_timer timer;
 
@@ -305,16 +302,19 @@ void InteractionExpansion<TYPES>::update()
       }
     } catch (std::runtime_error e) {
       std::cerr << " Runtime error at rank = " << node << " step = " << step << " : " << e.what() << ". This may be because we encountered a singular matrix." << std::endl;
-      exit(-1);
+      //exit(-1);
       //itime_vertices = itime_vertices_bak;
       //M = M_bak;
       //reset_perturbation_series(false);
     }
 
+    assert(itime_vertices.size()<pert_order_hist.size());
     ++pert_order_hist[itime_vertices.size()];
 
     if(step % recalc_period ==0) {
+      boost::timer::cpu_timer timer2;
       reset_perturbation_series(true);
+      t_meas[2] += timer2.elapsed().wall;
     }
 
     if (use_alpha_update && step%(alpha_scale_update_period*num_alpha_scale_values)==0 && !is_thermalized()) {
@@ -488,8 +488,10 @@ bool InteractionExpansion<TYPES>::is_quantum_number_within_range(const itime_ver
 template<class TYPES>
 void InteractionExpansion<TYPES>::sanity_check() {
 #ifndef NDEBUG
-  M.sanity_check(itime_vertices);
+  M.sanity_check(itime_vertices, Uijkl);
   const double eps = 1E-5;
+
+  bool do_exit = false;
 
   //recompute M
   M_TYPE sign_exact = 1.0;
@@ -510,13 +512,31 @@ void InteractionExpansion<TYPES>::sanity_check() {
       G0(p, p) -= mycast<M_TYPE>(M[flavor].alpha_at(p));
     }
 
+/*    std::cout << "CREATORS" << std::endl;
+    for (size_t p=0; p<Nv; ++p) {
+      std::cout << "  " << p << " site " << (M[flavor].creators()[p]).s() << " time " << (M[flavor].creators()[p]).t().time() << std::endl;
+    }
+    std::cout << "ANNIHILATORS" << std::endl;
+    for (size_t p=0; p<Nv; ++p) {
+      std::cout << "  " << p << " site " << (M[flavor].annihilators()[p]).s() << " time " << (M[flavor].annihilators()[p]).t().time() << std::endl;
+    }*/
+
+
     M_TYPE det = alps::numeric::determinant(G0);
+    //std::cout << "G0_flavor " << G0 << " " << det << std::endl;
+    //std::cout << "det_G0_flavor " << flavor << " " << det << std::endl;
     sign_exact *= det/std::abs(det);
 
     alps::numeric::matrix<M_TYPE> tmp = mygemm(G0, M[flavor].matrix());
     alps::numeric::matrix<M_TYPE> M_scratch = inverse(G0);
+    //std::cout << "M_flavor " << M_scratch << std::endl;
     //std::cout << " debug G0 " << G0 << std::endl;
     //std::cout << " debug M_scratch " << M_scratch << std::endl;
+    //for (size_t q=0; q<Nv; ++q) {
+      //for (size_t p = 0; p < Nv; ++p) {
+        //std::cout << " MG0 p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
+      //}
+    //}
 
     bool OK = true;
     double max_diff = 0;
@@ -533,11 +553,12 @@ void InteractionExpansion<TYPES>::sanity_check() {
         OK = OK && flag;
         if(!flag) {
           std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-          exit(-1);
+          //exit(-1);
         }
       }
     }
     std::cout << "sanity check max_diff " << max_diff << std::endl;
+    do_exit = (do_exit || (max_diff>1));
   }
 
   //contribution from (-U)^n
@@ -556,6 +577,9 @@ void InteractionExpansion<TYPES>::sanity_check() {
     int type = it->type();
     assert(Uijkl.get_vertices()[type].is_density_type()==it->is_density_type());
   }
+
+  if (do_exit)
+    exit(-1);
 #endif
 }
 

@@ -125,7 +125,7 @@ InteractionExpansion<TYPES>::fastupdate_shift_init(const int flavor, const std::
   const int noperators = num_rows(M[flavor].matrix());
 
   for (int i=0; i<num_rows_cols_updated; ++i) {
-    M[flavor].swap_rows_cols(num_rows_cols_updated-1-i, noperators-1-i);
+    M[flavor].swap_rows_cols(rows_cols_updated[num_rows_cols_updated-1-i], noperators-1-i);
   }
 }
 
@@ -141,9 +141,6 @@ InteractionExpansion<TYPES>::fastupdate_shift(const int flavor, const std::vecto
   alps::numeric::matrix<M_TYPE> Green0_n_n(num_rows_cols_updated, num_rows_cols_updated);//S
   alps::numeric::matrix<M_TYPE> Green0_n_j(num_rows_cols_updated, noperators_rest);//R
   alps::numeric::matrix<M_TYPE> Green0_j_n(noperators_rest, num_rows_cols_updated);//Q
-
-  //std::vector<int> rows_cols_rest(noperators_rest);
-  //generate_indices(rows_cols_updated,noperators_rest,num_rows_cols_updated,rows_cols_rest);
 
   for(int i=0;i<noperators_rest;++i) {
     for (int iv=0; iv<num_rows_cols_updated; ++iv) {
@@ -181,7 +178,7 @@ InteractionExpansion<TYPES>::fastupdate_shift_finalize(const int flavor, const s
   const int noperators = num_rows(M[flavor].matrix());
 
   for (int i=num_rows_cols_updated-1; i>=0; --i) {
-    M[flavor].swap_rows_cols(num_rows_cols_updated-1-i, noperators-1-i);
+    M[flavor].swap_rows_cols(rows_cols_updated[num_rows_cols_updated-1-i], noperators-1-i);
   }
 }
 

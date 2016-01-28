@@ -35,10 +35,13 @@ std::vector<int> pickup_a_few_numbers(int N, int n, R& random01) {
         int itmp = 0;
         while(true) {
             itmp = static_cast<int>(random01()*N);
+            assert(itmp<flag.size());
             if (flag[itmp]==0) {
                 break;
             }
         }
+        assert(i<list.size());
+        assert(itmp<flag.size());
         list[i] = itmp;
         flag[itmp] = 1;
     }
@@ -70,7 +73,8 @@ namespace alps {
                            typename MatrixA::difference_type m, typename MatrixA::difference_type n);
 
         template<class Matrix>
-        typename Matrix::value_type determinant(Matrix M) {
+        typename Matrix::value_type determinant(const Matrix& M) {
+            assert(num_rows(M)==num_cols(M));
             std::vector<int> ipiv(num_rows(M));
             const size_t N = num_rows(M);
 
@@ -82,13 +86,15 @@ namespace alps {
                 return M(0,0)*M(1,1)-M(0,1)*M(1,0);
             }
 
-            int info = boost::numeric::bindings::lapack::getrf(M, ipiv);
+            Matrix M_copy(M);
+
+            int info = boost::numeric::bindings::lapack::getrf(M_copy, ipiv);
             if (info != 0)
                 throw std::runtime_error("Error in GETRF !");
 
             typename Matrix::value_type det = 1.0;
             for (size_t i=0; i<N; ++i) {
-                det *= M(i,i);
+                det *= M_copy(i,i);
             }
             int p = 0;
             for (size_t i=0; i<N-1; ++i) {
@@ -101,6 +107,7 @@ namespace alps {
 
         template<class Matrix, class Matrix2>
         typename Matrix::value_type determinant_no_copy(const Matrix& M, Matrix2& workspace) {
+            assert(num_rows(M)==num_cols(M));
             std::vector<int> ipiv(num_rows(M));
             const size_t N = num_rows(M);
 
@@ -112,6 +119,8 @@ namespace alps {
                 return M(0,0)*M(1,1)-M(0,1)*M(1,0);
             }
 
+            assert(num_rows(workspace)==N);
+            assert(num_cols(workspace)==N);
             my_copy_block(M,0,0,workspace,0,0,N,N);
 
             int info = boost::numeric::bindings::lapack::getrf(workspace, ipiv);
@@ -217,6 +226,8 @@ namespace alps {
                 assert(matrix.stride1()==1);
                 assert(matrix.num_rows()>=start_row+num_rows);
                 assert(matrix.num_cols()>=start_col+num_cols);
+                assert(start_row>=0);
+                assert(start_col>=0);
             }
 
             T* get_value() const {
@@ -382,8 +393,20 @@ double mymod(double x, double beta);
 template<class T> alps::numeric::matrix<T>
 mygemm(const alps::numeric::matrix<T>& A, const alps::numeric::matrix<T>& B) {
     alps::numeric::matrix<T> AB(alps::numeric::num_rows(A), alps::numeric::num_cols(B), 0.0);
+    assert(A.num_cols()==B.num_rows());
     alps::numeric::gemm(A, B, AB);
     return AB;
+}
+
+template<typename MatrixA, typename MatrixB, typename MatrixC>
+inline void mygemm( const typename boost::numeric::bindings::value_type< MatrixA >::type alpha,
+       const MatrixA& a, const MatrixB& b,
+       const typename boost::numeric::bindings::value_type< MatrixA >::type beta,
+       MatrixC& c ) {
+    assert(a.num_rows()==c.num_rows());
+    assert(a.num_cols()==b.num_rows());
+    assert(b.num_cols()==c.num_cols());
+    boost::numeric::bindings::blas::gemm(alpha, a, b, beta, c);
 }
 
 template<class T>

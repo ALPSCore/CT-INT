@@ -120,6 +120,8 @@ public:
     //std::cout << "debug " << exp_dist_(random) << std::endl;
     double new_time = mymod(old_time + randint*exp_dist_(random), beta);
     assert(new_time>=0 && new_time<=beta);
+    new_time_ = new_time;
+    old_time_ = old_time;
     return new_time;
   }
 
@@ -143,19 +145,22 @@ public:
     }
   }
 
+  double get_new_time() const {return new_time_;}
+  double get_old_time() const {return old_time_;}
+
   //work space
   T det_rat;
   int num_flavors_;
   std::vector<int> num_rows_cols_updated;
   std::vector<std::vector<int> > rows_cols_updated;
-  double old_time;
   std::vector<matrix_t> M_old, Mmat, inv_tSp;
   matrix_t tPp, tQp, tRp, tSp;
 
 private:
   boost::random::exponential_distribution<> exp_dist_;
   boost::random::uniform_smallint<> int_dist_;
-
+  double old_time_;
+  double new_time_;
 };
 
 class histogram
@@ -396,7 +401,7 @@ public:
 
     double alpha_scale() const {return alpha_scale_;}
 
-    void sanity_check(const itime_vertex_container& itime_vertices) const {
+    void sanity_check(const itime_vertex_container& itime_vertices, const general_U_matrix<T>& Uijkl) const {
 #ifndef NDEBUG
       size_t num_tot_rows = 0;
       for (spin_t flavor=0; flavor<size(); ++flavor) {
@@ -416,6 +421,11 @@ public:
             int info = sub_matrices_[flavor].find_row_col(v.time(), v.type(), i_rank);
             if (info>=0) {
               found = true;
+              assert(sub_matrices_[flavor].bare_alpha_at(info) == Uijkl.get_vertex(v.type()).get_alpha(v.af_state(), i_rank));
+              assert(sub_matrices_[flavor].creators()[info].flavor() == flavor);
+              assert(sub_matrices_[flavor].annihilators()[info].flavor() == flavor);
+              assert(sub_matrices_[flavor].creators()[info].s() ==  Uijkl.get_vertex(v.type()).sites()[2*i_rank]);
+              assert(sub_matrices_[flavor].annihilators()[info].s() ==  Uijkl.get_vertex(v.type()).sites()[2*i_rank+1]);
               break;
             }
           }
@@ -664,6 +674,7 @@ protected:
 
   //only acceptance rate
   simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
+  int num_accepted_shift;
 
   //just for test
   //std::vector<double> proposal_prob, acc_rate_reducible_update;

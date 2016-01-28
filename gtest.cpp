@@ -272,6 +272,12 @@ TEST(FastUpdate, BlockMatrixReplaceRowsCols) {
     N_list.push_back(10);
     M_list.push_back(4);
 
+    N_list.push_back(100);
+    M_list.push_back(50);
+
+    N_list.push_back(100);
+    M_list.push_back(49);
+
     for (int n = 0; n < N_list.size(); ++n) {
         for (int m = 0; m < M_list.size(); ++m) {
             const int N = N_list[n];
@@ -576,8 +582,8 @@ TEST(MatrixLibrary, submatrix_view) {
     C.resize(M,M);
 
     alps::numeric::submatrix_view<T> C_subview(C, start_row, start_col, N1, N2);
-    boost::numeric::bindings::blas::gemm(1.0, A, B, (T)0.0, C_subview);
-    boost::numeric::bindings::blas::gemm(1.0, A, B, (T)0.0, C_sub);
+    mygemm(1.0, A, B, (T)0.0, C_subview);
+    mygemm(1.0, A, B, (T)0.0, C_sub);
 
     for (int j=0; j<N2; ++j) {
         for (int i=0; i<N1; ++i) {

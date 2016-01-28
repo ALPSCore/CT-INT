@@ -84,7 +84,7 @@ void InteractionExpansion<TYPES>::perform_add(size_t n_vertices_add)
     }
   }
   assert(std::abs(det_rat/add_helper.det_rat_-1.0)<1E-8);
-  M.sanity_check(itime_vertices);
+  M.sanity_check(itime_vertices, Uijkl);
 }
 
 
@@ -100,7 +100,7 @@ void InteractionExpansion<TYPES>::reject_add(size_t n_vertices_add)
   for(int i=0; i<n_vertices_add; ++i) {
     itime_vertices.pop_back();
   }
-  M.sanity_check(itime_vertices);
+  M.sanity_check(itime_vertices, Uijkl);
 }
 
 template<class TYPES>
@@ -112,7 +112,7 @@ InteractionExpansion<TYPES>::try_remove(const std::vector<int>& vertices_nr)
   //figure out and remember which rows (columns) are to be removed
   // lists of rows and cols will be sorted in ascending order
   const size_t nv_old = itime_vertices.size();
-  M.sanity_check(itime_vertices);
+  M.sanity_check(itime_vertices, Uijkl);
   remove_helper.clear();
   typename TYPES::M_TYPE prod_Uval = 1.0;
   for (size_t iv=0; iv<vertices_nr.size(); ++iv) {
@@ -158,7 +158,7 @@ void InteractionExpansion<TYPES>::perform_remove(const std::vector<int>& vertice
   assert(std::abs(det_rat/remove_helper.det_rat_-1.0)<1E-8);
   //get rid of vertex list entries.
   remove_elements_from_vector(itime_vertices, vertices_nr);
-  M.sanity_check(itime_vertices);
+  M.sanity_check(itime_vertices, Uijkl);
 }
 
 
@@ -175,15 +175,11 @@ typename TYPES::M_TYPE InteractionExpansion<TYPES>::try_shift(int idx_vertex, do
   assert(idx_vertex<itime_vertices.size());
 
   itime_vertex& v = itime_vertices[idx_vertex];
-  shift_helper.old_time = v.time();
   v.set_time(new_time);
-  shift_helper.find_rows_cols_set_time(v.rank(), v.type(), Uijkl.get_vertex(v.type()).flavors(), shift_helper.old_time, v.time(), M);
+  shift_helper.find_rows_cols_set_time(v.rank(), v.type(), Uijkl.get_vertex(v.type()).flavors(), shift_helper.get_old_time(), v.time(), M);
 
   typename TYPES::M_TYPE lambda_prod = 1.0;
   for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    if (shift_helper.num_rows_cols_updated[flavor]!=1)
-      throw std::logic_error("try shift is specialized for pair hopping and spin flip terms.");
-
     if (shift_helper.num_rows_cols_updated[flavor]==0)
       continue;
 
@@ -202,7 +198,8 @@ typename TYPES::M_TYPE InteractionExpansion<TYPES>::try_shift(int idx_vertex, do
 
     //actual fast update
     fastupdate_shift_init(flavor, shift_helper.rows_cols_updated[flavor]);
-    lambda_prod *= fastupdate_shift(flavor, shift_helper.rows_cols_updated[flavor], true);
+    M_TYPE tmp = fastupdate_shift(flavor, shift_helper.rows_cols_updated[flavor], true);
+    lambda_prod *= tmp;
   }
   return lambda_prod;
 }
@@ -217,12 +214,6 @@ void InteractionExpansion<TYPES>::perform_shift(int idx_vertex) {
 
     fastupdate_shift(flavor, shift_helper.rows_cols_updated[flavor], false);
     fastupdate_shift_finalize(flavor, shift_helper.rows_cols_updated[flavor]);
-    //const int Nv = M[flavor].matrix().num_cols();
-    //for (int i=shift_helper.rows_cols_updated[flavor].size()-1; i>=0; --i) {
-      //const int n_rows_cols_updated = shift_helper.rows_cols_updated[flavor].size();
-      //M[flavor].matrix().swap_cols(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
-      //M[flavor].matrix().swap_rows(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
-    //}
   }
 }
 
@@ -234,22 +225,19 @@ void InteractionExpansion<TYPES>::reject_shift(int idx_vertex) {
 
     fastupdate_shift_finalize(flavor, shift_helper.rows_cols_updated[flavor]);
 
-    itime_vertices[idx_vertex].set_time(shift_helper.old_time);
+    itime_vertices[idx_vertex].set_time(shift_helper.get_old_time());
     for (int i=0; i<shift_helper.rows_cols_updated[flavor].size(); ++i) {
       const int idx = shift_helper.rows_cols_updated[flavor][i];
 
-      operator_time cr_op_time = M[flavor].creators()[idx].t(); cr_op_time.set_time(shift_helper.old_time);
+      operator_time cr_op_time = M[flavor].creators()[idx].t();
+      assert(cr_op_time.time()==shift_helper.get_new_time());
+      cr_op_time.set_time(shift_helper.get_old_time());
       M[flavor].creators()[idx].set_time(cr_op_time);
 
-      operator_time ann_op_time = M[flavor].annihilators()[idx].t(); ann_op_time.set_time(shift_helper.old_time);
+      operator_time ann_op_time = M[flavor].annihilators()[idx].t();
+      assert(ann_op_time.time()==shift_helper.get_new_time());
+      ann_op_time.set_time(shift_helper.get_old_time());
       M[flavor].annihilators()[idx].set_time(ann_op_time);
-
-      //const int Nv = M[flavor].matrix().num_cols();
-      //for (int i=shift_helper.rows_cols_updated[flavor].size()-1; i>=0; --i) {
-        //const int n_rows_cols_updated = shift_helper.rows_cols_updated[flavor].size();
-        //M[flavor].matrix().swap_cols(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
-        //M[flavor].matrix().swap_rows(shift_helper.rows_cols_updated[flavor][n_rows_cols_updated-1-i], Nv-1-i);
-      //}
     }
   }
 }

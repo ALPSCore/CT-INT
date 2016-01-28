@@ -143,7 +143,7 @@ compute_inverse_matrix_up2(
 
         //compute F
         gemm(invA, B, invA_B);
-        boost::numeric::bindings::blas::gemm((T)-1.0, invA_B, H, (T)0.0, F);
+        mygemm((T)-1.0, invA_B, H, (T)0.0, F);
 
         //submatrix views to invBigMat
         invBigMat.resize_values_not_retained(N + M, N + M);//this may destroy the contents of invA as well
@@ -151,11 +151,11 @@ compute_inverse_matrix_up2(
         submatrix_view<T> G_view(invBigMat, N, 0, M, N);
 
         //compute G
-        boost::numeric::bindings::blas::gemm((T)-1.0, H, C_invA, (T)0.0, G_view);
+        mygemm((T)-1.0, H, C_invA, (T)0.0, G_view);
 
         //compute E
         my_copy_block(invA,0,0,E_view,0,0,N,N);
-        boost::numeric::bindings::blas::gemm(static_cast<T>(-1.0), invA_B, G_view, static_cast<T>(1.0), E_view);
+        mygemm(static_cast<T>(-1.0), invA_B, G_view, static_cast<T>(1.0), E_view);
 
         copy_block(H, 0, 0, invBigMat, N, N, M, M);
         copy_block(F, 0, 0, invBigMat, 0, N, N, M);
@@ -252,7 +252,7 @@ compute_inverse_matrix_down(
         copy_block(invBigMat, N, N, H, 0, 0, M, M);//we need to copy a submatrix to H because save_determinant() does not support a matrix view.
 
         gemm(safe_inverse(H), G_view, invH_G);
-        boost::numeric::bindings::blas::gemm((T)-1.0, F_view, invH_G, (T)1.0, E_view);
+        mygemm((T)-1.0, F_view, invH_G, (T)1.0, E_view);
 
         invBigMat.resize(N, N);
         return safe_determinant(H);
@@ -731,12 +731,12 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
 
     Mmat.resize_values_not_retained(N,N);
     copy_block(invBigMat, 0, 0, Mmat, 0, 0, N, N);
-    boost::numeric::bindings::blas::gemm((T)-1.0, tQ_view, invtS_tR, (T) 1.0, Mmat);
+    mygemm((T)-1.0, tQ_view, invtS_tR, (T) 1.0, Mmat);
 
     inv_tSp.resize_values_not_retained(M,M);
     gemm(Mmat, Q, MQ);
     copy_block(S, 0, 0, inv_tSp, 0, 0, M, M);
-    boost::numeric::bindings::blas::gemm((T) -1.0, R, MQ, (T) 1.0, inv_tSp);
+    mygemm((T) -1.0, R, MQ, (T) 1.0, inv_tSp);
     return determinant_no_copy(tS_view, ws1)*determinant_no_copy(inv_tSp, ws2);
 }
 
@@ -774,16 +774,16 @@ compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
 
     //tQp
     gemm(Q,tSp_view,tmp_NM);
-    boost::numeric::bindings::blas::gemm((T)-1.0, Mmat, tmp_NM, (T) 0.0, tQp_view);
+    mygemm((T)-1.0, Mmat, tmp_NM, (T) 0.0, tQp_view);
 
     //tRp
     gemm(tSp_view,R,tmp_MN);
-    boost::numeric::bindings::blas::gemm((T)-1.0, tmp_MN, Mmat, (T) 0.0, tRp_view);
+    mygemm((T)-1.0, tmp_MN, Mmat, (T) 0.0, tRp_view);
 
     //tPp
     gemm(Mmat, Q, tmp_NM);
     my_copy_block(Mmat, 0, 0, tPp_view, 0, 0, N, N);
-    boost::numeric::bindings::blas::gemm((T)-1.0, tmp_NM, tRp_view, (T) 1.0, tPp_view);
+    mygemm((T)-1.0, tmp_NM, tRp_view, (T) 1.0, tPp_view);
 }
 
 template<class T>
@@ -872,8 +872,8 @@ compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat,
         invC_plus_x(i,i) += 1.0/elems_diff[i];
     }
     inverse_in_place(invC_plus_x);
-    boost::numeric::bindings::blas::gemm((T) 1.0, invC_plus_x, zx_view, (T) 0.0, invC_plus_x_times_zx);
-    boost::numeric::bindings::blas::gemm((T) -1.0, yx, invC_plus_x_times_zx, (T) 1.0, invBigMat);
+    mygemm((T) 1.0, invC_plus_x, zx_view, (T) 0.0, invC_plus_x_times_zx);
+    mygemm((T) -1.0, yx, invC_plus_x_times_zx, (T) 1.0, invBigMat);
 
     for(std::vector<std::pair<int,int> >::reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
         invBigMat.swap_cols(it->first, it->second);

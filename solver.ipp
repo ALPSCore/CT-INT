@@ -59,7 +59,7 @@ void InteractionExpansion<TYPES>::removal_insertion_single_vertex_update(void)
   M_TYPE det_rat=0;
   if(random()<0.5){  //trying to ADD vertex
     boost::timer::cpu_timer timer;
-    M.sanity_check(itime_vertices);
+    M.sanity_check(itime_vertices, Uijkl);
     if(pert_order+nv_updated>max_order)
       return; //we have already reached the highest perturbation order
 
@@ -104,14 +104,14 @@ void InteractionExpansion<TYPES>::removal_insertion_single_vertex_update(void)
       perform_add(nv_updated);
       sign*=metropolis_weight/std::abs(metropolis_weight);
       det*=det_rat;
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_ins.accepted(nv_updated-1);
       if(std::abs(metropolis_weight)<1E-5)
         reset_perturbation_series(false);
       //std::cout << "add accepted " << timer.elapsed().wall*1E-6 << std::endl;
     }else{
       reject_add(nv_updated);
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_ins.rejected(nv_updated-1);
       //std::cout << "add rejected " << timer.elapsed().wall*1E-6 << std::endl;
     }
@@ -119,7 +119,7 @@ void InteractionExpansion<TYPES>::removal_insertion_single_vertex_update(void)
     sanity_check();
 #endif
   }else{ // try to REMOVE a vertex
-    M.sanity_check(itime_vertices);
+    M.sanity_check(itime_vertices, Uijkl);
     if(pert_order < nv_updated) {
       return;
     }
@@ -166,13 +166,13 @@ void InteractionExpansion<TYPES>::removal_insertion_single_vertex_update(void)
       perform_remove(vertices_nr);
       sign*=metropolis_weight/std::abs(metropolis_weight);
       det*=det_rat;
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_rem.accepted(nv_updated-1);
       if(std::abs(metropolis_weight)<1E-5)
         reset_perturbation_series(false);
     }else{
       reject_remove();
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_rem.rejected(nv_updated-1);
     }
 #ifndef NDEBUG
@@ -194,7 +194,7 @@ void InteractionExpansion<TYPES>::removal_insertion_double_vertex_update(void)
   M_TYPE metropolis_weight=0.;
   M_TYPE det_rat=0;
   if(random()<0.5){  //trying to ADD vertex
-    M.sanity_check(itime_vertices);
+    M.sanity_check(itime_vertices, Uijkl);
     if(pert_order+nv_updated>max_order)
       return; //we have already reached the highest perturbation order
 
@@ -246,20 +246,20 @@ void InteractionExpansion<TYPES>::removal_insertion_double_vertex_update(void)
       perform_add(nv_updated);
       sign*=metropolis_weight/std::abs(metropolis_weight);
       det*=det_rat;
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_ins.accepted(nv_updated-1);
       if(std::abs(metropolis_weight)<1E-5)
         reset_perturbation_series(false);
     }else{
       reject_add(nv_updated);
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_ins.rejected(nv_updated-1);
     }
 #ifndef NDEBUG
     sanity_check();
 #endif
   }else{ // try to REMOVE a vertex
-    M.sanity_check(itime_vertices);
+    M.sanity_check(itime_vertices, Uijkl);
     if(pert_order < nv_updated) {
       return;
     }
@@ -323,13 +323,13 @@ void InteractionExpansion<TYPES>::removal_insertion_double_vertex_update(void)
       perform_remove(vertices_nr);
       sign*=metropolis_weight/std::abs(metropolis_weight);
       det*=det_rat;
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_rem.accepted(nv_updated-1);
       if(std::abs(metropolis_weight)<1E-5)
         reset_perturbation_series(false);
     }else{
       reject_remove();
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_rem.rejected(nv_updated-1);
     }
 #ifndef NDEBUG
@@ -351,7 +351,7 @@ void InteractionExpansion<TYPES>::multi_vertex_update(int nv_updated)
   }
 
   if(random()<0.5){  //trying to ADD vertex
-    M.sanity_check(itime_vertices);
+    M.sanity_check(itime_vertices, Uijkl);
     if(pert_order+nv_updated>max_order) {
       return; //we have already reached the highest perturbation order
     }
@@ -385,26 +385,21 @@ void InteractionExpansion<TYPES>::multi_vertex_update(int nv_updated)
       //std::cout << "accepted ins (2)" << std::endl;
       sign*=metropolis_weight/std::abs(metropolis_weight);
       det*=det_rat;
-      M.sanity_check(itime_vertices);
-      //std::cout << "accepted ins (3)" << std::endl;
-      //std::cout << "debug1 " << simple_statistics_ins.counter_[nv_updated-1][2] << std::endl;
-      //std::cout << "debug1 " << simple_statistics_ins.counter_[nv_updated-1][3] << std::endl;
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_ins.accepted(nv_updated-1);
-      //std::cout << "debug2 " << simple_statistics_ins.counter_[nv_updated-1][2] << std::endl;
-      //std::cout << "debug2 " << simple_statistics_ins.counter_[nv_updated-1][3] << std::endl;
       if(std::abs(metropolis_weight)<1E-5)
         reset_perturbation_series(false);
     }else{
       //std::cout << "rejected ins " << std::endl;
       reject_add(nv_updated);
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_ins.rejected(nv_updated-1);
     }
 #ifndef NDEBUG
     sanity_check();
 #endif
   }else{ // try to REMOVE a vertex
-    M.sanity_check(itime_vertices);
+    M.sanity_check(itime_vertices, Uijkl);
     if(pert_order < nv_updated) {
       return;
     }
@@ -440,7 +435,7 @@ void InteractionExpansion<TYPES>::multi_vertex_update(int nv_updated)
       perform_remove(vertices_nr);
       sign*=metropolis_weight/std::abs(metropolis_weight);
       det*=det_rat;
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_rem.accepted(nv_updated-1);
 
       if(std::abs(metropolis_weight)<1E-5)
@@ -448,7 +443,7 @@ void InteractionExpansion<TYPES>::multi_vertex_update(int nv_updated)
     }else{
       //std::cout << "rejected rem " << std::endl;
       reject_remove();
-      M.sanity_check(itime_vertices);
+      M.sanity_check(itime_vertices, Uijkl);
       simple_statistics_rem.rejected(nv_updated-1);
     }
 #ifndef NDEBUG
@@ -479,35 +474,30 @@ void InteractionExpansion<TYPES>::shift_update(void) {
     return;
 
   const int iv = vertices_nr[vertices_nr.size()*random()];
-  //std::cout << " debug shift " << itime_vertices[iv].type() << std::endl;
   const double new_time = shift_helper.new_itime(itime_vertices[iv].time(), beta, random.engine());
   const double diff_time = std::abs(new_time-itime_vertices[iv].time());
-  //std::cout << "diff_time " << diff_time << std::endl;
 
   M_TYPE metropolis_weight = try_shift(iv, new_time);
 
   statistics_shift.add_sample(std::min(diff_time,beta-diff_time), std::min(std::abs(metropolis_weight),1.0), 0);
   if(std::abs(metropolis_weight)> random()){ //do the actual update
-    std::cout << " shift accepted " << std::endl;
+    ++num_accepted_shift;
     perform_shift(iv);
     sign*=metropolis_weight/std::abs(metropolis_weight);
     det*=metropolis_weight;
     if(std::abs(metropolis_weight)<1E-5)
       reset_perturbation_series(false);
 #ifndef NDEBUG
-    M.sanity_check(itime_vertices);
+    M.sanity_check(itime_vertices, Uijkl);
 #endif
-    //std::cout << "Done shift " << metropolis_weight << std::endl;
   }else {
-    std::cout << " shift rejected " << std::endl;
     reject_shift(iv);
 #ifndef NDEBUG
-    M.sanity_check(itime_vertices);
+    M.sanity_check(itime_vertices, Uijkl);
 #endif
   }
 #ifndef NDEBUG
   sanity_check();
-  std::cout << "sanity check done" << std::endl;
 #endif
 }
 
@@ -547,11 +537,6 @@ void InteractionExpansion<TYPES>::spin_flip_update(void) {
     }
   }
 
-  //std::cout << "debug v.type " << v.type() << std::endl;
-  //std::cout << "old_af " << old_af_state << std::endl;
-  //std::cout << "new_af " << new_af_state << std::endl;
-  //std::cout << "old_M " << M[0].matrix() << std::endl;
-
   //change status
   v.set_af_state(new_af_state);
   std::vector<std::vector<int> > positions(n_flavors);
@@ -561,7 +546,6 @@ void InteractionExpansion<TYPES>::spin_flip_update(void) {
     int pos = M[flavor_rank].find_row_col(v.time(), v.type(), i_rank);
     positions[flavor_rank].push_back(pos);
     old_alpha[flavor_rank].push_back(M[flavor_rank].bare_alpha_at(pos));
-    //std::cout << "debug i_rank " << i_rank << " flavor " << flavor_rank << " " << M[flavor_rank].bare_alpha_at(pos) << " new " << v_def.get_alpha(new_af_state,i_rank) << std::endl;
     if (M[flavor_rank].bare_alpha_at(pos)!=v_def.get_alpha(new_af_state,i_rank)) {
       M[flavor_rank].set_alpha(pos, v_def.get_alpha(new_af_state,i_rank));
     }
@@ -571,13 +555,10 @@ void InteractionExpansion<TYPES>::spin_flip_update(void) {
   M_TYPE det_rat = 1.0;
   for (int flavor=0; flavor<n_flavors; ++flavor) {
     if (positions[flavor].size()>0) {
-      //std::cout << "debug flavor " << flavor << std::endl;
       assert(positions[flavor].size()==old_alpha[flavor].size());
       det_rat *= fastupdate_spin_flip(flavor, positions[flavor], old_alpha[flavor], true);
     }
   }
-
-  //std::cout << "debug, det_rat " << det_rat << std::endl;
 
   if(std::abs(det_rat)> random()) { //do the actual update
     //std::cout << "accepted " << std::endl;
@@ -598,7 +579,7 @@ void InteractionExpansion<TYPES>::spin_flip_update(void) {
       }
     }
   }
-  M.sanity_check(itime_vertices);
+  M.sanity_check(itime_vertices, Uijkl);
   sanity_check();
 }
 
@@ -683,9 +664,7 @@ void InteractionExpansion<TYPES>::reset_perturbation_series(bool verbose)
       //sign *= boost::math::sign(-vd[itime_vertices[iv].type()].Uval());
   //}
   //std::cout << "sign, sign_det " << sign << " " << boost::math::sign(det) << std::endl;
-  //assert(sign==boost::math::sign(det));
-
-  //std::cout<<"debug : determinant computed by fast update = " << det_old << " determinant computed by matrix inversion = " << det << std::endl;
+  assert(sign==boost::math::sign(det));
 
   if (verbose) {
     if (std::abs(det-det_old)/std::abs(det)>1E-8)
