@@ -67,6 +67,11 @@ bool operator<(const operator_time_tmpl<T>& t1, const operator_time_tmpl<T>& t2)
   }
 }
 
+template<class T>
+bool operator==(const operator_time_tmpl<T>& t1, const operator_time_tmpl<T>& t2) {
+  return (t1.time()==t2.time()) && (t1.small_index()==t2.small_index());
+}
+
 /*creation and annihilation operator class*/
 class c_or_cdagger   //represents a creation operator or an annihilation operator
 { 
@@ -233,6 +238,10 @@ public:
     using c_or_cdagger::operator=;
     creator(const spin_t z,const site_t s, const operator_time t, const frequency_t n_matsubara)
             : c_or_cdagger(z, s, t, n_matsubara){};
+    creator(const spin_t z,const site_t s, const operator_time t)
+        : c_or_cdagger(z, s, t, 0){};
+    creator()
+        : c_or_cdagger(-1, -1, operator_time(-1.0,0), 0){};
     ~creator(){};
 };
 
@@ -241,8 +250,16 @@ public:
     using c_or_cdagger::operator=;
     annihilator(const spin_t z,const site_t s, const operator_time t, const frequency_t n_matsubara)
             : c_or_cdagger(z, s, t, n_matsubara){};
+    annihilator(const spin_t z,const site_t s, const operator_time t)
+        : c_or_cdagger(z, s, t, 0){};
+    annihilator()
+            : c_or_cdagger(-1, -1, operator_time(-1.0,0), 0){};
     ~annihilator(){};
 };
+
+bool operator==(const creator& op1, const creator& op2);
+bool operator==(const annihilator& op1, const annihilator& op2);
+
 
 #endif
 

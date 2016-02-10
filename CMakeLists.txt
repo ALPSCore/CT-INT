@@ -64,7 +64,7 @@ set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
 add_executable(interaction_real main_real.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
 add_executable(interaction_complex main_complex.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
 
-set (GTEST_SOURCE legendre.cpp util.cpp)
+set (GTEST_SOURCE legendre.cpp util.cpp operator.cpp)
 add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTEST_SOURCE})
 
 #libraries

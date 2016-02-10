@@ -1,0 +1,191 @@
+#include "../submatrix.hpp"
+
+/*
+ * Implementation of InvGammaMatrix<T>
+ */
+
+template<typename T>
+int InvGammaMatrix<T>::find_row_col_gamma(int pos_A) const {
+  bool found = false;
+  for (int i=0; i<row_col_info_.size(); ++i) {
+    if (pos_A==pos_in_invA(i)) {
+      found = true;
+      return i;
+    }
+  }
+  assert(found);
+  throw std::runtime_error("Fatal error in InvGammaMatrix<T>::find_row_col_gamma(int pos_A): something went wrong!");
+}
+
+//Using Eq. (22)
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+T InvGammaMatrix<T>::eval_Gammaij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_gamma, int col_gamma) const {
+  if (row_gamma==col_gamma) {
+    T small_gamma = gamma_func(
+        eval_f(alpha(row_gamma)), eval_f(alpha0(row_gamma))
+    );
+    T Gij = eval_Gij_gamma(invA, spline_G0, row_gamma, col_gamma);
+    return Gij - (1.0+small_gamma)/small_gamma;
+  } else {
+    return eval_Gij_gamma(invA, spline_G0, row_gamma, col_gamma);
+  }
+}
+
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+T InvGammaMatrix<T>::eval_Gij_gamma(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_gamma, int col_gamma) const {
+
+  assert(pos_in_invA(row_gamma)>=0);
+  assert(pos_in_invA(col_gamma)>=0);
+  return eval_Gij(invA, spline_G0, pos_in_invA(row_gamma), pos_in_invA(col_gamma));
+}
+
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+void InvGammaMatrix<T>::sanity_check(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0) const {
+#ifndef NDEBUG
+  const int N = row_col_info_.size();
+  assert(matrix_.num_rows()==N);
+  assert(matrix_.num_cols()==N);
+
+  if (N==0) return;
+
+  //check
+  for (int j=0; j<N; ++j) {
+    const int pj = pos_in_invA(j);
+    assert(alpha0(j)==invA.alpha_at(pj));
+  }
+
+  //check gamma^-1
+  alps::numeric::matrix<T> gamma(N,N,(T)0.0);
+  for (int j=0; j<N; ++j) {
+    for (int i=0; i<N; ++i) {
+      gamma(i,j) = eval_Gij_gamma(invA, spline_G0, i, j);
+    }
+    const T tmp = gamma_func(eval_f(alpha(j)), eval_f(alpha0(j)));
+    gamma(j,j) -= (1.0+tmp)/tmp;
+  }
+  alps::numeric::inverse_in_place(gamma);
+  //std::cout << "debug diff of gamma " << alps::numeric::norm_square(gamma-matrix_)/(1.0*N*N) << " N = " << N << std::endl;
+  assert(alps::numeric::norm_square(gamma-matrix_)/(1.0*N*N)<1E-5);
+#endif
+}
+
+template<typename T>
+void InvGammaMatrix<T>::clear() {
+  resize(0);
+}
+
+template<typename T>
+void InvGammaMatrix<T>::swap_rows_and_cols(int i, int j) {
+  assert(i<row_col_info_.size());
+  assert(j<row_col_info_.size());
+  std::swap(row_col_info_[i], row_col_info_[j]);
+  matrix_.swap_rows(i, j);
+  matrix_.swap_cols(i, j);
+}
+
+template<typename T>
+void InvGammaMatrix<T>::resize(size_t new_size) {
+  assert(new_size>=0);
+  assert(matrix_.num_rows()==matrix_.num_cols());
+  assert(matrix_.num_rows()==matrix_.num_cols());
+
+  matrix_.resize(new_size, new_size);
+  row_col_info_.resize(new_size);
+}
+
+//trys to add rows and cols to Gamma
+//returns the determinant ratio of A.
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, const std::vector<OperatorToBeUpdated<T> >& ops_ins) {
+  assert(matrix_.num_rows()==matrix_.num_cols());
+  const int nop = matrix_.num_cols();
+  const int nop_add = ops_ins.size();
+
+  T gamma_prod = 1.0;
+  for (int iop=0; iop<nop_add; ++iop) {
+    assert(invA.find_row_col(ops_ins[iop].op_t_.time())==ops_ins[iop].pos_in_A_);
+    assert(ops_ins[iop].alpha0_==ops_ins[iop].alpha_current_);
+    gamma_prod *= -gamma_func<T>(eval_f(ops_ins[iop].alpha_new_), eval_f(ops_ins[iop].alpha0_));
+    //std::cout << "try add " << iop << eval_f(ops_ins[iop].alpha0_) << " " << eval_f(ops_ins[iop].alpha_new_) << std::endl;
+    row_col_info_.push_back(boost::make_tuple(ops_ins[iop].pos_in_A_, ops_ins[iop].alpha0_, ops_ins[iop].alpha_new_));
+  }
+
+  G_n_n.resize_values_not_retained(nop_add, nop_add);
+  G_n_j.resize_values_not_retained(nop_add, nop);
+  G_j_n.resize_values_not_retained(nop, nop_add);
+  for(unsigned int i=0;i<nop;++i) {
+    for (size_t iv=0; iv<nop_add; ++iv) {
+      G_n_j(iv,i) = mycast<T>(eval_Gammaij(invA, spline_G0, nop+iv, i));
+    }
+  }
+  for(unsigned int i=0;i<nop;++i){
+    for (size_t iv=0; iv<nop_add; ++iv) {
+      G_j_n(i,iv) = mycast<T>(eval_Gammaij(invA, spline_G0, i, nop+iv));
+    }
+  }
+  for (size_t iv2=0; iv2<nop_add; ++iv2) {
+    for (size_t iv=0; iv<nop_add; ++iv) {
+      G_n_n(iv, iv2) = mycast<T>(eval_Gammaij(invA, spline_G0, nop+iv, nop+iv2));
+    }
+  }
+  return gamma_prod*compute_det_ratio_up(G_j_n, G_n_j, G_n_n, matrix_);
+}
+
+template<typename T>
+void InvGammaMatrix<T>::perform_add() {
+  //note: matrix_ is resized and then updated.
+  compute_inverse_matrix_up2(G_j_n, G_n_j, G_n_n, matrix_, matrix_);
+}
+
+template<typename T>
+void InvGammaMatrix<T>::reject_add() {
+  row_col_info_.resize(matrix_.num_cols());
+}
+
+//it is quit unlikely that one inserts an operator which was removed already before.
+//So, we assume alpha0==ALPHA_NON_INT, alpha_current!=ALPHA_NON_INT, alpha_new==ALPHA_NON_INT;
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+T InvGammaMatrix<T>::try_remove(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_g0, const std::vector<OperatorToBeUpdated<T> >& ops_rem) {
+  const int nop_rem = ops_rem.size();
+
+  T gamma_prod = 1.0;
+  rows_cols_removed.resize(nop_rem);
+  for (int iop=0; iop<nop_rem; ++iop) {
+    assert(ops_rem[iop].alpha0_ == ALPHA_NON_INT);
+    assert(ops_rem[iop].alpha_current_ != ALPHA_NON_INT);
+    assert(ops_rem[iop].alpha_new_ == ALPHA_NON_INT);
+    assert(invA.find_row_col(ops_rem[iop].op_t_.time())==ops_rem[iop].pos_in_A_);
+
+    rows_cols_removed[iop] = find_row_col_gamma(ops_rem[iop].pos_in_A_);
+    gamma_prod *= -gamma_func<T>(eval_f(ops_rem[iop].alpha_current_), 1.0);
+  }
+
+  std::sort(rows_cols_removed.begin(), rows_cols_removed.end());
+  return compute_det_ratio_down(nop_rem, rows_cols_removed, matrix_)/gamma_prod;
+}
+
+template<typename T>
+void InvGammaMatrix<T>::perform_remove() {
+  const int nop = matrix_.num_rows();
+  const int nop_rem = rows_cols_removed.size();
+
+  //update gamma^{-1}
+  std::vector<std::pair<int,int> > rows_cols_swap_list;
+  compute_inverse_matrix_down(nop_rem, rows_cols_removed, matrix_, rows_cols_swap_list);
+
+  //remove operators
+  for (int swap=0; swap<rows_cols_swap_list.size(); ++swap) {
+    std::swap(row_col_info_[rows_cols_swap_list[swap].first], row_col_info_[rows_cols_swap_list[swap].second]);
+  }
+  row_col_info_.resize(nop-nop_rem);
+}
+
+template<typename T>
+void InvGammaMatrix<T>::reject_remove() {
+  //nothing to be done
+}

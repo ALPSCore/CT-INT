@@ -406,6 +406,10 @@ inline void mygemm( const typename boost::numeric::bindings::value_type< MatrixA
     assert(a.num_rows()==c.num_rows());
     assert(a.num_cols()==b.num_rows());
     assert(b.num_cols()==c.num_cols());
+    assert(a.num_rows()>0);
+    assert(a.num_cols()>0);
+    assert(b.num_rows()>0);
+    assert(b.num_cols()>0);
     boost::numeric::bindings::blas::gemm(alpha, a, b, beta, c);
 }
 

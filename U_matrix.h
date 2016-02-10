@@ -243,6 +243,43 @@ class general_U_matrix {
       find_non_density_vertices();
     }
 
+    //for unit test. Single-band Hubbard model
+    general_U_matrix(int n_site, double U, double alpha) : ns_(n_site), nf_(2), num_nonzero_(n_site) {
+      const int num_af_states = 2;
+      const int rank = 2;
+
+      std::complex<double> Uval_cmplx;
+      std::vector<size_t> site_indices_;//site indices (ijkl)
+      std::vector<spin_t> flavor_indices_;//flavor indices for c^dagger c
+      boost::multi_array<T,2> alpha_;//the first index is auxially spin, the second denotes (ij) or (kl).
+      boost::multi_array<std::complex<double>,2> alpha_cmplx;//tempolary
+
+      site_indices_.resize(2*rank);
+      flavor_indices_.resize(rank);
+      alpha_.resize(boost::extents[num_af_states][rank]);
+
+      for (unsigned int idx=0; idx<num_nonzero_; ++idx) {
+
+        for (size_t i_op=0; i_op<2*rank; ++i_op) {
+          site_indices_[i_op] = idx;
+        }
+        flavor_indices_[0] = 0;
+        flavor_indices_[1] = 1;
+        //up
+        alpha_[0][0] = 1+alpha;
+        alpha_[0][1] = -alpha;
+
+        //down
+        alpha_[1][0] = -alpha;
+        alpha_[1][1] = 1+alpha;
+
+        vertex_list.push_back(vertex_definition<T>(rank, num_af_states, flavor_indices_, site_indices_, U, alpha_, idx));
+      }
+
+      find_non_density_vertices();
+
+    }
+
     size_t n_vertex_type() const{return vertex_list.size();}
     spin_t nf()const {return nf_;}
     spin_t ns()const {return ns_;}
@@ -335,7 +372,8 @@ public:
                af_state_(-1),
                time_(-1),
                rank_(-1),
-               is_density_type_(false)
+               is_density_type_(false),
+               is_non_interacting_(false)
   {}
 
   itime_vertex(int vertex_type, int af_state, double time, int rank, bool is_density_type)
@@ -343,7 +381,8 @@ public:
              af_state_(af_state),
              time_(time),
              rank_(rank),
-             is_density_type_(is_density_type)
+             is_density_type_(is_density_type),
+             is_non_interacting_(false)
   {}
 
   int af_state() const { return af_state_; }
@@ -354,11 +393,15 @@ public:
   void set_time(double new_time) {time_ = new_time;}
   void set_af_state(int new_af_state) {af_state_ = new_af_state;}
   bool is_density_type() const {return is_density_type_;}
+  bool is_non_interacting() const { return is_non_interacting_;}
+  void set_non_interacting() { is_non_interacting_ = true;}
+  void set_interacting() { is_non_interacting_ = false;}
 
 private:
   int vertex_type_, af_state_, rank_;
   double time_;
   bool is_density_type_; //, is_truely_non_density_type_;
+  bool is_non_interacting_;
 } itime_vertex;
 
 template<class V>

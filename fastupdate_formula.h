@@ -165,24 +165,24 @@ compute_inverse_matrix_up2(
     }
 }
 
-template<class T>
+template<class T, class I>
 T
 compute_det_ratio_down(
-        const size_t num_rows_cols_removed,
-        const std::vector<size_t>& rows_cols_removed,
+        const I num_rows_cols_removed,
+        const std::vector<I>& rows_cols_removed,
         const alps::numeric::matrix<T>& invBigMat) {
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
-    const size_t NpM = num_rows(invBigMat);
-    const size_t M = num_rows_cols_removed;
+    const I NpM = num_rows(invBigMat);
+    const I M = num_rows_cols_removed;
     assert(num_cols(invBigMat)==NpM);
     assert(rows_cols_removed.size()>=M);
     assert(M>0);
 
     matrix_t H(M,M);
-    for (size_t j=0; j<M; ++j) {
-        for (size_t i=0; i<M; ++i) {
+    for (I j=0; j<M; ++j) {
+        for (I i=0; i<M; ++i) {
             //std::cout << " Debug "  << rows_cols_removed[i] << " " << M << " " << NpM << std::endl;
             assert(rows_cols_removed[i]<NpM);
             assert(rows_cols_removed[j]<NpM);
@@ -193,22 +193,22 @@ compute_det_ratio_down(
 }
 
 //Note: invBigMat will be shrinked.
-template<class T>
+template<class T, class I>
 T
 compute_inverse_matrix_down(
-    const size_t num_rows_cols_removed,
-    const std::vector<size_t>& rows_cols_removed,
+    const I num_rows_cols_removed,
+    const std::vector<I>& rows_cols_removed,
     alps::numeric::matrix<T>& invBigMat,
-    std::vector<std::pair<size_t,size_t> >& swap_list
+    std::vector<std::pair<I,I> >& swap_list
     ) {
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
     static matrix_t H, invH_G, F_invH_G;
 
-    const size_t NpM = num_rows(invBigMat);
-    const size_t M = num_rows_cols_removed;
-    const size_t N = NpM-M;
+    const I NpM = num_rows(invBigMat);
+    const I M = num_rows_cols_removed;
+    const I N = NpM-M;
     assert(num_cols(invBigMat)==NpM);
     assert(rows_cols_removed.size()>=M);
     assert(M>0);
@@ -224,17 +224,17 @@ compute_inverse_matrix_down(
 
 #ifndef NDEBUG
     //make sure the indices are in ascending order.
-    for (size_t i=0; i<M-1; ++i) {
+    for (I i=0; i<M-1; ++i) {
         assert(rows_cols_removed[i]<rows_cols_removed[i+1]);
     }
 #endif
 
     //move rows and cols to be removed to the end.
     swap_list.resize(M);
-    for (size_t i=0; i<M; ++i) {
+    for (I i=0; i<M; ++i) {
         invBigMat.swap_cols(rows_cols_removed[M-1-i], NpM-1-i);
         invBigMat.swap_rows(rows_cols_removed[M-1-i], NpM-1-i);
-        swap_list[i] = std::pair<size_t,size_t>(rows_cols_removed[M-1-i], NpM-1-i);
+        swap_list[i] = std::pair<I,I>(rows_cols_removed[M-1-i], NpM-1-i);
     }
 
     if (N==0) {
@@ -690,7 +690,7 @@ replace_rows_cols_respect_ordering(alps::numeric::matrix<T>& A,
     }
 }
 
-//Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26) before taking the limit of tS->0
+//Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26) without taking the limit of tS->0
 //T = double or complex<double>
 template<class T>
 T
@@ -701,9 +701,9 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
-    const int NpM = num_cols(invBigMat);
+    const int N = num_cols(R);
     const int M = num_rows(R);
-    const int N = NpM-M;
+    const int M_old = num_cols(invBigMat)-N;
     assert(N>0);
 
     assert(num_cols(invBigMat)==num_rows(invBigMat));
@@ -712,19 +712,19 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     assert(num_rows(S)==M && num_cols(S)==M);
 
     static matrix_t invtS_tR, inv_tS, MQ, RMQ, ws1, ws2;
-    inv_tS.resize_values_not_retained(M,M);
-    invtS_tR.resize_values_not_retained(M,N);
+    inv_tS.resize_values_not_retained(M_old,M_old);
+    invtS_tR.resize_values_not_retained(M_old,N);
     MQ.resize_values_not_retained(N,M);
     RMQ.resize_values_not_retained(M,M);
-    ws1.resize_values_not_retained(M,M);
+    ws1.resize_values_not_retained(M_old,M_old);
     ws2.resize_values_not_retained(M,M);
 
-    submatrix_view<T> tQ_view(invBigMat, 0, N, N, M);
-    submatrix_view<T> tR_view(invBigMat, N, 0, M, N);
-    submatrix_view<T> tS_view(invBigMat, N, N, M, M);
+    submatrix_view<T> tQ_view(invBigMat, 0, N, N, M_old);
+    submatrix_view<T> tR_view(invBigMat, N, 0, M_old, N);
+    submatrix_view<T> tS_view(invBigMat, N, N, M_old, M_old);
 
     //compute inv_tS
-    copy_block(invBigMat, N, N, inv_tS, 0, 0, M, M);
+    copy_block(invBigMat, N, N, inv_tS, 0, 0, M_old, M_old);
     inverse_in_place(inv_tS);
 
     gemm(inv_tS, tR_view, invtS_tR);
@@ -750,9 +750,9 @@ compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
-    const int NpM = num_cols(invBigMat);
+    const int N = num_cols(R);
     const int M = num_rows(R);
-    const int N = NpM-M;
+    const int M_old = num_cols(invBigMat)-N;
 
     assert(N>0);
     assert(num_cols(invBigMat)==num_rows(invBigMat));
@@ -763,6 +763,7 @@ compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
     static matrix_t tmp_NM, tmp_MN;
     tmp_NM.resize_values_not_retained(N,M);
     tmp_MN.resize_values_not_retained(M,N);
+    invBigMat.resize_values_not_retained(N+M, N+M);
     submatrix_view<T> tPp_view(invBigMat,0,0,N,N);
     submatrix_view<T> tQp_view(invBigMat,0,N,N,M);
     submatrix_view<T> tRp_view(invBigMat,N,0,M,N);
