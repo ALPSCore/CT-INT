@@ -1,52 +1,5 @@
 #include "../submatrix.hpp"
 
-template<typename T, typename SPLINE_G0_TYPE>
-T eval_Gij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_A, int col_A) {
-  static alps::numeric::matrix<T> G0, invA_G0(1,1);
-
-  T alpha_col = invA.alpha_at(col_A);
-  if (alpha_col!=ALPHA_NON_INT) {
-    //use Eq. (A3)
-    const T fj = eval_f(alpha_col);
-    return row_A==col_A ? (fj*invA.matrix()(row_A,col_A)-1.0)/(fj-1.0)
-                        : (fj*invA.matrix()(row_A,col_A))/(fj-1.0);
-  } else {
-    //use Eq. (A4)
-    const int Nv = invA.matrix().num_rows();
-    assert (invA.creators().size()==Nv);
-    assert (invA.annihilators().size()==Nv);
-    G0.resize_values_not_retained(Nv, 1);
-    for (int iv=0; iv<Nv; ++iv) {
-      G0(iv,0) = spline_G0(invA.annihilators()[iv], invA.creators()[col_A]);
-    }
-    alps::numeric::submatrix_view<T> invA_view(invA.matrix(), row_A, 0, 1, Nv);
-    mygemm((T) 1.0, invA_view, G0, (T) 0.0, invA_G0);
-    return invA_G0(0,0);
-  }
-}
-
-template<typename T>
-void SubmatrixUpdate<T>::sanity_check() const {
-#ifndef NDEBUG
-  //check gamma^{-1}
-  for (int flavor=0; flavor<n_flavors(); ++flavor) {
-    gamma_matrices_[flavor].sanity_check(invA_[flavor], spline_G0_);
-  }
-
-  //check A^{-1}
-  if (state==READY_FOR_UPDATE) {
-    invA_.sanity_check(spline_G0_, p_Uijkl_, itime_vertices_);
-  }
-#endif
-}
-
-template<typename T>
-void SubmatrixUpdate<T>::recompute(bool check_error) {
-  if (state==READY_FOR_UPDATE) {
-    invA_.recompute(spline_G0_, check_error);
-  }
-}
-
 template<typename T>
 SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta) :
     k_ins_max_(k_ins_max),
@@ -83,10 +36,66 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     ops_replace(n_flavors)
 {
   if (itime_vertices_init.size()!=0) {
-    invA_.add_interacting_vertices(p_Uijkl, spline_G0, itime_vertices_init, 0);
+    det_A_ = invA_.add_interacting_vertices(p_Uijkl, spline_G0, itime_vertices_init, 0);
     itime_vertices_ = itime_vertices_init;
   }
 }
+
+template<typename T, typename SPLINE_G0_TYPE>
+T eval_Gij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_A, int col_A) {
+  static alps::numeric::matrix<T> G0, invA_G0(1,1);
+
+  T alpha_col = invA.alpha_at(col_A);
+  if (alpha_col!=ALPHA_NON_INT) {
+    //use Eq. (A3)
+    const T fj = eval_f(alpha_col);
+    return row_A==col_A ? (fj*invA.matrix()(row_A,col_A)-1.0)/(fj-1.0)
+                        : (fj*invA.matrix()(row_A,col_A))/(fj-1.0);
+  } else {
+    //use Eq. (A4)
+    const int Nv = invA.matrix().num_rows();
+    assert (invA.creators().size()==Nv);
+    assert (invA.annihilators().size()==Nv);
+    G0.resize_values_not_retained(Nv, 1);
+    for (int iv=0; iv<Nv; ++iv) {
+      G0(iv,0) = spline_G0(invA.annihilators()[iv], invA.creators()[col_A]);
+    }
+    alps::numeric::submatrix_view<T> invA_view(invA.matrix(), row_A, 0, 1, Nv);
+    mygemm((T) 1.0, invA_view, G0, (T) 0.0, invA_G0);
+    return invA_G0(0,0);
+  }
+}
+
+template<typename T>
+bool SubmatrixUpdate<T>::sanity_check() {
+  bool result = true;
+#ifndef NDEBUG
+  //check gamma^{-1}
+  for (int flavor=0; flavor<n_flavors(); ++flavor) {
+    result = result && gamma_matrices_[flavor].sanity_check(invA_[flavor], spline_G0_);
+  }
+
+  //check A^{-1}
+  if (state==READY_FOR_UPDATE) {
+    result = result && invA_.sanity_check(spline_G0_, p_Uijkl_, itime_vertices_);
+  }
+
+  if (state==READY_FOR_UPDATE) {
+    const T det_A_bak = det_A_;
+    recompute(true);
+    assert(std::abs(det_A_bak-det_A_)/std::abs(det_A_)<1E-5);
+  }
+#endif
+  return result;
+}
+
+template<typename T>
+void SubmatrixUpdate<T>::recompute(bool check_error) {
+  if (state==READY_FOR_UPDATE) {
+    invA_.recompute(spline_G0_, check_error);
+  }
+}
+
 
 template<typename T>
 void SubmatrixUpdate<T>::init_update(int begin_index) {
@@ -136,9 +145,10 @@ void SubmatrixUpdate<T>::finalize_update() {
   state = READY_FOR_UPDATE;
 }
 
-//returns the determinant ratio of A.
+//returns the determinant ratios of A and 1-f, respectively.
 template<typename T>
-T SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector<int>& new_spins) {
+boost::tuple<T,T,T>
+SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector<int>& new_spins) {
   assert(state==TRYING_SPIN_FLIP);
 
   const int n_pos = pos.size();
@@ -165,6 +175,8 @@ T SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vect
   }
 #endif
 
+  T f_new = 1.0, f_old = 1.0, U_new = 1.0, U_old = 1.0;
+
   //figure out which rows/cols are to be updated
   for (int ipos=0; ipos<pos.size(); ++ipos) {
     const int iv = pos[ipos];
@@ -172,6 +184,13 @@ T SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vect
     assert(iv<itime_vertices0_.size());
     const itime_vertex& v = itime_vertices0_[iv];
     const vertex_definition<T>& vdef = p_Uijkl_->get_vertex(v.type());
+
+    if(v.is_non_interacting() && new_spin!=NON_INT_SPIN_STATE) {
+      U_new *= -vdef.Uval();
+    } else if(!v.is_non_interacting() && new_spin==NON_INT_SPIN_STATE) {
+      U_old *= -vdef.Uval();
+    }
+
     for (int rank=0; rank<vdef.rank(); ++rank) {
       const int flavor_rank = vdef.flavors()[rank];
       const operator_time op_t = operator_time(v.time(),-rank);
@@ -186,48 +205,41 @@ T SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vect
                        : vdef.get_alpha(new_spin, rank);
       const int pos_in_A = invA_[flavor_rank].find_row_col(op_t.time());
       assert(pos_in_A>=0);
-      //std::cout << "ipos, rank " << ipos << " " << rank << " flavor " << flavor_rank << " " << pos_in_A <<std::endl;
       OperatorToBeUpdated<T> elem(op_t, pos_in_A, alpha0, alpha_current, alpha_new);
 
-      if (new_spin==NON_INT_SPIN_STATE) {
-        //if(itime_vertices0_[iv].is_non_interacting()) {
-        if(alpha0==ALPHA_NON_INT) {
-          ops_rem[flavor_rank].push_back(elem);
-          //std::cout << "debug A " << std::endl;
-        } else {
-          ops_ins[flavor_rank].push_back(elem);
-          //std::cout << "debug B " << std::endl;
+      const bool already_in_gamma = (alpha0 != alpha_current);
+      const bool stay_in_gamma = (alpha0 != alpha_new);
+
+      if (already_in_gamma && !stay_in_gamma) {
+        ops_rem[flavor_rank].push_back(elem);
+      } else if (!already_in_gamma && stay_in_gamma) {
+        ops_ins[flavor_rank].push_back(elem);
+      } else if (already_in_gamma && stay_in_gamma) {
+        if (alpha_current != alpha_new) {
+          ops_replace[flavor_rank].push_back(elem);
         }
       } else {
-        //new spin state is physical (interacting)
-        if(alpha0==ALPHA_NON_INT) {
-          ops_ins[flavor_rank].push_back(elem);
-          //std::cout << "debug C " << std::endl;
-        } else {
-          if (alpha0 != alpha_new) {
-            ops_replace[flavor_rank].push_back(elem);
-            //std::cout << "debug D " << std::endl;
-          }
-        }
+        //nothing to do with Gamma
+      }
+
+      if (alpha_current!=alpha_new) {
+        f_new *= 1.0-eval_f(alpha_new);
+        f_old *= 1.0-eval_f(alpha_current);
       }
     }
   }
 
   //compute determinant ratio of A (not M):
-  T det_rat_A = (T) 1.0;
+  det_rat_A = 1.0;
   for (int flavor=0; flavor<n_flavors(); ++flavor) {
-    //std::cout << "debug ";
-    //std::cout << ops_rem.size();
-    //std::cout << ops_ins.size();
-    //std::cout << ops_replace.size();
-    //std::cout << std::endl;
-
     if (ops_rem.size()==0 && ops_ins.size()==0 && ops_replace.size()==0) {
       continue;
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()>0 && ops_replace[flavor].size()==0) {
         det_rat_A *= gamma_matrices_[flavor].try_add(invA_[flavor], spline_G0_, ops_ins[flavor]);
     } else if (ops_rem[flavor].size()>0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()==0) {
       det_rat_A *= gamma_matrices_[flavor].try_remove(invA_[flavor], spline_G0_, ops_rem[flavor]);
+    } else if (ops_rem[flavor].size()>0 && ops_ins[flavor].size()>0 && ops_replace[flavor].size()==0) {
+      det_rat_A *= gamma_matrices_[flavor].try_add_remove(invA_[flavor], spline_G0_, ops_ins[flavor], ops_rem[flavor]);
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()>0) {
       throw std::runtime_error("Not implemented: try_replace");
       //det_rat_A *= gamma_matrices_[flavor].try_replace(p_Uijkl_, invA_[flavor], ops_ins[flavor]);
@@ -235,7 +247,7 @@ T SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vect
       throw std::runtime_error("Not implemented: try_***");
     }
   }
-  return det_rat_A;
+  return boost::make_tuple(det_rat_A, f_new/f_old, U_new/U_old);
 }
 
 template<typename T>
@@ -249,6 +261,8 @@ void SubmatrixUpdate<T>::perform_spin_flip(const std::vector<int>& pos, const st
       gamma_matrices_[flavor].perform_add();
     } else if (ops_rem[flavor].size()>0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()==0) {
       gamma_matrices_[flavor].perform_remove();
+    } else if (ops_rem[flavor].size()>0 && ops_ins[flavor].size()>0 && ops_replace[flavor].size()==0) {
+      gamma_matrices_[flavor].perform_add_remove();
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()>0) {
       throw std::runtime_error("Not implemented");
       //gamma_matrices_[flavor].perform_replace();
@@ -265,6 +279,9 @@ void SubmatrixUpdate<T>::perform_spin_flip(const std::vector<int>& pos, const st
       itime_vertices_[pos[i_pos]].set_af_state(new_spins[i_pos]);
     }
   }
+
+  det_A_ *= det_rat_A;
+
   sanity_check();
 }
 
@@ -279,6 +296,8 @@ void SubmatrixUpdate<T>::reject_spin_flip() {
       gamma_matrices_[flavor].reject_add();
     } else if (ops_rem[flavor].size()>0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()==0) {
       gamma_matrices_[flavor].reject_remove();
+    } else if (ops_rem[flavor].size()>0 && ops_ins[flavor].size()>0 && ops_replace[flavor].size()==0) {
+      gamma_matrices_[flavor].reject_add_remove();
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()>0) {
       throw std::runtime_error("Not implemented");
       //gamma_matrices_[flavor].reject_replace();
@@ -287,4 +306,14 @@ void SubmatrixUpdate<T>::reject_spin_flip() {
     }
   }
   sanity_check();
+}
+
+template<typename  T>
+T SubmatrixUpdate<T>::compute_M(std::vector<alps::numeric::matrix<T> >& M) {
+  assert(M.size()==n_flavors());
+
+  for (int flavor=0; flavor<n_flavors(); ++flavor) {
+    invA_[flavor].compute_M(M[flavor], spline_G0_);
+  }
+  return 0.0;
 }

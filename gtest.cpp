@@ -322,6 +322,10 @@ TEST(FastUpdate, BlockMatrixReplaceLastRowsColsWithDifferentSizes) {
     M_list.push_back(49);
     Mold_list.push_back(20);
 
+    N_list.push_back(100);
+    M_list.push_back(100);
+    Mold_list.push_back(20);
+
     for (int n = 0; n < N_list.size(); ++n) {
         for (int m = 0; m < M_list.size(); ++m) {
             const int N = N_list[n];
@@ -645,10 +649,10 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
     const double U = 2.0;
     const double alpha = 1E-1;
     const double beta = 4.0;
-    const int Nv_max = 1;
+    const int Nv_max = 3;
     const int n_flavors = 2;
-    const int k_ins_max = 10;
-    const int n_update = 5;
+    const int k_ins_max = 20;
+    const int n_update = 10;
     const int seed = 100;
 
     general_U_matrix<T> Uijkl(n_sites, U, alpha);
@@ -669,13 +673,15 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
     boost::random::variate_generator<boost::random::mt19937&, boost::random::uniform_smallint<> > Nv_prob(gen, dist);
     boost::random::variate_generator<boost::random::mt19937&, boost::random::uniform_01<> > random01(gen, dist01);
 
+    std::vector<alps::numeric::matrix<T> > M(n_flavors);
 
     for (int i_update=0; i_update<n_update; ++i_update) {
         std::cout << "I_UPDATE " << i_update << " Nv0 = " << submatrix_update.pert_order() << std::endl;
         submatrix_update.vertex_insertion_removal_update(Nv_prob, random01);
-        submatrix_update.sanity_check();
+        assert(submatrix_update.sanity_check());
         //std::cout << "recompute " << std::endl;
         submatrix_update.recompute(true);
+        submatrix_update.compute_M(M);
     }
 
     //std::cout << DiagonalG0<T>(beta)(0.0) << std::endl;

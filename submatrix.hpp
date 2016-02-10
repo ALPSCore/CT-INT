@@ -80,7 +80,7 @@ public:
     }
     int find_row_col(double time) const;
     template<typename SPLINE_G0_TYPE>
-    void sanity_check(const SPLINE_G0_TYPE& spline_G0) const;
+    bool sanity_check(const SPLINE_G0_TYPE& spline_G0) const;
     void swap_ops(size_t i1, size_t i2) {
       assert(i1>=0 && i1<creators_.size());
       assert(i2>=0 && i2<creators_.size());
@@ -114,8 +114,12 @@ public:
     void extend(const SPLINE_G0_TYPE& spline_G0);
     void remove_rows_cols(const std::vector<double>& times);
 
+    /*recompute A^{-1} and return det(A)*/
     template<typename SPLINE_G0_TYPE>
-    void recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error);
+    T recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error);
+
+    template<typename SPLINE_G0_TYPE>
+    void compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE& spline_G0) const;
 
 private:
     alps::numeric::matrix<T> matrix_;
@@ -162,7 +166,7 @@ public:
     double alpha_scale() const {return alpha_scale_;}
 
     template<typename SPLINE_G0_TYPE>
-    void sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_matrix<T>* p_Uijkl, const itime_vertex_container& itime_vertices) const;
+    bool sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_matrix<T>* p_Uijkl, const itime_vertex_container& itime_vertices) const;
 
     template<typename SPLINE_G0_TYPE>
     void recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error);
@@ -179,7 +183,7 @@ public:
     void add_non_interacting_vertices(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
 
     template<typename SPLINE_G0_TYPE>
-    void add_interacting_vertices(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
+    T add_interacting_vertices(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
 
     void remove_rows_cols(const std::vector<double>& times);
 
@@ -228,9 +232,10 @@ public:
 
     //removing rows and cols and then adding new rows and cols
     template<typename SPLINE_G0_TYPE>
-    T try_replace(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_g0, const std::vector<OperatorToBeUpdated<T> >& ops_rem);
-    void perform_replace();
-    void reject_replace();
+    T try_add_remove(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_g0, const std::vector<OperatorToBeUpdated<T> >& ops_ins,
+                     const std::vector<OperatorToBeUpdated<T> >& ops_rem);
+    void perform_add_remove();
+    void reject_add_remove();
 
     void clear();
 
@@ -256,7 +261,7 @@ public:
     T eval_Gij_gamma(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row, int col) const;
 
     template<typename SPLINE_G0_TYPE>
-    void sanity_check(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0) const;
+    bool sanity_check(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0) const;
 
 
 private:
@@ -271,6 +276,7 @@ private:
 
     //workspace for removal of row and col
     std::vector<int> rows_cols_removed;
+    alps::numeric::matrix<T> Mmat, inv_tSp;
 
     //auxially functions for multi-vertex insertion and removal
     int find_row_col_gamma(int pos_A) const;
@@ -312,15 +318,17 @@ public:
     //returns a product of determinants of A matrices
     typename InvAMatrix<T>::value_type determinant();
 
+    T compute_M(std::vector<alps::numeric::matrix<T> >& M);
+
     //vertices insertion and removal updates
     template<typename NVertexProb, typename R>
     void vertex_insertion_removal_update(NVertexProb, R& random);
 
-    /* recomputes A^{-1} to avoid numerical errors */
+    /* recomputes A^{-1} to avoid numerical errors*/
     void recompute(bool check_error);
 
     //for debug
-    void sanity_check() const;
+    bool sanity_check();
 
 private:
     enum SubmatrixState {READY_FOR_UPDATE=0, TRYING_SPIN_FLIP=1};
@@ -340,6 +348,7 @@ private:
     itime_vertex_container itime_vertices0_;//starting configuration for submatrix update set in init_update()
 
     //workspace
+    T det_rat_A;
     std::vector<int> pos_vertices_ins, num_vertices_ins;//size of k_ins_max_
     std::vector<std::vector<OperatorToBeUpdated<T> > > ops_rem, ops_ins, ops_replace;//operator_time and new alpha
 
@@ -351,7 +360,8 @@ private:
     void add_non_interacting_vertices(int begin_index);
     void finalize_update();
 
-    T try_spin_flip(const std::vector<int>& pos, const std::vector<int>& new_spins);
+    //the heart of submatrix update
+    boost::tuple<T,T,T> try_spin_flip(const std::vector<int>& pos, const std::vector<int>& new_spins);
     void perform_spin_flip(const std::vector<int>& pos, const std::vector<int>& new_spins);
     void reject_spin_flip();
 

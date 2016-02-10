@@ -21,7 +21,6 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb nv_prob, R&
       new_vertices = generate_itime_vertices(*p_Uijkl_,random,beta_,Nv,all_type());
     } else {
       new_vertices = generate_itime_vertices(*p_Uijkl_,random,beta_,Nv,all_type());
-      //throw std::runtime_error("Nv>2 is not implemented!");
     }
 
     for (int iv=0; iv<new_vertices.size(); ++iv) {
@@ -38,8 +37,7 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb nv_prob, R&
   init_update(Nv0);
 
   //perform actual updates
-  //const int try_ins = random()<0.5 ? 0 : 1;
-  const int try_ins = 0; //DEBUG
+  const int try_ins = random()<0.5 ? 0 : 1;
   int i_ins = 0;
   for (int i_update=0; i_update<2*k_ins_max_; ++i_update) {
     if (i_update%2==try_ins) {
@@ -63,8 +61,10 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb nv_prob, R&
 template<typename T>
 template<typename R>
 void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_vertices_ins) {
-  //assert(vertex_begin<itime_vertices_.size());
   assert(vertex_begin+num_vertices_ins<=itime_vertices_.size());
+  assert(num_vertices_ins==1);
+
+  T det_rat_A, f_rat, U_rat;
 
   new_spins_work.resize(num_vertices_ins);
   pos_vertices_work.resize(num_vertices_ins);
@@ -72,33 +72,26 @@ void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_ver
     assert(iv+vertex_begin<itime_vertices_.size());
     new_spins_work[iv] = itime_vertices_[iv+vertex_begin].af_state();
     pos_vertices_work[iv] = iv+vertex_begin;
-    //std::cout << "debug adding at time " << itime_vertices_[iv+vertex_begin].time() << std::endl;
-    //std::cout << "debug adding with spin " << itime_vertices_[iv+vertex_begin].af_state() << std::endl;
   }
 
-  const T det_rat_A = try_spin_flip(pos_vertices_work, new_spins_work);
-  //const T det_rat_M = coeff_det*det_rat_A;
+  boost::tie(det_rat_A,f_rat,U_rat) = try_spin_flip(pos_vertices_work, new_spins_work);
+  T prob = det_rat_A*f_rat*U_rat;
 
-  //actually flip spins to compute proposal rates
-  //for (int iv=0; iv<num_vertices_ins; ++iv) {
-    //itime_vertices_[iv + vertex_begin].set_interacting();
-  //}
+  if (num_vertices_ins==1) {
+    prob *= beta_*p_Uijkl_->n_vertex_type()/(itime_vertices_.num_interacting()+1.0);
+  } else {
+    throw std::runtime_error("Not implemented");
+  }
 
-  /****** TO DO compute prod_U *******/
-
-  //if (std::abs(det_rat_A)>random()) {
-  if (random()>0.5) {//DEBUG
+  if (std::abs(prob)>random()) {
     std::cout << "accepted " << std::endl;
     det_A_ *= det_rat_A;
     perform_spin_flip(pos_vertices_work, new_spins_work);
   } else {
     std::cout << "rejected " << std::endl;
     reject_spin_flip();
-    //for (int iv=0; iv<num_vertices_ins; ++iv) {
-      //itime_vertices_[iv + vertex_begin].set_non_interacting();
-    //}
   }
-};
+}
 
 template<typename T>
 template<typename R>
@@ -113,29 +106,30 @@ void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
     }
   }
 
-  //std::cout << "debug nv_rem " << nv_rem << std::endl;
-
   if (num_int<nv_rem) return;//there are not an enough number of vertices to removed.
 
   std::vector<int> rand_pos = pickup_a_few_numbers(num_int, nv_rem, random);
 
-  //for (int iv=0; iv<num_int; ++iv) {
-    //std::cout << "int " << iv << " " << pos_int_vertices[iv] << std::endl;
-  //}
-
   std::vector<int> pos_vertices_remove(nv_rem);
   for (int iv=0; iv<nv_rem; ++iv) {
     pos_vertices_remove[iv] = pos_int_vertices[rand_pos[iv]];
-    //std::cout << "debug removing at time " << itime_vertices_[pos_vertices_remove[iv]].time() << std::endl;
     assert(pos_vertices_remove[iv]<Nv);
     assert(!itime_vertices_[pos_vertices_remove[iv]].is_non_interacting());
   }
   std::vector<int> new_spins_remove(nv_rem, NON_INT_SPIN_STATE);
 
-  const T det_rat_A = try_spin_flip(pos_vertices_remove, new_spins_remove);
+  T det_rat_A, f_rat, U_rat;
+  boost::tie(det_rat_A,f_rat,U_rat) = try_spin_flip(pos_vertices_remove, new_spins_remove);
 
-  //if (std::abs(det_rat_A)>random()) {
-  if (random()>0.5) {//DEBUG
+  T prob = det_rat_A*f_rat*U_rat;
+
+  if (nv_rem==1) {
+    prob *= itime_vertices_.num_interacting()/(beta_*p_Uijkl_->n_vertex_type());
+  } else {
+    throw std::runtime_error("Not implemented");
+  }
+
+  if (std::abs(prob)>random()) {
     std::cout << "accepted " << std::endl;
     det_A_ *= det_rat_A;
     perform_spin_flip(pos_vertices_remove, new_spins_remove);
@@ -143,5 +137,5 @@ void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
     std::cout << "rejected " << std::endl;
     reject_spin_flip();
   }
-};
+}
 

@@ -701,17 +701,24 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
+    static matrix_t invtS_tR, inv_tS, MQ, RMQ, ws1, ws2;
+
     const int N = num_cols(R);
     const int M = num_rows(R);
     const int M_old = num_cols(invBigMat)-N;
-    assert(N>0);
 
+    if (N==0) {
+      ws1.resize_values_not_retained(M,M);
+      ws2.resize_values_not_retained(M_old,M_old);
+      return determinant_no_copy(S, ws1)*determinant_no_copy(invBigMat, ws2);
+    }
+
+    assert(N>0);
     assert(num_cols(invBigMat)==num_rows(invBigMat));
     assert(num_rows(R)==M && num_cols(R)==N);
     assert(num_rows(Q)==N && num_cols(Q)==M);
     assert(num_rows(S)==M && num_cols(S)==M);
 
-    static matrix_t invtS_tR, inv_tS, MQ, RMQ, ws1, ws2;
     inv_tS.resize_values_not_retained(M_old,M_old);
     invtS_tR.resize_values_not_retained(M_old,N);
     MQ.resize_values_not_retained(N,M);
@@ -743,24 +750,32 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
 //Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26) before taking the limit of tS->0
 //T = double or complex<double>
 template<class T>
-T
+void
 compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
                                     const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
                                     const alps::numeric::matrix<T>& Mmat, const alps::numeric::matrix<T>& inv_tSp) {
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
+    static matrix_t tmp_NM, tmp_MN;
+
     const int N = num_cols(R);
     const int M = num_rows(R);
     const int M_old = num_cols(invBigMat)-N;
 
-    assert(N>0);
     assert(num_cols(invBigMat)==num_rows(invBigMat));
     assert(num_rows(R)==M && num_cols(R)==N);
     assert(num_rows(Q)==N && num_cols(Q)==M);
     assert(num_rows(S)==M && num_cols(S)==M);
 
-    static matrix_t tmp_NM, tmp_MN;
+    if (N==0) {
+        invBigMat.resize_values_not_retained(M, M);
+        my_copy_block(S, 0, 0, invBigMat, 0, 0, M, M);
+        inverse_in_place(invBigMat);
+        return;
+    }
+
+    assert(N>0);
     tmp_NM.resize_values_not_retained(N,M);
     tmp_MN.resize_values_not_retained(M,N);
     invBigMat.resize_values_not_retained(N+M, N+M);

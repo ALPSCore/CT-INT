@@ -365,7 +365,7 @@ class general_U_matrix {
  };
 
 //to remember what vertices are on the imaginary time axis..
-typedef struct itime_vertex {
+class itime_vertex {
 public:
   itime_vertex()
              : vertex_type_(-1),
@@ -402,7 +402,7 @@ private:
   double time_;
   bool is_density_type_; //, is_truely_non_density_type_;
   bool is_non_interacting_;
-} itime_vertex;
+};
 
 template<class V>
 class ItimeVertexContainer : private std::vector<V> {
@@ -418,6 +418,14 @@ public:
 
     typedef typename std::vector<V>::iterator iterator;
     typedef typename std::vector<V>::const_iterator const_iterator;
+
+    int num_interacting() {
+      int count = 0;
+      for (int iv=0; iv<size(); ++iv) {
+        if(!operator[](iv).is_non_interacting()) ++count;
+      }
+      return count;
+    }
 
     //this is to be killed.
     using std::vector<V>::size;

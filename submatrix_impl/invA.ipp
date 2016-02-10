@@ -72,22 +72,30 @@ void InvAMatrix<T>::extend(const SPLINE_G0_TYPE& spline_G0) {
 
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-void InvAMatrix<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0) const {
+bool InvAMatrix<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0) const {
+  bool result = true;
 #ifndef NDEBUG
   assert(num_rows(matrix_)==num_cols(matrix_));
   assert(num_rows(matrix_)==creators_.size());
   assert(creators_.size()==annihilators_.size());
   assert(creators_.size()==alpha_.size());
   assert(creators_.size()==vertex_info_.size());
+
+  result = result && (num_rows(matrix_)==num_cols(matrix_));
+  result = result && (num_rows(matrix_)==creators_.size());
+  result = result && (creators_.size()==annihilators_.size());
+  result = result && (creators_.size()==alpha_.size());
+  result = result && (creators_.size()==vertex_info_.size());
 #endif
+  return result;
 }
 
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-void InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
+T InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
   const int Nv = annihilators_.size();
 
-  if (Nv==0) return;
+  if (Nv==0) return 1.0;
 
   alps::numeric::matrix<T> matrix_bak;
 
@@ -108,6 +116,7 @@ void InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error)
     }
     matrix_(j,j) += F[j];
   }
+  const T det = alps::numeric::determinant(matrix_);
   alps::numeric::inverse_in_place(matrix_);
 
   if (check_error) {
@@ -122,6 +131,7 @@ void InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error)
       std::cout << " max diff in A^{-1} is " << max_diff << ", max abs value is " << max_abs_val << " . " << std::endl;
     }
   }
+  return det;
 }
 
 /*
@@ -157,7 +167,7 @@ InvAMatrixFlavors<T>::add_non_interacting_vertices(general_U_matrix<T>* p_Uijkl,
 
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-void
+T
 InvAMatrixFlavors<T>::add_interacting_vertices(general_U_matrix<T>* p_Uijkl,
                                                    const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index) {
   //add operators
@@ -177,9 +187,11 @@ InvAMatrixFlavors<T>::add_interacting_vertices(general_U_matrix<T>* p_Uijkl,
     }
   }
 
+  T det_A = 1.0;
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    sub_matrices_[flavor].recompute(spline_G0, false);
+    det_A *= sub_matrices_[flavor].recompute(spline_G0, false);
   }
+  return det_A;
 }
 
 
@@ -274,6 +286,48 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
   }
 }
 
+//compute M=(G-alpha)^-1 from A^-1
+// using the relation M = (1-f) A^-1
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+void InvAMatrix<T>::compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE& spline_G0) const {
+  const int N = matrix_.num_cols();
+  M.resize_values_not_retained(N, N);
+
+  if (N==0) return;
+
+  std::vector<T> coeff(N);
+  for (int i=0; i<N; ++i) {
+    coeff[i] = 1.0-eval_f(alpha_at(i));
+  }
+
+  for (int j=0; j<N; ++j) {
+    for (int i=0; i<N; ++i) {
+      M(i,j) = coeff[i]*matrix_(i,j);
+    }
+  }
+
+#ifndef NDEBUG
+  alps::numeric::matrix<T> G0(N,N), G0_M(N,N);
+  for (int j=0; j<N; ++j) {
+    for (int i=0; i<N; ++i) {
+      G0(i,j) = spline_G0(annihilators()[i], creators()[j]);
+    }
+    G0(j,j) -= alpha_at(j);
+  }
+  mygemm((T) 1.0, G0, M, (T) 0.0, G0_M);
+  for (int j=0; j<N; ++j) {
+    for (int i = 0; i < N; ++i) {
+      if (i==j) {
+        assert(std::abs(G0_M(i,j)-1.0)<1E-5);
+      } else {
+        assert(std::abs(G0_M(i,j))<1E-5);
+      }
+    }
+  }
+#endif
+}
+
 /*
  * Implementation of InvAMatrixFlavors<T>
  */
@@ -296,9 +350,10 @@ InvAMatrixFlavors<T>::remove_rows_cols(const std::vector<double>& times) {
 
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-void
+bool
 InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_matrix<T>* p_Uijkl,
                                    const itime_vertex_container& itime_vertices) const {
+  bool result = true;
 #ifndef NDEBUG
   const int n_flavors = sub_matrices_.size();
   std::vector<std::vector<creator> > creators_scr(n_flavors);
@@ -322,7 +377,7 @@ InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_ma
   }
 
   for (int flavor=0; flavor<n_flavors; ++flavor) {
-    sub_matrices_[flavor].sanity_check(spline_G0);
+    result = result && sub_matrices_[flavor].sanity_check(spline_G0);
     assert(sub_matrices_[flavor].annihilators().size()==annihilators_scr[flavor].size());
     assert(sub_matrices_[flavor].creators().size()==creators_scr[flavor].size());
 
@@ -335,6 +390,7 @@ InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_ma
     }
   }
 #endif
+  return result;
 }
 
 template<typename T>
@@ -344,3 +400,4 @@ void InvAMatrixFlavors<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check
     sub_matrices_[flavor].recompute(spline_G0, check_error);
   }
 }
+
