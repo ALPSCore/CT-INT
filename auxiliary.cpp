@@ -31,22 +31,22 @@
 
 using namespace std;
 
-ostream& operator <<(ostream &os, const vertex_array &vertices)
-{
-  for(std::size_t i=0;i<vertices.size();++i){
-    os<<(vertices[i])<<std::endl;
-  }
-  return os;
-}
+//ostream& operator <<(ostream &os, const vertex_array &vertices)
+//{
+  //for(std::size_t i=0;i<vertices.size();++i){
+    //os<<(vertices[i])<<std::endl;
+  //}
+  //return os;
+//}
 
-ostream& operator <<(ostream &os, const vertex &v)
-{
-  std::cout <<"z1: "<<v.flavor1()<<" c1^dag: "<<v.c_dagger_1()
-            <<" c1: "<<v.c_1()<<" z2: "<<v.flavor2()
-            <<" c2^dag: "<<v.c_dagger_2()<<" c2: "
-            <<v.c_2()<<"\t"<<v.abs_w();
-  return os;
-}
+//ostream& operator <<(ostream &os, const vertex &v)
+//{
+  //std::cout <<"z1: "<<v.flavor1()<<" c1^dag: "<<v.c_dagger_1()
+            //<<" c1: "<<v.c_1()<<" z2: "<<v.flavor2()
+            //<<" c2^dag: "<<v.c_dagger_2()<<" c2: "
+            //<<v.c_2()<<"\t"<<v.abs_w();
+  //return os;
+//}
 
 ostream &operator<<(ostream &os, const c_or_cdagger &c)
 {

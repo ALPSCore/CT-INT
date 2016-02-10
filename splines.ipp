@@ -42,15 +42,11 @@ template<class X, class Y> inline Y linear_interpolate(const X x0, const X x1, c
 //take care of the ambiguity of the equal-time Green's function.
 //We appreciate the ordering of the creation and annihilation operators in the vertex.
 template<class TYPES>
-typename TYPES::COMPLEX_TYPE
-InteractionExpansion<TYPES>::green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const
+typename TYPES::M_TYPE
+InteractionExpansion<TYPES>::green0_spline_for_M(const annihilator& c, const creator& cdagger)
 {
-  assert(c_pos<M[flavor].annihilators().size());
-  assert(cdagger_pos<M[flavor].creators().size());
-
-  const annihilator& c = M[flavor].annihilators()[c_pos];
-  const creator& cdagger = M[flavor].creators()[cdagger_pos];
-
+  assert(c.flavor()==cdagger.flavor());
+  const int flavor = c.flavor();
   if (c.t().time()!=cdagger.t().time()) {
     itime_t delta_t=c.t().time()-cdagger.t().time();
     site_t site1 = c.s();
@@ -67,29 +63,31 @@ InteractionExpansion<TYPES>::green0_spline_for_M(const spin_t flavor, size_t c_p
 
 ///Compute the bare green's function for a given flavor, site, and imaginary time.
 template<class TYPES>
-typename TYPES::COMPLEX_TYPE
-InteractionExpansion<TYPES>::green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const
+typename TYPES::M_TYPE
+InteractionExpansion<TYPES>::green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2)
 {
   assert(delta_t<= beta);
   assert(delta_t>=-beta);
   if(delta_t*delta_t < almost_zero && delta_t>0){
-    return bare_green_itime(0, site1, site2, flavor);
+    return mycast<M_TYPE>(bare_green_itime(0, site1, site2, flavor));
   }
   else if(delta_t*delta_t < almost_zero && delta_t<0){
-    return -bare_green_itime(n_tau, site1, site2, flavor);
+    return mycast<M_TYPE>(-bare_green_itime(n_tau, site1, site2, flavor));
   }
   else if(delta_t>0){
     int time_index_1 = (int)(delta_t*n_tau*temperature);
     int time_index_2 = time_index_1+1;
     return linear_interpolate((double)time_index_1*beta*n_tau_inv, (double)time_index_2*beta*n_tau_inv,
-                              bare_green_itime(time_index_1, site1, site2, flavor),
-                              bare_green_itime(time_index_2, site1, site2, flavor),delta_t);
+                              mycast<M_TYPE>(bare_green_itime(time_index_1, site1, site2, flavor)),
+                              mycast<M_TYPE>(bare_green_itime(time_index_2, site1, site2, flavor)),
+                              delta_t);
   }
   else{
     int time_index_1 = (int)(delta_t*n_tau*temperature+n_tau);
     int time_index_2 = time_index_1+1;
     return -linear_interpolate((double)time_index_1*beta*n_tau_inv, (double)time_index_2*beta*n_tau_inv,
-                               bare_green_itime(time_index_1,site1,site2,flavor),
-                               bare_green_itime(time_index_2,site1,site2,flavor),delta_t+beta);
+                               mycast<M_TYPE>(bare_green_itime(time_index_1,site1,site2,flavor)),
+                               mycast<M_TYPE>(bare_green_itime(time_index_2,site1,site2,flavor)),
+                               delta_t+beta);
   }
 }

@@ -307,6 +307,11 @@ public:
       return invA_[flavor];
     }
 
+    const T sign() const {
+      throw std::runtime_error("sign not implemented");
+      return 0.0;
+    }
+
     size_t n_flavors() const {
       return invA_.size();
     };
@@ -315,10 +320,19 @@ public:
       return itime_vertices_.size();
     }
 
+    const itime_vertex_container& itime_vertices() const {
+      assert(state==READY_FOR_UPDATE);
+      return itime_vertices_;
+    }
+
     //returns a product of determinants of A matrices
     typename InvAMatrix<T>::value_type determinant();
 
     T compute_M(std::vector<alps::numeric::matrix<T> >& M);
+
+    const InvAMatrixFlavors<T>& invA() const {
+      return invA_;
+    }
 
     //vertices insertion and removal updates
     template<typename NVertexProb, typename R>

@@ -44,13 +44,8 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
   if(measurements.has("Sign")){
     measurements.clear();
   }
-#ifdef ALPS_NGS_USE_NEW_ALEA
-  measurements << alps::accumulator::RealObservable("Sign");
-  measurements << alps::accumulator::RealVectorObservable("PertOrder");
-#else
   measurements << alps::ngs::RealObservable("Sign");
   measurements << alps::ngs::RealVectorObservable("PertOrder");
-#endif
   if(n_matsubara_measurements>0) {
     for(unsigned int flavor=0;flavor<n_flavors;++flavor){
       for (unsigned int k = 0; k < n_site; k++) {
@@ -58,12 +53,8 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
           std::stringstream obs_name_real, obs_name_imag;
           obs_name_real << "Wk_real_" << flavor << "_" << k << "_" << k2;
           obs_name_imag << "Wk_imag_" << flavor << "_" << k << "_" << k2;
-#ifndef ALPS_NGS_USE_NEW_ALEA
           measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
           measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
-#else
-          throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
-#endif //ALPS_NGS_USE_NEW_ALEA
         }
       }
     }
@@ -76,36 +67,25 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
           std::stringstream obs_name_real, obs_name_imag;
           obs_name_real << "Sl_real_" << flavor << "_" << k << "_" << k2;
           obs_name_imag << "Sl_imag_" << flavor << "_" << k << "_" << k2;
-#ifndef ALPS_NGS_USE_NEW_ALEA
           measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
           measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
-#else
-          throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
-#endif //ALPS_NGS_USE_NEW_ALEA
         }
       }
     }
   }
 
-#ifndef ALPS_NGS_USE_NEW_ALEA
   measurements << alps::ngs::RealVectorObservable("densities");
   for(unsigned int flavor=0;flavor<n_flavors;++flavor)
     measurements << alps::ngs::RealVectorObservable("densities_"+boost::lexical_cast<std::string>(flavor));
   measurements << alps::ngs::RealObservable("density_correlation");
   measurements << alps::ngs::RealVectorObservable("n_i n_j");
-#else
-  throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
-#endif //ALPS_NGS_USE_NEW_ALEA
+
   for(unsigned int flavor=0;flavor<n_flavors;++flavor){
     for(unsigned int i=0;i<n_site;++i){
       std::stringstream density_name, sz_name;
       density_name<<"density_"<<flavor;
       if (n_site>1) density_name<<"_"<<i;
-#ifndef ALPS_NGS_USE_NEW_ALEA
       measurements << alps::ngs::RealObservable(density_name.str().c_str());
-#else
-  throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
-#endif //ALPS_NGS_USE_NEW_ALEA
     }
   }
   for(unsigned int i=0;i<n_site;++i){
@@ -113,23 +93,7 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
     sz_name<<"Sz_"<<i;
     sz2_name<<"Sz2_"<<i;
     sz0_szj_name<<"Sz0_Sz"<<i;
-// #ifndef ALPS_NGS_USE_NEW_ALEA
-//     measurements << alps::ngs::SignedRealObservable(sz_name.str().c_str());
-//     measurements << alps::ngs::SignedRealObservable(sz2_name.str().c_str());
-//     measurements << alps::ngs::SignedRealObservable(sz0_szj_name.str().c_str());
-// #else
-   //throw std::runtime_error("alps::ngs::SignedRealVectorObservable is not implemented");
-// #endif //ALPS_NGS_USE_NEW_ALEA
   }
-  //acceptance probabilities
-#ifdef ALPS_NGS_USE_NEW_ALEA
-  measurements << alps::accumulator::RealObservable("VertexInsertion");
-  measurements << alps::accumulator::RealObservable("VertexRemoval");
-  measurements << alps::accumulator::RealObservable("MeasurementTime");
-  measurements << alps::accumulator::RealObservable("UpdateTime");
-  measurements << alps::accumulator::RealObservable("RecomputeTime");
-  measurements << alps::accumulator::SimpleRealObservable("VertexHistogram");
-#else
   for (int iv=0; iv<n_multi_vertex_update; ++iv)  {
       measurements << alps::ngs::RealVectorObservable("VertexInsertion_"+boost::lexical_cast<std::string>(iv+1));
       measurements << alps::ngs::RealVectorObservable("VertexRemoval_"+boost::lexical_cast<std::string>(iv+1));
@@ -163,9 +127,6 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
     measurements << alps::ngs::SimpleRealObservable("QuantumNumberConserved");
   }
   measurements << alps::ngs::SimpleRealVectorObservable("PertOrderHistogram");
-  if (use_alpha_update)
-    measurements << alps::ngs::SimpleRealVectorObservable("AlphaScaleHistogram");
-#endif
   measurements.reset(true);
 }
 
@@ -178,9 +139,13 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
   assert(timings.size()>=2);
   boost::timer::cpu_timer timer;
 
+  //compute M from A
+  submatrix_update->compute_M(M_flavors);
+  const M_TYPE sign = submatrix_update->sign();
+
   measurements["Sign"] << mycast<REAL_TYPE>(sign);
   if (params.defined("OUTPUT_Sign") ? params["OUTPUT_Sign"] : false) {
-      std::cout << " node= " << node << " Sign= " << sign << " pert_order= " << itime_vertices.size() << std::endl;
+      std::cout << " node= " << node << " Sign= " << sign << " pert_order= " << submatrix_update->pert_order() << std::endl;
   }
 
   pert_order_hist /= pert_order_hist.sum();
@@ -200,8 +165,7 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
 
   std::valarray<double> pert_order(n_flavors);
   for(unsigned int i=0;i<n_flavors;++i) { 
-    assert(num_rows(M[i].matrix()) == num_cols(M[i].matrix()));
-    pert_order[i]=num_rows(M[i].matrix());
+    pert_order[i]=num_rows(M_flavors[i]);
   }
   measurements["PertOrder"] << pert_order;
 
@@ -251,6 +215,7 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
   simple_statistics_rem.reset();
 
   std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
+  const itime_vertex_container& itime_vertices = submatrix_update->itime_vertices();
   for (itime_vertex_container::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
     assert(it->type()>=0 && it->type()<Uijkl.n_vertex_type());
     ++pert_vertex[it->type()];

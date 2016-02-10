@@ -35,17 +35,6 @@
 #include "alps/ngs/make_deprecated_parameters.hpp"
 
 #include "interaction_expansion.hpp"
-#include "xml.h"
-
-//global variables
-
-//frequency_t c_or_cdagger::nm_;
-//bool c_or_cdagger::use_static_exp_;
-//unsigned int c_or_cdagger::ntau_;
-//double c_or_cdagger::beta_;
-//double *c_or_cdagger::omegan_;
-//std::complex<double> *c_or_cdagger::exp_iomegan_tau_;
-
 
 template<class TYPES>
 InteractionExpansion<TYPES>::InteractionExpansion(const alps::params &parms, int node, const boost::mpi::communicator& communicator)
@@ -65,20 +54,15 @@ therm_steps((unsigned int)parms["THERMALIZATION"]),
 max_time_in_seconds(parms["MAX_TIME"] | 86400),
 beta((double)parms["BETA"]),                        
 temperature(1./beta),
-//onsite_U((double)parms["U"]),
-//alpha((double)parms["ALPHA"]),
-//U(alps::make_deprecated_parameters(parms)),
 Uijkl(alps::make_deprecated_parameters(parms)),
+M_flavors(n_flavors),
 recalc_period(parms["RECALC_PERIOD"] | 5000),
-//measurement_period(parms["MEASUREMENT_PERIOD"] | (parms["N_MEAS"] | 200)),
 measurement_period(parms["MEASUREMENT_PERIOD"] | 500*n_flavors*n_site),
 convergence_check_period(parms["CONVERGENCE_CHECK_PERIOD"] | (int)recalc_period),
 almost_zero(parms["ALMOSTZERO"] | 1.e-16),
 seed(parms["SEED"] | 0),
-//green_matsubara(n_matsubara, n_site, n_flavors),
 bare_green_matsubara(n_matsubara,n_site, n_flavors),
 bare_green_itime(n_tau+1, n_site, n_flavors),
-//green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
 legendre_transformer(n_matsubara,n_legendre),
 n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
@@ -92,41 +76,16 @@ simple_statistics_rem(n_multi_vertex_update),
 is_thermalized_in_previous_step_(false),
 window_width(parms.defined("WINDOW_WIDTH") ? beta*static_cast<double>(parms["WINDOW_WIDTH"]) : 1000.0*beta),
 window_dist(boost::random::exponential_distribution<>(1/window_width)),
-add_helper(n_flavors),
-remove_helper(n_flavors),
-shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
+//shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 1),
 n_spin_flip(parms["N_SPIN_FLIP"] | 1),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
-//force_quantum_number_within_range(parms.defined("FORCE_QUANTUM_NUMBER_WITHIN_RANGE") ? parms["FORCE_QUANTUM_NUMBER_WITHIN_RANGE"] : false),
-use_alpha_update(parms.defined("USE_ALPHA_UPDATE") ? parms["USE_ALPHA_UPDATE"] : false),
-alpha_scale_min(1),
-alpha_scale_max(parms["ALPHA_SCALE_MAX"] | 1),
-alpha_scale_max_meas(parms["ALPHA_SCALE_MEASURE_MAX"] | 1),
-alpha_scale_update_period(parms["ALPHA_SCALE_UPDATE_PERIOD"] | -1),
-num_alpha_scale_values(parms["N_ALPHA_SCALE_VALUES"] | 100),
-flat_histogram_alpha(num_alpha_scale_values-1, 0, therm_steps),
-alpha_scale_hist(num_alpha_scale_values),
-alpha_scale_idx(0),
 single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
 pert_order_hist(max_order+1),
 comm(communicator)
 {
-  //initialize measurement method
-  //if (parms["HISTOGRAM_MEASUREMENT"] | false) {
-    //measurement_method=selfenergy_measurement_itime_rs;
-  //} else {
-    //measurement_method=selfenergy_measurement_matsubara;
-  //}
-
-  for(unsigned int i=0;i<n_flavors;++i)
-    g0.push_back(green_matrix(n_tau, 20));
-
   //other parameters
-  weight=0;
-  sign=1;
-  det=1;
   step=0;
   start_time=time(NULL);
   measurement_time=0;
@@ -240,22 +199,18 @@ comm(communicator)
     std::cout << std::endl;
   }
 
-
-  //for alpha update
-  if (use_alpha_update) {
-    alpha_scale_values.resize(num_alpha_scale_values);
-    if(num_alpha_scale_values<2)
-      throw std::runtime_error("N_ALPHA_SCALE_VALUES must be larger than 2.");
-    const double diff = (std::log(alpha_scale_max)-std::log(alpha_scale_min))/(num_alpha_scale_values-1);
-    const double log_min = std::log(alpha_scale_min);
-    for (int ia=0; ia<num_alpha_scale_values; ++ia) {
-      alpha_scale_values[ia] = std::exp(diff*ia+log_min);
-      //std::cout << " ia= " << ia << " " << alpha_scale_values[ia] << std::endl;
-    }
-  }
+  //submatrix update
+  submatrix_update = new SubmatrixUpdate<M_TYPE>(
+      (parms["K_INS_MAX"] | 32), n_flavors,
+      SPLINE_G0_HELPER<InteractionExpansion<TYPES> >(this),
+      &Uijkl, beta);
 }
 
-
+template<class TYPES>
+InteractionExpansion<TYPES>::~InteractionExpansion()
+{
+  delete submatrix_update;
+}
 
 template<class TYPES>
 void InteractionExpansion<TYPES>::update()
@@ -263,8 +218,6 @@ void InteractionExpansion<TYPES>::update()
   std::valarray<double> t_meas(0.0, 3);
 
   pert_order_hist = 0.;
-  if (use_alpha_update)
-    alpha_scale_hist = 0.;
 
   num_accepted_shift = 0;
   for(std::size_t i=0;i<measurement_period;++i){
@@ -275,61 +228,42 @@ void InteractionExpansion<TYPES>::update()
     boost::timer::cpu_timer timer;
 
     try{
-      for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem)
-        removal_insertion_update();
+      for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
+        //submatrix_update->vertex_insertion_removal_update(pro)
+      }
 
       double t_m = timer.elapsed().wall;
   
-      for (int i_shift=0; i_shift<n_shift; ++i_shift)
-        shift_update();
+      //for (int i_shift=0; i_shift<n_shift; ++i_shift)
+        //shift_update();
 
-      for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip)
-        spin_flip_update();
+      //for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip)
+        //spin_flip_update();
   
       t_meas[0] += t_m;
       t_meas[1] += (timer.elapsed().wall-t_m);
-      if(itime_vertices.size()<max_order)
-        pert_hist[itime_vertices.size()]++;
-
-      //update alpha_scale
-      if(use_alpha_update) {
-        assert(alpha_scale_idx<num_alpha_scale_values && alpha_scale_idx>=0);
-        ++alpha_scale_hist[alpha_scale_idx];
-        if (step%alpha_scale_update_period==0) {
-          alpha_update();
-          flat_histogram_alpha.measure(alpha_scale_idx);
-        }
+      if(submatrix_update->pert_order()<max_order) {
+        pert_hist[submatrix_update->pert_order()]++;
       }
+
     } catch (std::runtime_error e) {
       std::cerr << " Runtime error at rank = " << node << " step = " << step << " : " << e.what() << ". This may be because we encountered a singular matrix." << std::endl;
-      //exit(-1);
-      //itime_vertices = itime_vertices_bak;
-      //M = M_bak;
-      //reset_perturbation_series(false);
     }
 
-    assert(itime_vertices.size()<pert_order_hist.size());
-    ++pert_order_hist[itime_vertices.size()];
+    assert(submatrix_update->pert_order()<pert_order_hist.size());
+    ++pert_order_hist[submatrix_update->pert_order()];
 
     if(step % recalc_period ==0) {
       boost::timer::cpu_timer timer2;
-      reset_perturbation_series(true);
+      submatrix_update->recompute(false);
       t_meas[2] += timer2.elapsed().wall;
-    }
-
-    if (use_alpha_update && step%(alpha_scale_update_period*num_alpha_scale_values)==0 && !is_thermalized()) {
-      bool flag;
-      double min,mean;
-      boost::tie(flag,min,mean) = flat_histogram_alpha.flat_enough(comm);
-      std::cout << " step " << step << " min/mean = " << min/mean << std::endl;
-      if (flag)
-        flat_histogram_alpha.update_dos(comm);
     }
   }
 
   //Save pertubation order
   if (params.defined("PREFIX_OUTPUT_TIME_SERIES")) {
     std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
+    const itime_vertex_container& itime_vertices = submatrix_update->itime_vertices();
     for (std::vector<itime_vertex>::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
       assert(it->type()>=0 && it->type()<Uijkl.n_vertex_type());
       ++pert_vertex[it->type()];
@@ -345,14 +279,6 @@ void InteractionExpansion<TYPES>::update()
 
 template<class TYPES>
 void InteractionExpansion<TYPES>::measure(){
-  if (use_alpha_update) {
-    measurements["AlphaScaleHistogram"] << alpha_scale_hist;
-    if (alpha_scale_values[alpha_scale_idx]>alpha_scale_max_meas)
-      return;
-  }
-
-  //std::cout << "MEasuring " << alpha_scale_values[alpha_scale_idx] << " " << sign << " "  << is_quantum_number_conserved(itime_vertices) << std::endl;
-
   //In the below, real physical quantities are measured.
   std::valarray<double> timings(2);
   measure_observables(timings);
@@ -414,22 +340,12 @@ double InteractionExpansion<TYPES>::fraction_completed() const{
 template<class TYPES>
 void InteractionExpansion<TYPES>::initialize_simulation(const alps::params &parms)
 {
-  weight=0;
-  sign=1;
-  //set the right dimensions:
-  for(spin_t flavor=0;flavor<n_flavors;++flavor)
-    M.push_back(inverse_m_matrix<M_TYPE>());
   pert_hist.clear();
-  //initialize ALPS observables
   initialize_observables();
-  //green_matsubara=bare_green_matsubara;
-  //green_itime=bare_green_itime;
 }
 
 template<class TYPES>
 bool InteractionExpansion<TYPES>::is_quantum_number_conserved(const itime_vertex_container& vertices) {
-  //using namespace boost::lambda;
-
   const int Nv = vertices.size();
 
   if (Nv==0)
@@ -458,8 +374,6 @@ bool InteractionExpansion<TYPES>::is_quantum_number_conserved(const itime_vertex
 //This makes sence in the absence of a bath
 template<class TYPES>
 bool InteractionExpansion<TYPES>::is_quantum_number_within_range(const itime_vertex_container& vertices) {
-  //using namespace boost::lambda;
-
   const int Nv = vertices.size();
 
   if (Nv==0)
@@ -488,98 +402,6 @@ bool InteractionExpansion<TYPES>::is_quantum_number_within_range(const itime_ver
 template<class TYPES>
 void InteractionExpansion<TYPES>::sanity_check() {
 #ifndef NDEBUG
-  M.sanity_check(itime_vertices, Uijkl);
-  const double eps = 1E-5;
-
-  bool do_exit = false;
-
-  //recompute M
-  M_TYPE sign_exact = 1.0;
-  for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-    if (num_rows(M[flavor].matrix())==0) {
-      continue;
-    }
-    alps::numeric::matrix<M_TYPE> G0(M[flavor].matrix());
-    std::fill(G0.get_values().begin(), G0.get_values().end(), 0);
-
-    const size_t Nv = M[flavor].matrix().num_rows();
-    for (size_t q=0; q<Nv; ++q) {
-      for (size_t p=0; p<Nv; ++p) {
-        G0(p, q) = mycast<M_TYPE>(green0_spline_for_M(flavor, p, q));
-      }
-    }
-    for (size_t p=0; p<Nv; ++p) {
-      G0(p, p) -= mycast<M_TYPE>(M[flavor].alpha_at(p));
-    }
-
-/*    std::cout << "CREATORS" << std::endl;
-    for (size_t p=0; p<Nv; ++p) {
-      std::cout << "  " << p << " site " << (M[flavor].creators()[p]).s() << " time " << (M[flavor].creators()[p]).t().time() << std::endl;
-    }
-    std::cout << "ANNIHILATORS" << std::endl;
-    for (size_t p=0; p<Nv; ++p) {
-      std::cout << "  " << p << " site " << (M[flavor].annihilators()[p]).s() << " time " << (M[flavor].annihilators()[p]).t().time() << std::endl;
-    }*/
-
-
-    M_TYPE det = alps::numeric::determinant(G0);
-    //std::cout << "G0_flavor " << G0 << " " << det << std::endl;
-    //std::cout << "det_G0_flavor " << flavor << " " << det << std::endl;
-    sign_exact *= det/std::abs(det);
-
-    alps::numeric::matrix<M_TYPE> tmp = mygemm(G0, M[flavor].matrix());
-    alps::numeric::matrix<M_TYPE> M_scratch = inverse(G0);
-    //std::cout << "M_flavor " << M_scratch << std::endl;
-    //std::cout << " debug G0 " << G0 << std::endl;
-    //std::cout << " debug M_scratch " << M_scratch << std::endl;
-    //for (size_t q=0; q<Nv; ++q) {
-      //for (size_t p = 0; p < Nv; ++p) {
-        //std::cout << " MG0 p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-      //}
-    //}
-
-    bool OK = true;
-    double max_diff = 0;
-    for (size_t q=0; q<Nv; ++q) {
-      for (size_t p=0; p<Nv; ++p) {
-        bool flag;
-        if (p==q) {
-          max_diff = std::max(max_diff, std::abs(tmp(p,q)-1.));
-          flag = (std::abs(tmp(p,q)-1.)<eps);
-        } else {
-          max_diff = std::max(max_diff, std::abs(tmp(p,q)));
-          flag = (std::abs(tmp(p,q))<eps);
-        }
-        OK = OK && flag;
-        if(!flag) {
-          std::cout << " p, q = " << p << " " << q << " " << tmp(p,q) << std::endl;
-          //exit(-1);
-        }
-      }
-    }
-    std::cout << "sanity check max_diff " << max_diff << std::endl;
-    do_exit = (do_exit || (max_diff>1));
-  }
-
-  //contribution from (-U)^n
-  {
-    const std::vector<vertex_definition<M_TYPE> >& vd = Uijkl.get_vertices();
-    for (int iv=0; iv<itime_vertices.size(); ++iv) {
-      const M_TYPE Uval = -vd[itime_vertices[iv].type()].Uval();
-      sign_exact *= Uval/std::abs(Uval);
-
-    }
-  }
-  assert(std::abs(sign-sign_exact)<eps);
-
-  //check itime_vertex list
-  for (itime_vertex_container::iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
-    int type = it->type();
-    assert(Uijkl.get_vertices()[type].is_density_type()==it->is_density_type());
-  }
-
-  if (do_exit)
-    exit(-1);
 #endif
 }
 
@@ -588,11 +410,6 @@ void InteractionExpansion<TYPES>::sanity_check() {
 template<class TYPES>
 void InteractionExpansion<TYPES>::prepare_for_measurement()
 {
-  //update_prop.finish_learning((node==0));
-  //update_prop.finish_learning(true);//REMOVE AFTER DEBUG
-  if (use_alpha_update)
-    flat_histogram_alpha.finish_learning(comm, true);
-
   this->statistics_ins.reset();
   this->statistics_rem.reset();
   this->statistics_shift.reset();

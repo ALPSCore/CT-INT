@@ -32,7 +32,7 @@
 
 #include <algorithm>
 #include <fstream>
-#include <functional>
+//#include <functional>
 #include <cmath>
 
 #include <boost/multi_array.hpp>
@@ -42,8 +42,6 @@
 #include <boost/random.hpp>
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/exponential_distribution.hpp>
-#include <boost/math/special_functions/sign.hpp>
-//#include <boost/scoped_ptr.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
@@ -51,6 +49,7 @@
 #include <alps/numeric/matrix.hpp>
 #include <alps/numeric/matrix/algorithms.hpp>
 
+#include "submatrix.hpp"
 #include "green_function.h"
 #include "types.h"
 #include "fouriertransform.h"
@@ -63,105 +62,7 @@
 
 /*types*/
 class c_or_cdagger;
-class vertex;
-template<class T> class big_inverse_m_matrix;
 typedef class histogram simple_hist;
-typedef std::vector<vertex> vertex_array;
-
-
-template<class T>
-class fastupdate_add_helper {
-public:
-  fastupdate_add_helper(std::size_t num_flavors) : num_new_rows(num_flavors,0), det_rat_(0) {};
-
-  void clear(size_t n_vertices_add=1) {
-    std::fill(num_new_rows.begin(), num_new_rows.end(), 0);
-  }
-
-  std::vector<std::size_t> num_new_rows;
-  T det_rat_;
-  non_density_type_in_window op;
-};
-
-template<class T>
-class fastupdate_remove_helper {
-public:
-  fastupdate_remove_helper(std::size_t num_flavors)
-    : rows_cols_removed(num_flavors), det_rat_(0) {};
-
-  std::vector<std::vector<size_t> > rows_cols_removed;
-
-  void sort_rows_cols() {
-    for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
-      std::sort(rows_cols_removed[flavor].begin(),rows_cols_removed[flavor].end());
-    }
-  }
-
-  void clear() {
-    for (size_t flavor=0; flavor<rows_cols_removed.size(); ++flavor) {
-      rows_cols_removed[flavor].resize(0);
-    }
-  }
-  T det_rat_;
-  non_density_type_in_window op;
-};
-
-template<class T>
-class fastupdate_shift_helper {
-public:
-  typedef alps::numeric::matrix<T> matrix_t;
-
-  fastupdate_shift_helper(int num_flavors, double window_size) : num_flavors_(num_flavors), exp_dist_(1/window_size), int_dist_(0,1), M_old(num_flavors), Mmat(num_flavors), inv_tSp(num_flavors),
-    num_rows_cols_updated(num_flavors), rows_cols_updated(num_flavors) {};
-
-  double new_itime(double old_time, double beta, boost::random::mt19937& random) {
-    int randint = 2*int_dist_(random)-1;
-    assert(randint==-1 || randint==1);
-    //std::cout << "debug " << exp_dist_(random) << std::endl;
-    double new_time = mymod(old_time + randint*exp_dist_(random), beta);
-    assert(new_time>=0 && new_time<=beta);
-    new_time_ = new_time;
-    old_time_ = old_time;
-    return new_time;
-  }
-
-  //compute number of rows and cols to be updated
-  template<class M_TYPE>
-  void find_rows_cols_set_time(int rank, int type, const std::vector<spin_t>& flavors, double time, double new_time, M_TYPE& M) {
-    for (spin_t flavor = 0; flavor < num_flavors_; ++flavor) {
-      rows_cols_updated[flavor].resize(0);
-      for (int i_rank=0; i_rank<rank; ++i_rank) {
-        if (flavors[i_rank] == flavor) {
-          int idx = M[flavor].find_row_col(time, type, i_rank);
-          rows_cols_updated[flavor].push_back(idx);
-          operator_time cr_op_time = M[flavor].creators()[idx].t(); cr_op_time.set_time(new_time);
-          M[flavor].creators()[idx].set_time(cr_op_time);
-          operator_time ann_op_time = M[flavor].annihilators()[idx].t(); ann_op_time.set_time(new_time);
-          M[flavor].annihilators()[idx].set_time(ann_op_time);
-        }
-      }
-      std::sort(rows_cols_updated[flavor].begin(), rows_cols_updated[flavor].end());
-      num_rows_cols_updated[flavor] = rows_cols_updated[flavor].size();
-    }
-  }
-
-  double get_new_time() const {return new_time_;}
-  double get_old_time() const {return old_time_;}
-
-  //work space
-  T det_rat;
-  int num_flavors_;
-  std::vector<int> num_rows_cols_updated;
-  std::vector<std::vector<int> > rows_cols_updated;
-  std::vector<matrix_t> M_old, Mmat, inv_tSp;
-  matrix_t tPp, tQp, tRp, tSp;
-
-private:
-  boost::random::exponential_distribution<> exp_dist_;
-  boost::random::uniform_smallint<> int_dist_;
-  double old_time_;
-  double new_time_;
-};
 
 class histogram
 {
@@ -244,213 +145,6 @@ private:
   std::vector<unsigned long> hist_;
 };
 
-
-
-typedef class vertex
-{        
-public:
-  vertex(const spin_t &flavor1, const site_t &site1, const unsigned int &c_dagger_1, const unsigned int &c_1, 
-         const spin_t &flavor2, const site_t &site2, const unsigned int &c_dagger_2, const unsigned int &c_2, 
-         const double &abs_w)
-  {
-    z1_=flavor1;
-    z2_=flavor2;
-    s1_=site1;
-    s2_=site2;
-    c1dagger_=c_dagger_1;
-    c2dagger_=c_dagger_2;
-    c1_=c_1;
-    c2_=c_2;
-    abs_w_=abs_w;
-  }
-  
-  inline const double &abs_w() const {return abs_w_;}
-  inline const unsigned int &flavor1() const {return z1_;}
-  inline const unsigned int &flavor2() const {return z2_;}
-  inline const unsigned int &site1() const {return s1_;}
-  inline const unsigned int &site2() const {return s2_;}
-  inline void set_site1(site_t site1) {s1_=site1;}
-  inline void set_site2(site_t site2) {s2_=site2;}
-  inline const unsigned int &c_dagger_1() const {return c1dagger_;}
-  inline const unsigned int &c_dagger_2() const {return c2dagger_;}
-  inline const unsigned int &c_1() const {return c1_;}
-  inline const unsigned int &c_2() const {return c2_;}
-  inline unsigned int &flavor1() {return z1_;}
-  inline unsigned int &flavor2() {return z2_;}
-  inline unsigned int &c_dagger_1() {return c1dagger_;}
-  inline unsigned int &c_dagger_2() {return c2dagger_;}
-  inline unsigned int &c_1() {return c1_;}
-  inline unsigned int &c_2() {return c2_;}
-private:
-  unsigned int z1_, z2_;
-  unsigned int s1_, s2_;
-  unsigned int c1_, c2_;
-  unsigned int c1dagger_, c2dagger_;
-  double abs_w_;
-} vertex;
-
-
-template<class T>
-class inverse_m_matrix
-{
-public:
-  typedef T value_type;
-  inverse_m_matrix() : alpha_scale_(1.0) {}
-  alps::numeric::matrix<T> &matrix() { return matrix_;}
-  alps::numeric::matrix<T> const &matrix() const { return matrix_;}
-  std::vector<creator> &creators(){ return creators_;}
-  const std::vector<creator> &creators() const{ return creators_;}
-  std::vector<annihilator> &annihilators(){ return annihilators_;}
-  const std::vector<annihilator> &annihilators()const{ return annihilators_;}
-  T alpha_at(int pos) const {
-    assert(pos>=0 && pos<creators_.size());
-    return creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_scale_*alpha_[pos];
-  }
-  T bare_alpha_at(int pos) const {
-    assert(pos>=0 && pos<creators_.size());
-    return alpha_[pos];
-  }
-  void set_alpha(int pos, T new_val) {
-    assert(pos>=0 && pos<creators_.size());
-    alpha_[pos] = new_val;
-  }
-  void alpha_push_back(T new_elem) {alpha_.push_back(new_elem);}
-  double alpha_scale() const {return alpha_scale_;}
-  void set_alpha_scale(double alpha_scale) {alpha_scale_ = alpha_scale;}
-  std::vector<std::pair<vertex_t,size_t> > &vertex_info(){ return vertex_info_;}
-  const std::vector<std::pair<vertex_t,size_t> > &vertex_info() const{ return vertex_info_;}
-  int find_row_col(double time, vertex_t type, size_t i_rank) const {
-    for(std::size_t i=0; i<creators_.size(); ++i) {
-      if (time==creators_[i].t().time() && vertex_info_[i].first==type && vertex_info_[i].second==i_rank) {
-        assert(annihilators_[i].t().time()==time);
-        return i;
-      }
-    }
-    return -1;
-  }
-   void sanity_check() const {
-     assert(num_rows(matrix_)==num_cols(matrix_));
-     assert(num_rows(matrix_)<=creators_.size());
-     assert(creators_.size()==annihilators_.size());
-     assert(creators_.size()==alpha_.size());
-     assert(creators_.size()==vertex_info_.size());
-   }
-   void swap_ops(size_t i1, size_t i2) {
-     assert(i1>=0 && i1<creators_.size());
-     assert(i2>=0 && i2<creators_.size());
-     std::swap(creators_[i1], creators_[i2]);
-     std::swap(annihilators_[i1], annihilators_[i2]);
-     std::swap(alpha_[i1], alpha_[i2]);
-     std::swap(vertex_info_[i1], vertex_info_[i2]);
-   }
-   void swap_rows_cols(size_t i1, size_t i2) {
-     swap_ops(i1, i2);
-     matrix_.swap_cols(i1, i2);
-     matrix_.swap_rows(i1, i2);
-   }
-   template<class InputIterator>
-   void swap_ops2(InputIterator first, InputIterator end) {
-     for (InputIterator it=first; it!=end; ++it) {
-       swap_ops(it->first, it->second);
-     }
-   }
-   void pop_back_op() {
-     creators_.pop_back();
-     annihilators_.pop_back();
-     alpha_.pop_back();
-     vertex_info_.pop_back();
-   }
-private:
-  alps::numeric::matrix<T> matrix_;
-  std::vector<creator> creators_;         //an array of creation operators c_dagger corresponding to the row of the matrix
-  std::vector<annihilator> annihilators_; //an array of to annihilation operators c corresponding to the column of the matrix
-  std::vector<T> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
-  std::vector<std::pair<vertex_t,size_t> > vertex_info_; // an array of pairs which remember from which type of vertex operators come from. (type of vertex and the position in the vertex)
-  double alpha_scale_; //this scales the values of alpha for non-density-type vertices.
-};
-
-template<class T>
-class big_inverse_m_matrix
-{
-public:
-    big_inverse_m_matrix() : alpha_scale_(1) {}
-
-    void push_back(const inverse_m_matrix<T>& new_one) {
-      sub_matrices_.push_back(new_one);
-    }
-
-    inverse_m_matrix<T>& operator[](size_t flavor) {
-      assert(flavor<sub_matrices_.size());
-      return sub_matrices_[flavor];
-    }
-
-    const inverse_m_matrix<T>& operator[](size_t flavor) const {
-      assert(flavor<sub_matrices_.size());
-      return sub_matrices_[flavor];
-    }
-
-    size_t size() const {
-      return sub_matrices_.size();
-    };
-
-    void set_alpha_scale(double r) {
-      alpha_scale_ = r;
-      for (spin_t flavor=0; flavor<sub_matrices_.size(); ++flavor)
-        sub_matrices_[flavor].set_alpha_scale(r);
-    }
-
-    double alpha_scale() const {return alpha_scale_;}
-
-    void sanity_check(const itime_vertex_container& itime_vertices, const general_U_matrix<T>& Uijkl) const {
-#ifndef NDEBUG
-      size_t num_tot_rows = 0;
-      for (spin_t flavor=0; flavor<size(); ++flavor) {
-        sub_matrices_[flavor].sanity_check();
-        assert(sub_matrices_[flavor].creators().size()==sub_matrices_[flavor].annihilators().size());
-        assert(sub_matrices_[flavor].creators().size()==num_rows(sub_matrices_[flavor].matrix()));
-        assert(num_cols(sub_matrices_[flavor].matrix())==num_rows(sub_matrices_[flavor].matrix()));
-        num_tot_rows += num_rows(sub_matrices_[flavor].matrix());
-      }
-      size_t num_tot_rows2 = 0;
-      for (size_t iv=0; iv<itime_vertices.size(); ++iv) {
-        const itime_vertex& v = itime_vertices[iv];
-        num_tot_rows2 += v.rank();
-        for (size_t i_rank = 0; i_rank < v.rank(); ++i_rank) {
-          bool found = false;
-          for (spin_t flavor=0; flavor<size(); ++flavor) {
-            int info = sub_matrices_[flavor].find_row_col(v.time(), v.type(), i_rank);
-            if (info>=0) {
-              found = true;
-              assert(sub_matrices_[flavor].bare_alpha_at(info) == Uijkl.get_vertex(v.type()).get_alpha(v.af_state(), i_rank));
-              assert(sub_matrices_[flavor].creators()[info].flavor() == flavor);
-              assert(sub_matrices_[flavor].annihilators()[info].flavor() == flavor);
-              assert(sub_matrices_[flavor].creators()[info].s() ==  Uijkl.get_vertex(v.type()).sites()[2*i_rank]);
-              assert(sub_matrices_[flavor].annihilators()[info].s() ==  Uijkl.get_vertex(v.type()).sites()[2*i_rank+1]);
-              break;
-            }
-          }
-          if (!found) {
-            throw std::logic_error("Your operator is missing!");
-          }
-        }
-      }
-      assert(num_tot_rows==num_tot_rows2);
-#endif
-    }
-
-    typename inverse_m_matrix<T>::value_type determinant() {
-      typename inverse_m_matrix<T>::value_type det=1.0;
-      for (spin_t flavor=0; flavor<size(); ++flavor) {
-        det *= alps::numeric::safe_determinant(sub_matrices_[flavor].matrix());
-      }
-      return det;
-    }
-private:
-    double alpha_scale_;
-    std::vector<inverse_m_matrix<T> > sub_matrices_;
-};
-
-
 class SymmExpDist {
 public:
     SymmExpDist() : a_(0), b_(0), beta_(0), coeff_(0), coeffX_(0) {}
@@ -478,6 +172,7 @@ typedef struct complex_number_solver {
     typedef std::complex<double> COMPLEX_TYPE;
 } complex_number_solver;
 
+
 class InteractionExpansionBase: public alps::mcbase {
 public:
     InteractionExpansionBase(const alps::params &p, int rank, const boost::mpi::communicator &communicator) : alps::mcbase(p,rank) {};
@@ -495,7 +190,7 @@ class InteractionExpansion: public InteractionExpansionBase //alps::mcbase
 public:
 
   InteractionExpansion(const alps::params& p, int rank, const boost::mpi::communicator& communicator);
-  ~InteractionExpansion() {}
+  ~InteractionExpansion();
   bool is_thermalized() const {return step>therm_steps;}
   void update();
   void measure();
@@ -510,39 +205,29 @@ public:
   typedef green_function<typename TYPES::COMPLEX_TYPE> itime_green_function_t;
 
 protected:
-  
+
+  template<typename SOLVER>
+  class SPLINE_G0_HELPER {
+  public:
+      SPLINE_G0_HELPER(SOLVER* solver) : solver_(solver) {}
+
+      typename SOLVER::M_TYPE operator() (const annihilator& c, const creator& cdagger) {
+        return solver_->green0_spline_for_M(c, cdagger);
+      };
+      SOLVER* solver_;
+  };
+
   /*functions*/
   /*io & initialization*/
   void initialize_simulation(const alps::params &parms); // called by constructor
 
   // in file io.cpp
-  //void read_bare_green(std::ifstream &G0_omega, std::ifstream &G0_tau);
   void print(std::ostream &os);
   
   /*green's function*/
   // in file spines.cpp
-  COMPLEX_TYPE green0_spline_for_M(const spin_t flavor, size_t c_pos, size_t cdagger_pos) const;//with correct treatment of equal-time Green's function
-  COMPLEX_TYPE green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2) const;
-
-  /*the actual solver functions*/
-  // in file solver.cpp
-  void removal_insertion_update(void);
-  void removal_insertion_single_vertex_update(void);
-  void removal_insertion_double_vertex_update(void);
-  void multi_vertex_update(int);
-  void shift_update(void);
-  void spin_flip_update(void);
-  void alpha_update(void);
-  void reset_perturbation_series(bool verbose=true);
-  
-  // in file fastupdate.cpp:
-  M_TYPE fastupdate_up(const int flavor, bool compute_only_weight, size_t n_vertices_add);
-  M_TYPE fastupdate_down(const std::vector<size_t>& rows_cols_removed, const int flavor, bool compute_only_weight);
-  M_TYPE fastupdate_shift_init(const int flavor, const std::vector<int>& rows_cols_updated);
-  M_TYPE fastupdate_shift(const int flavor, const std::vector<int>& rows_cols_updated, bool compute_only_weight);
-  M_TYPE fastupdate_shift_finalize(const int flavor, const std::vector<int>& rows_cols_updated);
-  M_TYPE fastupdate_spin_flip(const int flavor, const std::vector<int>& rows_cols_updated, const std::vector<M_TYPE>& old_alpha,
-                              bool compute_only_weight);
+  M_TYPE green0_spline_for_M(const annihilator& c, const creator& cdagger);//with correct treatment of equal-time Green's function
+  M_TYPE green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2);
 
   // in file observables.ipp
   void measure_observables(std::valarray<double>& timings);
@@ -559,21 +244,6 @@ protected:
   bool is_irreducible(const itime_vertex_container& vertices);
   bool is_quantum_number_conserved(const itime_vertex_container& vertices);
   bool is_quantum_number_within_range(const itime_vertex_container& vertices);
-
-  // in file model.hpp
-  std::pair<M_TYPE,M_TYPE> try_add(size_t,std::vector<itime_vertex>&);
-  void perform_add(size_t);
-  void reject_add(size_t);
-
-  std::pair<M_TYPE,M_TYPE> try_remove(const std::vector<int>& vertices_nr);
-  void perform_remove(const std::vector<int>& vertices_nr);
-  void reject_remove();
-
-  M_TYPE try_shift(int idx_vertex, double new_time);
-  void perform_shift(int idx_vertex);
-  void reject_shift(int idx_vertex);
-
-  //M_TYPE try_spin_flip(int iv, int new_af_state);
 
   void prepare_for_measurement(); //called once after thermalization is done
 
@@ -596,20 +266,18 @@ protected:
   const int n_shift;
   const int n_spin_flip;
   const bool force_quantum_number_conservation;
-  //const bool force_quantum_number_within_range;
   const bool single_vertex_update_non_density_type;
-
-  const bool use_alpha_update;
-  const double alpha_scale_min, alpha_scale_max, alpha_scale_max_meas;
-  std::vector<double> alpha_scale_values;
-  const int alpha_scale_update_period, num_alpha_scale_values;
-  FlatHistogramPertOrder flat_histogram_alpha;
-  int alpha_scale_idx;
-  std::valarray<double> alpha_scale_hist;
-
   const double beta;
-  const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible        
+  const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible
+
   general_U_matrix<M_TYPE> Uijkl; //for any general two-body interaction
+
+  /*heart of submatrix update*/
+  SubmatrixUpdate<M_TYPE> *submatrix_update;
+
+  //for measurement of Green's function
+  //M is computed from A in measure_observables.
+  std::vector<alps::numeric::matrix<M_TYPE> > M_flavors;
 
   //quantum numbers
   std::vector<std::vector<std::vector<size_t> > > groups;
@@ -637,27 +305,14 @@ protected:
   const int seed;
   bool is_thermalized_in_previous_step_;
 
-  /*private member variables*/
-  //matsubara_green_function_t green_matsubara;
   matsubara_green_function_t bare_green_matsubara;
   itime_green_function_t bare_green_itime;
-  //itime_green_function_t green_itime;
-  std::vector<green_matrix> g0;
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
-  //vertex_array vertices;
-  itime_vertex_container itime_vertices;
-  big_inverse_m_matrix<M_TYPE> M;
-  M_TYPE det;//determinant of G=M^-1
-
   //for window update
   double window_width;
   boost::random::exponential_distribution<> window_dist;
   SymmExpDist symm_exp_dist;
-
-  M_TYPE weight;
-  M_TYPE sign;
-  //unsigned int measurement_method;
 
   simple_hist pert_hist;
   unsigned int hist_max_index;
@@ -677,14 +332,7 @@ protected:
   int num_accepted_shift;
 
   //just for test
-  //std::vector<double> proposal_prob, acc_rate_reducible_update;
-  //boost::random::discrete_distribution<> dist_prop;
   update_proposer update_prop;
-
-  //temporay work space etc.
-  fastupdate_add_helper<M_TYPE> add_helper;
-  fastupdate_remove_helper<M_TYPE> remove_helper;
-  fastupdate_shift_helper<M_TYPE> shift_helper;
 
   LegendreTransformer legendre_transformer;
 
@@ -699,15 +347,10 @@ protected:
 
 /*aux functions*/
 std::ostream& operator << (std::ostream& os, const std::vector<double>& v);
-std::ostream& operator << (std::ostream &os, const vertex_array &vertices);
-std::ostream& operator << (std::ostream &os, const vertex &v);
 std::ostream& operator << (std::ostream &os, const c_or_cdagger &c);
 std::ostream& operator << (std::ostream& os, const simple_hist &h);
 
 #include "interaction_expansion.ipp"
-#include "fastupdate.ipp"
-#include "model.ipp"
-#include "solver.ipp"
 #include "selfenergy.ipp"
 #include "io.ipp"
 #include "splines.ipp"

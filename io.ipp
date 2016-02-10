@@ -90,8 +90,8 @@ void InteractionExpansion<TYPES>::print(std::ostream &os){
     <<"\tconvergence period: "<< convergence_check_period<<std::endl;
   os<<"almost zero: "<<almost_zero<<std::endl;
 
-  os<<"alpha_scale_max: " << alpha_scale_max << std::endl;
-  os<<"alpha_scale_max_meas: " << alpha_scale_max_meas << std::endl;
-  os<<"alpha_scale_min: " << alpha_scale_min << std::endl;
-  os<<"alpha_scale_update_period: " << alpha_scale_update_period << std::endl;
+  //os<<"alpha_scale_max: " << alpha_scale_max << std::endl;
+  //os<<"alpha_scale_max_meas: " << alpha_scale_max_meas << std::endl;
+  //os<<"alpha_scale_min: " << alpha_scale_min << std::endl;
+  //os<<"alpha_scale_update_period: " << alpha_scale_update_period << std::endl;
 }
