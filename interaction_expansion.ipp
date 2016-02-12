@@ -182,7 +182,6 @@ comm(communicator)
   for(unsigned int i=0;i<n_flavors;++i){
     vertex_histograms[i]=new simple_hist(vertex_histogram_size);
   }
-  c_or_cdagger::initialize_simulation(parms);
 
   //shift update
   if (n_shift>0 && n_multi_vertex_update>1 && node==0) {
@@ -221,15 +220,16 @@ void InteractionExpansion<TYPES>::update()
 
   num_accepted_shift = 0;
   for(std::size_t i=0;i<measurement_period;++i){
-#ifndef NDEBUG
+//#ifndef NDEBUG
     std::cout << " step " << step << std::endl;
-#endif
+//#endif
     step++;
     boost::timer::cpu_timer timer;
 
     try{
       for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
-        //submatrix_update->vertex_insertion_removal_update(pro)
+        submatrix_update->vertex_insertion_removal_update(update_prop, random);
+        std::cout << "debug pert_order " << submatrix_update->pert_order() << std::endl;
       }
 
       double t_m = timer.elapsed().wall;

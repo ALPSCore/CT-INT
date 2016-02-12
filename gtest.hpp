@@ -63,7 +63,7 @@ struct DiagonalG0 {
     }
   }
 
-  T operator() (annihilator& c_op, creator& cdagg_op) {
+  T operator() (const annihilator& c_op, const creator& cdagg_op) {
     if (c_op.s()!=cdagg_op.s())
       return 0.0;
     if (c_op.flavor()!=cdagg_op.flavor())

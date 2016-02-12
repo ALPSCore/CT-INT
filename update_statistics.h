@@ -65,6 +65,10 @@ public:
         dist_ = boost::random::discrete_distribution<>(proposal_rate_Nv_.begin(), proposal_rate_Nv_.end());
     }
 
+    int operator() (boost::random::mt19937& random_gen) {
+        return gen_Nv(random_gen);
+    }
+
     int gen_Nv(boost::random::mt19937& random_gen) {
         int Nv =  dist_(random_gen)+1;
         return Nv;

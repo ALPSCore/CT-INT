@@ -14,6 +14,7 @@
 
 #include "operator.hpp"
 #include "U_matrix.h"
+#include "fastupdate_formula.h"
 
 const double ALPHA_NON_INT = 1E+100;
 const int NON_INT_SPIN_STATE = -1;
@@ -114,9 +115,11 @@ public:
     void extend(const SPLINE_G0_TYPE& spline_G0);
     void remove_rows_cols(const std::vector<double>& times);
 
-    /*recompute A^{-1} and return det(A)*/
+    /*recompute A^{-1} and return det(A) and det(1-F)*/
     template<typename SPLINE_G0_TYPE>
-    T recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error);
+    std::pair<T,T> recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error);
+
+    T compute_f_prod() const;
 
     template<typename SPLINE_G0_TYPE>
     void compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE& spline_G0) const;
@@ -308,8 +311,8 @@ public:
     }
 
     const T sign() const {
-      throw std::runtime_error("sign not implemented");
-      return 0.0;
+      assert(state==READY_FOR_UPDATE);
+      return sign_;
     }
 
     size_t n_flavors() const {
@@ -336,7 +339,7 @@ public:
 
     //vertices insertion and removal updates
     template<typename NVertexProb, typename R>
-    void vertex_insertion_removal_update(NVertexProb, R& random);
+    void vertex_insertion_removal_update(NVertexProb&, R& random);
 
     /* recomputes A^{-1} to avoid numerical errors*/
     void recompute(bool check_error);
@@ -356,13 +359,14 @@ private:
     double alpha_scale_;
     InvAMatrixFlavors<T> invA_;
 
-    T det_A_;
+    //Monte Carlo variables
+    T det_A_, sign_;
     std::vector<InvGammaMatrix<T> > gamma_matrices_;
     itime_vertex_container itime_vertices_;//current configuration
     itime_vertex_container itime_vertices0_;//starting configuration for submatrix update set in init_update()
 
     //workspace
-    T det_rat_A;
+    T det_rat_A, sign_rat;
     std::vector<int> pos_vertices_ins, num_vertices_ins;//size of k_ins_max_
     std::vector<std::vector<OperatorToBeUpdated<T> > > ops_rem, ops_ins, ops_replace;//operator_time and new alpha
 
@@ -385,6 +389,8 @@ private:
 
     template<typename R>
     void removal_step(R&, int nv_rem);
+
+    T recompute_sign(bool check_error=false);
 };
 
 #include "./submatrix_impl/common.ipp"

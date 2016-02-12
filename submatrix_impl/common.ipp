@@ -10,6 +10,7 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     alpha_scale_(1),
     invA_(n_flavors),
     det_A_(1.0),
+    sign_(1.0),
     state(READY_FOR_UPDATE),
     gamma_matrices_(n_flavors),
     ops_rem(n_flavors),
@@ -29,6 +30,7 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     alpha_scale_(1),
     invA_(n_flavors),
     det_A_(1.0),
+    sign_(1.0),
     state(READY_FOR_UPDATE),
     gamma_matrices_(n_flavors),
     ops_rem(n_flavors),
@@ -38,6 +40,7 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
   if (itime_vertices_init.size()!=0) {
     det_A_ = invA_.add_interacting_vertices(p_Uijkl, spline_G0, itime_vertices_init, 0);
     itime_vertices_ = itime_vertices_init;
+    recompute_sign(false);
   }
 }
 
@@ -82,8 +85,12 @@ bool SubmatrixUpdate<T>::sanity_check() {
 
   if (state==READY_FOR_UPDATE) {
     const T det_A_bak = det_A_;
+    const T sign_bak = sign_;
     recompute(true);
+    recompute_sign(true);
+    //std::cout << "debug det_A recomputed " << det_A_ << std::endl;
     assert(std::abs(det_A_bak-det_A_)/std::abs(det_A_)<1E-5);
+    assert(std::abs(sign_bak-sign_)/std::abs(sign_)<1E-5);
   }
 #endif
   return result;
@@ -223,8 +230,12 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
       }
 
       if (alpha_current!=alpha_new) {
-        f_new *= 1.0-eval_f(alpha_new);
-        f_old *= 1.0-eval_f(alpha_current);
+        if (alpha_new!=ALPHA_NON_INT) {
+          f_new *= 1.0-eval_f(alpha_new);
+        }
+        if (alpha_current!=ALPHA_NON_INT) {
+          f_old *= 1.0-eval_f(alpha_current);
+        }
       }
     }
   }
@@ -247,7 +258,11 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
       throw std::runtime_error("Not implemented: try_***");
     }
   }
-  return boost::make_tuple(det_rat_A, f_new/f_old, U_new/U_old);
+
+  const T weight_rat = det_rat_A*(f_old/f_new)*(U_new/U_old);
+  sign_rat = weight_rat/std::abs(weight_rat);
+
+  return boost::make_tuple(det_rat_A, f_old/f_new, U_new/U_old);
 }
 
 template<typename T>
@@ -280,8 +295,13 @@ void SubmatrixUpdate<T>::perform_spin_flip(const std::vector<int>& pos, const st
     }
   }
 
-  det_A_ *= det_rat_A;
+  //std::cout << "old det_A = " << det_A_ << std::endl;
 
+  det_A_ *= det_rat_A;
+  sign_ *= sign_rat;
+
+  //std::cout << "using det_rat_A = " << det_rat_A << std::endl;
+  //std::cout << "new det_A = " << det_A_ << std::endl;
   sanity_check();
 }
 
@@ -316,4 +336,32 @@ T SubmatrixUpdate<T>::compute_M(std::vector<alps::numeric::matrix<T> >& M) {
     invA_[flavor].compute_M(M[flavor], spline_G0_);
   }
   return 0.0;
+}
+
+
+template<typename  T>
+T SubmatrixUpdate<T>::recompute_sign(bool check_error) {
+  assert(state==READY_FOR_UPDATE);
+  // -U |G0-alpha| = -U |A|/|1-f|
+
+  T prod_f = 1.0;
+  for (int flavor=0; flavor<n_flavors(); ++flavor) {
+    prod_f *= invA_[flavor].compute_f_prod();
+  }
+
+  T prod_U = 1.0;
+  for (int iv=0; iv<itime_vertices_.size(); ++iv) {
+    assert (!itime_vertices_[iv].is_non_interacting());
+    prod_U *= -p_Uijkl_->get_vertex(itime_vertices_[iv].type()).Uval();
+  }
+
+  const T weight = det_A_*prod_U/prod_f;
+  //std::cout << "debug_weight " << det_A_ << " " << prod_U << " " << 1.0/prod_f << std::endl;
+#ifndef NDEBUG
+  if (check_error) {
+    //std::cout << "debug sign " << sign_<< " " << weight/std::abs(weight) << std::endl;
+    assert(std::abs(sign_ - weight/std::abs(weight))<1E-5);
+  }
+#endif
+  sign_ = weight/std::abs(weight);
 }

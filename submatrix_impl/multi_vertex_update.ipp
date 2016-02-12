@@ -6,7 +6,7 @@
  */
 template<typename T>
 template<typename NVertexProb, typename R>
-void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb nv_prob, R& random) {
+void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& random) {
   pos_vertices_ins.resize(k_ins_max_);
   num_vertices_ins.resize(k_ins_max_);
 
@@ -14,7 +14,7 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb nv_prob, R&
   const int Nv0 = itime_vertices_.size();
   int vertex_begin = Nv0;
   for (int i_ins=0; i_ins<k_ins_max_; ++i_ins) {
-    int Nv = nv_prob();
+    int Nv = nv_prob(random.engine());
     assert(Nv>0);
     std::vector<itime_vertex> new_vertices;
     if (Nv==1) {
@@ -47,7 +47,8 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb nv_prob, R&
       ++i_ins;
     } else {
       std::cout << "trying: removal " << std::endl;
-      removal_step(random, nv_prob()); //FOR DEBUG
+      int Nv = nv_prob(random.engine());
+      removal_step(random, Nv); //FOR DEBUG
     }
     for (int flavor=0; flavor<n_flavors(); ++flavor) {
       gamma_matrices_[flavor].sanity_check(invA_[flavor], spline_G0_);
@@ -85,7 +86,6 @@ void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_ver
 
   if (std::abs(prob)>random()) {
     std::cout << "accepted " << std::endl;
-    det_A_ *= det_rat_A;
     perform_spin_flip(pos_vertices_work, new_spins_work);
   } else {
     std::cout << "rejected " << std::endl;
@@ -131,7 +131,6 @@ void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
 
   if (std::abs(prob)>random()) {
     std::cout << "accepted " << std::endl;
-    det_A_ *= det_rat_A;
     perform_spin_flip(pos_vertices_remove, new_spins_remove);
   } else {
     std::cout << "rejected " << std::endl;

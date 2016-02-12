@@ -90,12 +90,15 @@ bool InvAMatrix<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0) const {
   return result;
 }
 
+/*
+ * recompute A^{-1} and return det(A) and det(1-F)
+ */
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-T InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
+std::pair<T,T> InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
   const int Nv = annihilators_.size();
 
-  if (Nv==0) return 1.0;
+  if (Nv==0) return std::make_pair((T)1.0, (T)1.0);
 
   alps::numeric::matrix<T> matrix_bak;
 
@@ -105,9 +108,12 @@ T InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
     assert(matrix_.num_rows()==Nv);
   }
 
+  T f_prod = 1.0;
+
   std::vector<T> F(Nv);
   for (int i=0; i<Nv; ++i) {
     F[i] = eval_f(alpha_at(i));
+    f_prod *= 1.0-F[i];
   }
   matrix_.resize(Nv, Nv);
   for (int j=0; j<Nv; ++j) {
@@ -131,7 +137,23 @@ T InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
       std::cout << " max diff in A^{-1} is " << max_diff << ", max abs value is " << max_abs_val << " . " << std::endl;
     }
   }
-  return det;
+  return std::make_pair(det,f_prod);
+}
+
+/*
+ * compute det(1-F)
+ */
+template<typename T>
+T InvAMatrix<T>::compute_f_prod() const {
+  const int Nv = annihilators_.size();
+
+  if (Nv==0) return (T)1.0;
+
+  T f_prod = 1.0;
+  for (int i=0; i<Nv; ++i) {
+    f_prod *= 1.0-eval_f(alpha_at(i));
+  }
+  return f_prod;
 }
 
 /*
@@ -189,7 +211,9 @@ InvAMatrixFlavors<T>::add_interacting_vertices(general_U_matrix<T>* p_Uijkl,
 
   T det_A = 1.0;
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    det_A *= sub_matrices_[flavor].recompute(spline_G0, false);
+    T det_A_tmp, f_prod;
+    boost::tie(det_A_tmp,f_prod) = sub_matrices_[flavor].recompute(spline_G0, false);
+    det_A *= det_A_tmp;
   }
   return det_A;
 }

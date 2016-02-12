@@ -649,10 +649,10 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
     const double U = 2.0;
     const double alpha = 1E-1;
     const double beta = 4.0;
-    const int Nv_max = 3;
+    const int Nv_max = 1;
     const int n_flavors = 2;
-    const int k_ins_max = 20;
-    const int n_update = 10;
+    const int k_ins_max = 10;
+    const int n_update = 2;
     const int seed = 100;
 
     general_U_matrix<T> Uijkl(n_sites, U, alpha);
@@ -677,7 +677,8 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
 
     for (int i_update=0; i_update<n_update; ++i_update) {
         std::cout << "I_UPDATE " << i_update << " Nv0 = " << submatrix_update.pert_order() << std::endl;
-        submatrix_update.vertex_insertion_removal_update(Nv_prob, random01);
+        //submatrix_update.vertex_insertion_removal_update(Nv_prob, random01);
+        submatrix_update.vertex_insertion_removal_update(dist, random01);
         assert(submatrix_update.sanity_check());
         //std::cout << "recompute " << std::endl;
         submatrix_update.recompute(true);
