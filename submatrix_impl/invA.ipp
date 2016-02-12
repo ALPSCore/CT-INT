@@ -250,6 +250,7 @@ template<typename T>
 template<typename SPLINE_G0_TYPE>
 void
 InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0_TYPE& spline_G0) {
+
   const int nop = inv_gamma.matrix().num_rows();
   const int N = matrix_.num_cols();
 
@@ -270,10 +271,14 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
       invA0(l, j) = matrix_(pl[l],j);
     }
   }
+  //for (int l=0; l<nop; ++l) {
+    //for (int i = 0; i < N; ++i) {
+      //G0_left(i, l) = eval_Gij(*this, spline_G0, i, pl[l]);
+    //}
+  //}
   for (int l=0; l<nop; ++l) {
-    for (int i = 0; i < N; ++i) {
-      G0_left(i, l) = eval_Gij(*this, spline_G0, i, pl[l]);
-    }
+    alps::numeric::submatrix_view<T> view(G0_left, 0, l, N, 1);
+    eval_Gij_col(*this, spline_G0, pl[l], view);
   }
 
   mygemm(-1.0, G0_left, inv_gamma.matrix(), 0.0, G0_inv_gamma);

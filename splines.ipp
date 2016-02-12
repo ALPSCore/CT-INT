@@ -47,18 +47,26 @@ InteractionExpansion<TYPES>::green0_spline_for_M(const annihilator& c, const cre
 {
   assert(c.flavor()==cdagger.flavor());
   const int flavor = c.flavor();
+  typename TYPES::M_TYPE result;
   if (c.t().time()!=cdagger.t().time()) {
     itime_t delta_t=c.t().time()-cdagger.t().time();
     site_t site1 = c.s();
     site_t site2 = cdagger.s();
-    return green0_spline_new(delta_t, flavor, site1, site2);
+    result = green0_spline_new(delta_t, flavor, site1, site2);
   } else {
     itime_t delta_t=c.t().time()-cdagger.t().time();
     site_t site1 = c.s();
     site_t site2 = cdagger.s();
     itime_t time_shift = c.t().small_index() > cdagger.t().small_index() ? beta*1E-10 : -beta*1E-10;
-    return green0_spline_new(delta_t+time_shift, flavor, site1, site2);
+    result = green0_spline_new(delta_t+time_shift, flavor, site1, site2);
   }
+  if(std::abs(result-g0_intpl(c,cdagger))>1E-8) {
+    std::cout << " time " << c.t().time() - cdagger.t().time() << std::endl;
+    std::cout << " small_inex " << c.t().small_index() << " " <<  cdagger.t().small_index() << std::endl;
+    std::cout << " debug " << result << " " << g0_intpl(c, cdagger) << std::endl;
+  }
+  assert(std::abs(result-g0_intpl(c,cdagger))<1E-8);
+  return result;
 }
 
 ///Compute the bare green's function for a given flavor, site, and imaginary time.

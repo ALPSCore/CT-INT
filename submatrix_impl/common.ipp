@@ -48,7 +48,7 @@ template<typename T, typename SPLINE_G0_TYPE>
 T eval_Gij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_A, int col_A) {
   static alps::numeric::matrix<T> G0, invA_G0(1,1);
 
-  T alpha_col = invA.alpha_at(col_A);
+  const T alpha_col = invA.alpha_at(col_A);
   if (alpha_col!=ALPHA_NON_INT) {
     //use Eq. (A3)
     const T fj = eval_f(alpha_col);
@@ -66,6 +66,32 @@ T eval_Gij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_A
     alps::numeric::submatrix_view<T> invA_view(invA.matrix(), row_A, 0, 1, Nv);
     mygemm((T) 1.0, invA_view, G0, (T) 0.0, invA_G0);
     return invA_G0(0,0);
+  }
+}
+
+// G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
+// cols specifies {j}
+template<typename T, typename SPLINE_G0_TYPE, typename M>
+void eval_Gij_col(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int col, M& Gij) {
+  static alps::numeric::matrix<T> G0;
+
+  const int Nv = invA.matrix().num_rows();
+  const T alpha_col = invA.alpha_at(col);
+  //Gij.resize_values_not_retained(Nv,1);
+  assert(Gij.num_rows()==Nv);
+  assert(Gij.num_cols()==1);
+  if (alpha_col!=ALPHA_NON_INT) {
+    const T fj = eval_f(alpha_col);
+    for (int iv=0; iv<Nv; ++iv) {
+      Gij(iv,0) = (fj*invA.matrix()(iv,col))/(fj-1.0);
+    }
+    Gij(col,0) = (fj*invA.matrix()(col,col)-1.0)/(fj-1.0);
+  } else {
+    G0.resize_values_not_retained(Nv,1);
+    for (int iv=0; iv<Nv; ++iv) {
+      G0(iv,0) = spline_G0(invA.annihilators()[iv], invA.creators()[col]);
+    }
+    mygemm((T) 1.0, invA.matrix(), G0, (T) 0.0, Gij);
   }
 }
 
@@ -189,7 +215,8 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
     const int iv = pos[ipos];
     const int new_spin = new_spins[ipos];
     assert(iv<itime_vertices0_.size());
-    const itime_vertex& v = itime_vertices0_[iv];
+    //const itime_vertex& v = itime_vertices0_[iv];
+    const itime_vertex& v = itime_vertices_[iv];
     const vertex_definition<T>& vdef = p_Uijkl_->get_vertex(v.type());
 
     if(v.is_non_interacting() && new_spin!=NON_INT_SPIN_STATE) {

@@ -11,6 +11,7 @@
 #include<assert.h>
 
 #include "boost/math/special_functions/bessel.hpp"
+#include "boost/multi_array.hpp"
 
 #include <alps/numeric/matrix.hpp>
 
@@ -25,9 +26,11 @@ class LegendreTransformer {
 public:
     const alps::numeric::matrix<std::complex<double> > & Tnl() const;
     void compute_legendre(double x, std::vector<double>& val) const;
+    void compute_legendre(const std::vector<double>& xval, boost::multi_array<double,2>& val) const;
 
 private:
     alps::numeric::matrix<std::complex<double> > Tnl_;
+    std::vector<double> inv_l_;
 };
 
 

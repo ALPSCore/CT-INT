@@ -42,6 +42,7 @@
 #include <boost/random.hpp>
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/exponential_distribution.hpp>
+#include <boost/multi_array.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
@@ -173,6 +174,20 @@ typedef struct complex_number_solver {
 } complex_number_solver;
 
 
+template<typename T>
+class BareGreenInterpolate {
+public:
+    BareGreenInterpolate(const alps::params& p);
+
+    T operator()(const annihilator& c, const creator& cdagg) const;
+
+private:
+    const double beta_, temp_;
+    const int ntau_, n_flavors_, n_sites_;
+    boost::multi_array<std::pair<T,T>,4> AB_;
+    double dbeta_;//beta/ntau
+};
+
 class InteractionExpansionBase: public alps::mcbase {
 public:
     InteractionExpansionBase(const alps::params &p, int rank, const boost::mpi::communicator &communicator) : alps::mcbase(p,rank) {};
@@ -206,6 +221,7 @@ public:
 
 protected:
 
+    /*
   template<typename SOLVER>
   class SPLINE_G0_HELPER {
   public:
@@ -216,6 +232,7 @@ protected:
       };
       SOLVER* solver_;
   };
+     */
 
   /*functions*/
   /*io & initialization*/
@@ -343,6 +360,8 @@ protected:
   //only for test
   std::vector<typename TYPES::COMPLEX_TYPE> Wk_dynamics;
   std::vector<double> pert_order_dynamics;
+
+  BareGreenInterpolate<M_TYPE> g0_intpl;
 };
 
 /*aux functions*/

@@ -41,12 +41,12 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R
   int i_ins = 0;
   for (int i_update=0; i_update<2*k_ins_max_; ++i_update) {
     if (i_update%2==try_ins) {
-      std::cout << "trying: insertion " << i_ins <<  " nv " << num_vertices_ins[i_ins] << std::endl;
+      //std::cout << "trying: insertion " << i_ins <<  " nv " << num_vertices_ins[i_ins] << std::endl;
       assert(i_ins<pos_vertices_ins.size());
       insertion_step(random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins]);
       ++i_ins;
     } else {
-      std::cout << "trying: removal " << std::endl;
+      //std::cout << "trying: removal " << std::endl;
       int Nv = nv_prob(random.engine());
       removal_step(random, Nv); //FOR DEBUG
     }
@@ -85,10 +85,10 @@ void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_ver
   }
 
   if (std::abs(prob)>random()) {
-    std::cout << "accepted " << std::endl;
+    //std::cout << "accepted " << std::endl;
     perform_spin_flip(pos_vertices_work, new_spins_work);
   } else {
-    std::cout << "rejected " << std::endl;
+    //std::cout << "rejected " << std::endl;
     reject_spin_flip();
   }
 }
@@ -130,10 +130,10 @@ void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
   }
 
   if (std::abs(prob)>random()) {
-    std::cout << "accepted " << std::endl;
+    //std::cout << "accepted " << std::endl;
     perform_spin_flip(pos_vertices_remove, new_spins_remove);
   } else {
-    std::cout << "rejected " << std::endl;
+    //std::cout << "rejected " << std::endl;
     reject_spin_flip();
   }
 }

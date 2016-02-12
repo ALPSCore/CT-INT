@@ -36,6 +36,75 @@
 
 #include "interaction_expansion.hpp"
 
+template<typename  T>
+BareGreenInterpolate<T>::BareGreenInterpolate(const alps::params &p) :
+    beta_((double)p["BETA"]),
+    temp_(1.0/beta_),
+    ntau_((int)(p["N"]|p["N_TAU"])),
+    n_flavors_(p["FLAVORS"] | (p["N_ORBITALS"] | 2)),
+    n_sites_(p["SITES"] | 1),
+    dbeta_(beta_/ntau_)
+{
+  green_function<std::complex<double> > bare_green_matsubara(ntau_,  n_sites_, n_flavors_),
+      bare_green_itime(ntau_+1, n_sites_, n_flavors_);
+
+  boost::tie(bare_green_matsubara,bare_green_itime) =
+      read_bare_green_functions<std::complex<double> >(p);
+
+  assert(ntau_==bare_green_itime.ntime()-1);
+  AB_.resize(boost::extents[n_flavors_][n_sites_][n_sites_][ntau_+1]);
+
+  for (int flavor=0; flavor<n_flavors_; ++flavor) {
+    for (int site1=0; site1<n_sites_; ++site1) {
+      for (int site2=0; site2<n_sites_; ++site2) {
+        for (int tau=0; tau<ntau_; ++tau) {
+          const T a =
+              mycast<T>(
+                  (bare_green_itime(tau+1,site1,site2,flavor)-bare_green_itime(tau,site1,site2,flavor))/dbeta_
+              );
+          const T b = mycast<T>(bare_green_itime(tau,site1,site2,flavor));
+
+          AB_[flavor][site1][site2][tau] = std::make_pair(a,b);
+        }
+        AB_[flavor][site1][site2][ntau_] = std::make_pair(0.0,mycast<T>(bare_green_itime(ntau_,site1,site2,flavor)));
+      }
+    }
+  }
+}
+
+/*
+ * -beta <= d tau < beta
+ */
+template<typename  T>
+T BareGreenInterpolate<T>::operator()(const annihilator& c, const creator& cdagger) const {
+  assert(c.flavor()==cdagger.flavor());
+
+  const int flavor = c.flavor();
+
+  const int site1=c.s(), site2=cdagger.s();
+  double dt = c.t().time()-cdagger.t().time();
+  if (dt==0.0) {
+    if (c.t().small_index() > cdagger.t().small_index()) { //G(+delta)
+      //return B_[flavor][site1][site2][0];
+      return AB_[flavor][site1][site2][0].second;
+    } else { //G(-delta)
+      return -AB_[flavor][site1][site2][ntau_].second;
+    }
+  } else {
+    T coeff = 1.0;
+    if (dt>=beta_) {
+      dt -= beta_;
+      coeff = -1.0;
+    } else if (dt<0.0) {
+      dt += beta_;
+      coeff = -1.0;
+    }
+    assert(dt>=0 && dt<beta_);
+    const int time_index_1 = (int)(dt*ntau_*temp_);
+    return coeff*(AB_[flavor][site1][site2][time_index_1].first*(dt-time_index_1*dbeta_) + AB_[flavor][site1][site2][time_index_1].second);
+  }
+}
+
 template<class TYPES>
 InteractionExpansion<TYPES>::InteractionExpansion(const alps::params &parms, int node, const boost::mpi::communicator& communicator)
 : InteractionExpansionBase(parms,node,communicator),
@@ -83,7 +152,8 @@ n_spin_flip(parms["N_SPIN_FLIP"] | 1),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
 single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
 pert_order_hist(max_order+1),
-comm(communicator)
+comm(communicator),
+g0_intpl(parms)
 {
   //other parameters
   step=0;
@@ -201,7 +271,8 @@ comm(communicator)
   //submatrix update
   submatrix_update = new SubmatrixUpdate<M_TYPE>(
       (parms["K_INS_MAX"] | 32), n_flavors,
-      SPLINE_G0_HELPER<InteractionExpansion<TYPES> >(this),
+      g0_intpl,
+      //SPLINE_G0_HELPER<InteractionExpansion<TYPES> >(this),
       &Uijkl, beta);
 }
 
@@ -220,34 +291,29 @@ void InteractionExpansion<TYPES>::update()
 
   num_accepted_shift = 0;
   for(std::size_t i=0;i<measurement_period;++i){
-//#ifndef NDEBUG
+#ifndef NDEBUG
     std::cout << " step " << step << std::endl;
-//#endif
+#endif
     step++;
     boost::timer::cpu_timer timer;
 
-    try{
-      for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
-        submatrix_update->vertex_insertion_removal_update(update_prop, random);
-        std::cout << "debug pert_order " << submatrix_update->pert_order() << std::endl;
-      }
+    for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
+      submatrix_update->vertex_insertion_removal_update(update_prop, random);
+      //std::cout << "debug pert_order " << submatrix_update->pert_order() << std::endl;
+    }
 
-      double t_m = timer.elapsed().wall;
-  
-      //for (int i_shift=0; i_shift<n_shift; ++i_shift)
-        //shift_update();
+    double t_m = timer.elapsed().wall;
 
-      //for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip)
-        //spin_flip_update();
-  
-      t_meas[0] += t_m;
-      t_meas[1] += (timer.elapsed().wall-t_m);
-      if(submatrix_update->pert_order()<max_order) {
-        pert_hist[submatrix_update->pert_order()]++;
-      }
+    //for (int i_shift=0; i_shift<n_shift; ++i_shift)
+      //shift_update();
 
-    } catch (std::runtime_error e) {
-      std::cerr << " Runtime error at rank = " << node << " step = " << step << " : " << e.what() << ". This may be because we encountered a singular matrix." << std::endl;
+    //for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip)
+      //spin_flip_update();
+
+    t_meas[0] += t_m;
+    t_meas[1] += (timer.elapsed().wall-t_m);
+    if(submatrix_update->pert_order()<max_order) {
+      pert_hist[submatrix_update->pert_order()]++;
     }
 
     assert(submatrix_update->pert_order()<pert_order_hist.size());

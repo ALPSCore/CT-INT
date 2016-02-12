@@ -121,13 +121,19 @@ void InteractionExpansion<TYPES>::compute_Sl() {
   const size_t num_random_walk = 100;
 
   const M_TYPE sign = submatrix_update->sign();
+  const double temperature = 1.0/beta;
 
   //Work arrays
   size_t max_mat_size = 0;
   for (unsigned int z=0; z<n_flavors; ++z) {
     max_mat_size = std::max(max_mat_size, M_flavors[z].num_cols());
   }
-  std::vector<double> legendre_vals(n_legendre), sqrt_vals(n_legendre);
+  //std::vector<double> legendre_vals(n_legendre), sqrt_vals(n_legendre);
+  std::vector<double> sqrt_vals(n_legendre);
+
+  std::vector<double> x_vals;
+  boost::multi_array<double,2> legendre_vals_all; //, legendre_vals_trans_all;
+
   for(unsigned int i_legendre=0; i_legendre<n_legendre; ++i_legendre) {
     sqrt_vals[i_legendre] = std::sqrt(2.0*i_legendre+1.0);
   }
@@ -142,6 +148,9 @@ void InteractionExpansion<TYPES>::compute_Sl() {
     }
     gR.resize(Nv, n_site);
     M_gR.resize(Nv, n_site);
+
+    x_vals.resize(Nv);
+    legendre_vals_all.resize(boost::extents[n_legendre][Nv]);
 
     const std::vector<annihilator>& annihilators = submatrix_update->invA()[z].annihilators();
     const std::vector<creator>& creators = submatrix_update->invA()[z].creators();
@@ -163,16 +172,23 @@ void InteractionExpansion<TYPES>::compute_Sl() {
 
       gemm(M_flavors[z], gR, M_gR);
 
+      //compute legendre coefficients
+      for (unsigned int q = 0; q < Nv; ++q) {//creation operators
+        const double tmp = creators[q].t().time() + time_shift;
+        const double time_c_shifted = tmp < beta ? tmp : tmp - beta;
+        x_vals[q] = 2 * time_c_shifted*temperature - 1.0;
+      }
+      legendre_transformer.compute_legendre(x_vals, legendre_vals_all);//P_l[x(tau_q)]
+
       for (unsigned int q = 0; q < Nv; ++q) {//creation operators
         const unsigned int site_c = creators[q].s();
         const double tmp = creators[q].t().time() + time_shift;
-        const double time_c_shifted = tmp < beta ? tmp : tmp - beta;
         const double coeff = tmp < beta ? 1 : -1;
 
-        legendre_transformer.compute_legendre(2 * time_c_shifted/beta - 1.0, legendre_vals);//P_l[x(tau_q)]
+        const int n_legendre_tmp = n_legendre;
         for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
-          for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
-            Sl[site_c][site_B][i_legendre] -= coeff*sqrt_vals[i_legendre] * legendre_vals[i_legendre] * M_gR(q, site_B);
+          for (unsigned int i_legendre = 0; i_legendre < n_legendre_tmp; ++i_legendre) {
+            Sl[site_c][site_B][i_legendre] -= coeff*sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][q] * M_gR(q, site_B);
           }
         }
       }
