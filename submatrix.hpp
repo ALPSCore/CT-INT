@@ -124,7 +124,17 @@ public:
     template<typename SPLINE_G0_TYPE>
     void compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE& spline_G0) const;
 
+    template<typename SPLINE_G0_TYPE, typename M>
+    void eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gij) const;
+
+    template<typename SPLINE_G0_TYPE, typename M>
+    void eval_Gij_col_part(const SPLINE_G0_TYPE& spline_G0, const std::vector<int>& rows, int col, M& Gij) const;
+
 private:
+    //compute G0 (and reuse cached data)
+    template<typename SPLINE_G0_TYPE>
+    alps::numeric::submatrix_view<T> compute_G0_col(const SPLINE_G0_TYPE& spline_G0, int col) const;
+
     alps::numeric::matrix<T> matrix_;
     std::vector<creator> creators_;         //an array of creation operators c_dagger corresponding to the row of the matrix
     std::vector<annihilator> annihilators_; //an array of to annihilation operators c corresponding to the column of the matrix
@@ -136,6 +146,11 @@ private:
     alps::numeric::matrix<T> G0_left, invA0, G0_inv_gamma;
     std::vector<T> coeff_A;
     std::vector<int> pl;
+
+    //cache for G0 obtained by interpolation
+    mutable alps::numeric::matrix<T> G0_cache;
+    mutable std::vector<int> index_G0_cache;
+    mutable int num_entry_G0_cache;
 };
 
 template<class T>

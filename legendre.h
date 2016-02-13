@@ -27,10 +27,11 @@ public:
     const alps::numeric::matrix<std::complex<double> > & Tnl() const;
     void compute_legendre(double x, std::vector<double>& val) const;
     void compute_legendre(const std::vector<double>& xval, boost::multi_array<double,2>& val) const;
+    const std::vector<double>& get_sqrt_2l_1() const {return sqrt_2l_1;}
 
 private:
     alps::numeric::matrix<std::complex<double> > Tnl_;
-    std::vector<double> inv_l_;
+    std::vector<double> inv_l_, sqrt_2l_1;
 };
 
 

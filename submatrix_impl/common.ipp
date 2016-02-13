@@ -69,6 +69,7 @@ T eval_Gij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_A
   }
 }
 
+/*
 // G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
 // cols specifies {j}
 template<typename T, typename SPLINE_G0_TYPE, typename M>
@@ -77,7 +78,6 @@ void eval_Gij_col(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, in
 
   const int Nv = invA.matrix().num_rows();
   const T alpha_col = invA.alpha_at(col);
-  //Gij.resize_values_not_retained(Nv,1);
   assert(Gij.num_rows()==Nv);
   assert(Gij.num_cols()==1);
   if (alpha_col!=ALPHA_NON_INT) {
@@ -94,6 +94,44 @@ void eval_Gij_col(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, in
     mygemm((T) 1.0, invA.matrix(), G0, (T) 0.0, Gij);
   }
 }
+
+// G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
+// cols specifies {j}
+template<typename T, typename SPLINE_G0_TYPE, typename M>
+void eval_Gij_col(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, const std::vector<int>& rows, int col, M& Gij) {
+  static alps::numeric::matrix<T> G0, invA_tmp;
+
+  const int Nv = invA.matrix().num_rows();
+  const T alpha_col = invA.alpha_at(col);
+  const int n_rows = rows.size();
+
+  assert(Gij.num_rows()==n_rows);
+  assert(Gij.num_cols()==1);
+
+  if (alpha_col!=ALPHA_NON_INT) {
+    const T fj = eval_f(alpha_col);
+    for (int iv=0; iv<n_rows; ++iv) {
+      if (rows[iv]!=col) {
+        Gij(iv,0) = (fj*invA.matrix()(rows[iv],col))/(fj-1.0);
+      } else {
+        Gij(iv,0) = (fj*invA.matrix()(rows[iv],col)-1.0)/(fj-1.0);
+      }
+    }
+  } else {
+    G0.resize_values_not_retained(Nv,1);
+    invA_tmp.resize_values_not_retained(n_rows,Nv);
+    for (int iv=0; iv<n_rows; ++iv) {
+      for (int iv2=0; iv2<Nv; ++iv2) {
+        invA_tmp(iv,iv2) = invA.matrix()(rows[iv], iv2);
+      }
+    }
+    for (int iv=0; iv<Nv; ++iv) {
+      G0(iv,0) = spline_G0(invA.annihilators()[iv], invA.creators()[col]);
+    }
+    mygemm((T) 1.0, invA_tmp, G0, (T) 0.0, Gij);
+  }
+}
+*/
 
 template<typename T>
 bool SubmatrixUpdate<T>::sanity_check() {

@@ -129,14 +129,15 @@ void InteractionExpansion<TYPES>::compute_Sl() {
     max_mat_size = std::max(max_mat_size, M_flavors[z].num_cols());
   }
   //std::vector<double> legendre_vals(n_legendre), sqrt_vals(n_legendre);
-  std::vector<double> sqrt_vals(n_legendre);
+  //std::vector<double> sqrt_vals(n_legendre);
+  //for(unsigned int i_legendre=0; i_legendre<n_legendre; ++i_legendre) {
+    //sqrt_vals[i_legendre] = std::sqrt(2.0*i_legendre+1.0);
+  //}
+  const std::vector<double>& sqrt_vals = legendre_transformer.get_sqrt_2l_1();
 
   std::vector<double> x_vals;
   boost::multi_array<double,2> legendre_vals_all; //, legendre_vals_trans_all;
 
-  for(unsigned int i_legendre=0; i_legendre<n_legendre; ++i_legendre) {
-    sqrt_vals[i_legendre] = std::sqrt(2.0*i_legendre+1.0);
-  }
   alps::numeric::matrix<M_TYPE> gR(max_mat_size, n_site), M_gR(max_mat_size, n_site);
 
   for (unsigned int z=0; z<n_flavors; ++z) {

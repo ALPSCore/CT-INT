@@ -17,8 +17,10 @@ LegendreTransformer::LegendreTransformer(int n_matsubara, int n_legendre)
         }
         sign_tmp *= -1;
     }
+    sqrt_2l_1.resize(n_legendre);
     for(int l=1; l<n_legendre_; l++) {
         inv_l_[l] = 1.0/l;
+        sqrt_2l_1[l] = std::sqrt(2.0*l+1.0);
     }
 };
 

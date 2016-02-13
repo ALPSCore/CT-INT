@@ -115,24 +115,34 @@ T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& sp
     row_col_info_.push_back(boost::make_tuple(ops_ins[iop].pos_in_A_, ops_ins[iop].alpha0_, ops_ins[iop].alpha_new_));
   }
 
+  std::vector<int> rows_in_A(nop), rows_in_A2(nop_add);
+  for(unsigned int i=0;i<nop;++i) {
+    rows_in_A[i] = pos_in_invA(i);
+  }
+  for(unsigned int i=0;i<nop_add;++i) {
+    rows_in_A2[i] = pos_in_invA(i+nop);
+  }
+
   G_n_n.resize_values_not_retained(nop_add, nop_add);
   G_n_j.resize_values_not_retained(nop_add, nop);
   G_j_n.resize_values_not_retained(nop, nop_add);
   for(unsigned int i=0;i<nop;++i) {
-    for (size_t iv=0; iv<nop_add; ++iv) {
-      G_n_j(iv,i) = mycast<T>(eval_Gammaij(invA, spline_G0, nop+iv, i));
-    }
+    alps::numeric::submatrix_view<T> view(G_n_j, 0, i, nop_add, 1);
+    invA.eval_Gij_col_part(spline_G0, rows_in_A2, pos_in_invA(i), view);
   }
-  for(unsigned int i=0;i<nop;++i){
+  if (nop>0) {
     for (size_t iv=0; iv<nop_add; ++iv) {
-      G_j_n(i,iv) = mycast<T>(eval_Gammaij(invA, spline_G0, i, nop+iv));
+      alps::numeric::submatrix_view<T> view(G_j_n, 0, iv, nop, 1);
+      invA.eval_Gij_col_part(spline_G0, rows_in_A, pos_in_invA(iv+nop), view);
     }
   }
   for (size_t iv2=0; iv2<nop_add; ++iv2) {
-    for (size_t iv=0; iv<nop_add; ++iv) {
-      G_n_n(iv, iv2) = mycast<T>(eval_Gammaij(invA, spline_G0, nop+iv, nop+iv2));
-    }
+    alps::numeric::submatrix_view<T> view(G_n_n, 0, iv2, nop_add, 1);
+    invA.eval_Gij_col_part(spline_G0, rows_in_A2, pos_in_invA(iv2+nop), view);
+    T small_gamma = gamma_func(eval_f(alpha(iv2+nop)), eval_f(alpha0(iv2+nop)));
+    G_n_n(iv2, iv2) -= (1.0+small_gamma)/small_gamma;
   }
+
   return gamma_prod*compute_det_ratio_up(G_j_n, G_n_j, G_n_n, matrix_);
 }
 
