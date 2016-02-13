@@ -225,8 +225,8 @@ public:
 private:
     const uint max_val_, min_val_, num_bin_;
     const double criterion = 0.8;
-    const double init_log_lambda_ = std::log(2.7);
-    const double min_log_lambda_ = std::log(1.001);
+    const double init_log_lambda_ = 0.993251773010283; //std::log(2.7);
+    const double min_log_lambda_ = 0.000999500333083; //std::log(1.001);
     const unsigned long n_therm_steps_;
 
     //const double criterion_walker = 0.8;

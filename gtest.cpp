@@ -620,8 +620,8 @@ TEST(MatrixLibrary, submatrix_view) {
 
     for (int j=0; j<N2; ++j) {
         for (int i=0; i<N1; ++i) {
-            ASSERT_TRUE(C_sub(i,j)==C(i+start_row,j+start_col));
-            ASSERT_TRUE(C_subview(i,j)==C(i+start_row,j+start_col));
+            ASSERT_TRUE(std::abs(C_sub(i,j)-C(i+start_row,j+start_col))/std::abs(C_sub(i,j))<1E-8);
+            ASSERT_TRUE(std::abs(C_subview(i,j)-C(i+start_row,j+start_col))/std::abs(C_subview(i,j))<1E-8);
         }
     }
 
@@ -629,7 +629,7 @@ TEST(MatrixLibrary, submatrix_view) {
     alps::numeric::my_copy_block(C_subview, 0, 0, C_subcopy, start_row, start_col, N1, N2);
     for (int j=0; j<N2; ++j) {
         for (int i = 0; i < N1; ++i) {
-            ASSERT_TRUE(C_subview(i,j)==C_subcopy(i+start_row,j+start_col));
+            ASSERT_TRUE(std::abs(C_subview(i,j)-C_subcopy(i+start_row,j+start_col))/std::abs(C_subview(i,j))<1E-8);
         }
     }
 
@@ -637,7 +637,7 @@ TEST(MatrixLibrary, submatrix_view) {
     alps::numeric::my_copy_block(C_subcopy, start_row, start_col, C_subview, 0, 0, N1, N2);
     for (int j=0; j<N2; ++j) {
         for (int i = 0; i < N1; ++i) {
-            ASSERT_TRUE(C_subview(i,j)==C_subcopy(i+start_row,j+start_col));
+            ASSERT_TRUE(std::abs(C_subview(i,j)-C_subcopy(i+start_row,j+start_col))/std::abs(C_subview(i,j))<1E-8);
         }
     }
 }
