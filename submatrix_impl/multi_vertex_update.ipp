@@ -48,7 +48,7 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R
     } else {
       //std::cout << "trying: removal " << std::endl;
       int Nv = nv_prob(random.engine());
-      removal_step(random, Nv); //FOR DEBUG
+      removal_step(random, Nv);
     }
     for (int flavor=0; flavor<n_flavors(); ++flavor) {
       gamma_matrices_[flavor].sanity_check(invA_[flavor], spline_G0_);
@@ -83,6 +83,8 @@ void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_ver
   } else {
     throw std::runtime_error("Not implemented");
   }
+
+  //if (mycast<double>(prob)<0.0) throw std::runtime_error("prob is negative");
 
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
@@ -128,6 +130,8 @@ void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
   } else {
     throw std::runtime_error("Not implemented");
   }
+
+  //if (mycast<double>(prob)<0.0) throw std::runtime_error("prob is negative");
 
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;

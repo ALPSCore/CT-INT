@@ -112,7 +112,7 @@ bool InvAMatrix<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0) const {
  */
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-std::pair<T,T> InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
+std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
   const int Nv = annihilators_.size();
 
   if (Nv==0) return std::make_pair((T)1.0, (T)1.0);
@@ -139,6 +139,8 @@ std::pair<T,T> InvAMatrix<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool ch
     }
     matrix_(j,j) += F[j];
   }
+  //std::cout << "recomupting debug_info " << spline_G0(annihilators_[0], creators_[0]) << " " << F[0] << std::endl;
+  //std::cout << "recomupting A " << matrix_(0,0) << std::endl;
   const T det = alps::numeric::determinant(matrix_);
   alps::numeric::inverse_in_place(matrix_);
 
@@ -229,7 +231,7 @@ InvAMatrixFlavors<T>::add_interacting_vertices(general_U_matrix<T>* p_Uijkl,
   T det_A = 1.0;
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
     T det_A_tmp, f_prod;
-    boost::tie(det_A_tmp,f_prod) = sub_matrices_[flavor].recompute(spline_G0, false);
+    boost::tie(det_A_tmp,f_prod) = sub_matrices_[flavor].recompute_matrix(spline_G0, false);
     det_A *= det_A_tmp;
   }
   return det_A;
@@ -374,79 +376,6 @@ void InvAMatrix<T>::compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE&
 #endif
 }
 
-/*
- * Implementation of InvAMatrixFlavors<T>
- */
-template<typename T>
-template<typename SPLINE_G0_TYPE>
-void
-InvAMatrixFlavors<T>::update_matrix(const std::vector<InvGammaMatrix<T> >& inv_gamma_flavors, const SPLINE_G0_TYPE& spline_G0) {
-  for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    sub_matrices_[flavor].update_matrix(inv_gamma_flavors[flavor], spline_G0);
-  }
-}
-
-template<typename T>
-void
-InvAMatrixFlavors<T>::remove_rows_cols(const std::vector<double>& times) {
-  for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    sub_matrices_[flavor].remove_rows_cols(times);
-  }
-}
-
-template<typename T>
-template<typename SPLINE_G0_TYPE>
-bool
-InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_matrix<T>* p_Uijkl,
-                                   const itime_vertex_container& itime_vertices) const {
-  bool result = true;
-#ifndef NDEBUG
-  const int n_flavors = sub_matrices_.size();
-  std::vector<std::vector<creator> > creators_scr(n_flavors);
-  std::vector<std::vector<annihilator> > annihilators_scr(n_flavors);
-  std::vector<std::vector<T> > alpha_scr(n_flavors);
-
-  for (int iv=0; iv<itime_vertices.size(); ++iv) {
-    const itime_vertex& v = itime_vertices[iv];
-    const vertex_definition<T>& vdef = p_Uijkl->get_vertex(v.type());
-    for (int rank=0; rank<v.rank(); ++rank) {
-      const int flavor_rank = vdef.flavors()[rank];
-      operator_time op_t(v.time(), -rank);
-      creators_scr[flavor_rank].push_back(
-          creator(flavor_rank, vdef.sites()[2*rank], op_t)
-      );
-      annihilators_scr[flavor_rank].push_back(
-          annihilator(flavor_rank, vdef.sites()[2*rank+1], op_t)
-      );
-      alpha_scr[flavor_rank].push_back(vdef.get_alpha(v.af_state(), rank));
-    }
-  }
-
-  for (int flavor=0; flavor<n_flavors; ++flavor) {
-    result = result && sub_matrices_[flavor].sanity_check(spline_G0);
-    assert(sub_matrices_[flavor].annihilators().size()==annihilators_scr[flavor].size());
-    assert(sub_matrices_[flavor].creators().size()==creators_scr[flavor].size());
-
-    //check operators one by one
-    for (int iop=0; iop<creators_scr[flavor].size(); ++iop) {
-      const int pos = sub_matrices_[flavor].find_row_col(creators_scr[flavor][iop].t().time());
-      assert(sub_matrices_[flavor].creators()[pos]==creators_scr[flavor][iop]);
-      assert(sub_matrices_[flavor].annihilators()[pos]==annihilators_scr[flavor][iop]);
-      assert(sub_matrices_[flavor].alpha_at(pos)==alpha_scr[flavor][iop]);
-    }
-  }
-#endif
-  return result;
-}
-
-template<typename T>
-template<typename SPLINE_G0_TYPE>
-void InvAMatrixFlavors<T>::recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
-  for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    sub_matrices_[flavor].recompute(spline_G0, check_error);
-  }
-}
-
 // G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
 // cols specifies {j}
 template<typename T>
@@ -467,7 +396,7 @@ void InvAMatrix<T>::eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gi
   } else {
     //G0.resize_values_not_retained(Nv,1);
     //for (int iv=0; iv<Nv; ++iv) {
-      //G0(iv,0) = spline_G0(annihilators_[iv], creators_[col]);
+    //G0(iv,0) = spline_G0(annihilators_[iv], creators_[col]);
     //}
     alps::numeric::submatrix_view<T> G0_view = compute_G0_col(spline_G0, col);
     mygemm((T) 1.0, matrix_, G0_view, (T) 0.0, Gij);
@@ -542,3 +471,83 @@ alps::numeric::submatrix_view<T> InvAMatrix<T>::compute_G0_col(const SPLINE_G0_T
     return alps::numeric::submatrix_view<T>(G0_cache, 0, index, Nv, 1);
   }
 };
+
+/*
+ * Implementation of InvAMatrixFlavors<T>
+ */
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+void
+InvAMatrixFlavors<T>::update_matrix(const std::vector<InvGammaMatrix<T> >& inv_gamma_flavors, const SPLINE_G0_TYPE& spline_G0) {
+  for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
+    sub_matrices_[flavor].update_matrix(inv_gamma_flavors[flavor], spline_G0);
+  }
+}
+
+template<typename T>
+void
+InvAMatrixFlavors<T>::remove_rows_cols(const std::vector<double>& times) {
+  for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
+    sub_matrices_[flavor].remove_rows_cols(times);
+  }
+}
+
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+bool
+InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_matrix<T>* p_Uijkl,
+                                   const itime_vertex_container& itime_vertices) const {
+  bool result = true;
+#ifndef NDEBUG
+  const int n_flavors = sub_matrices_.size();
+  std::vector<std::vector<creator> > creators_scr(n_flavors);
+  std::vector<std::vector<annihilator> > annihilators_scr(n_flavors);
+  std::vector<std::vector<T> > alpha_scr(n_flavors);
+
+  for (int iv=0; iv<itime_vertices.size(); ++iv) {
+    const itime_vertex& v = itime_vertices[iv];
+    const vertex_definition<T>& vdef = p_Uijkl->get_vertex(v.type());
+    for (int rank=0; rank<v.rank(); ++rank) {
+      const int flavor_rank = vdef.flavors()[rank];
+      operator_time op_t(v.time(), -rank);
+      creators_scr[flavor_rank].push_back(
+          creator(flavor_rank, vdef.sites()[2*rank], op_t)
+      );
+      annihilators_scr[flavor_rank].push_back(
+          annihilator(flavor_rank, vdef.sites()[2*rank+1], op_t)
+      );
+      alpha_scr[flavor_rank].push_back(vdef.get_alpha(v.af_state(), rank));
+    }
+  }
+
+  for (int flavor=0; flavor<n_flavors; ++flavor) {
+    result = result && sub_matrices_[flavor].sanity_check(spline_G0);
+    assert(sub_matrices_[flavor].annihilators().size()==annihilators_scr[flavor].size());
+    assert(sub_matrices_[flavor].creators().size()==creators_scr[flavor].size());
+
+    //check operators one by one
+    for (int iop=0; iop<creators_scr[flavor].size(); ++iop) {
+      const int pos = sub_matrices_[flavor].find_row_col(creators_scr[flavor][iop].t().time());
+      assert(sub_matrices_[flavor].creators()[pos]==creators_scr[flavor][iop]);
+      assert(sub_matrices_[flavor].annihilators()[pos]==annihilators_scr[flavor][iop]);
+      assert(sub_matrices_[flavor].alpha_at(pos)==alpha_scr[flavor][iop]);
+    }
+  }
+#endif
+  return result;
+}
+
+template<typename T>
+template<typename SPLINE_G0_TYPE>
+T InvAMatrixFlavors<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
+  T detA = 1.0;
+  for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
+    T detA_tmp, det_f_tmp;
+    boost::tie(detA_tmp,det_f_tmp) = sub_matrices_[flavor].recompute_matrix(spline_G0, check_error);
+    //std::cout << "det_A_flavor " << flavor << " " << detA_tmp << std::endl;
+    //std::cout << "det_f " << flavor << " " << det_f_tmp << std::endl;
+    detA *= detA_tmp;
+  }
+  return detA;
+}
+

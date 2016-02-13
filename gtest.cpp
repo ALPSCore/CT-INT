@@ -647,12 +647,12 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
     typedef std::complex<double> T;
     const int n_sites = 1;
     const double U = 2.0;
-    const double alpha = 1E-1;
+    const double alpha = 1E-2;
     const double beta = 4.0;
     const int Nv_max = 1;
     const int n_flavors = 2;
     const int k_ins_max = 10;
-    const int n_update = 2;
+    const int n_update = 100;
     const int seed = 100;
 
     general_U_matrix<T> Uijkl(n_sites, U, alpha);
@@ -676,13 +676,18 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
     std::vector<alps::numeric::matrix<T> > M(n_flavors);
 
     for (int i_update=0; i_update<n_update; ++i_update) {
-        std::cout << "I_UPDATE " << i_update << " Nv0 = " << submatrix_update.pert_order() << std::endl;
+        //std::cout << "I_UPDATE " << i_update << " Nv0 = " << submatrix_update.pert_order() << std::endl;
         //submatrix_update.vertex_insertion_removal_update(Nv_prob, random01);
         submatrix_update.vertex_insertion_removal_update(dist, random01);
         assert(submatrix_update.sanity_check());
         //std::cout << "recompute " << std::endl;
-        submatrix_update.recompute(true);
+        submatrix_update.recompute_matrix(true);
         submatrix_update.compute_M(M);
+        //std::cout << " det_M " << alps::numeric::determinant(M[0]) << " " << alps::numeric::determinant(M[1]) << std::endl;
+        //std::cout << " M[0] " << M[0] << std::endl;
+        //std::cout << " M[1] " << M[1] << std::endl;
+        //std::cout << " v[0] " << submatrix_update.itime_vertices()[0] << std::endl;
+        assert(mycast<double>(submatrix_update.sign())>0.0);
     }
 
     //std::cout << DiagonalG0<T>(beta)(0.0) << std::endl;

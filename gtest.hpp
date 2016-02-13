@@ -70,7 +70,11 @@ struct DiagonalG0 {
       return 0.0;
 
     //std::cout << "--- " <<  " ---- " << std::endl;
-    return operator()(c_op.t().time()-cdagg_op.t().time());
+    double dt = c_op.t().time()-cdagg_op.t().time();
+    if (std::abs(dt)<1E-10) {
+      dt += c_op.t().small_index() > cdagg_op.t().small_index() ? 1E-8 : -1E-8;
+    }
+    return operator()(dt);
   }
 
   double beta_;

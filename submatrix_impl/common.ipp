@@ -17,6 +17,22 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     ops_ins(n_flavors),
     ops_replace(n_flavors)
 {
+  /*
+  for (int i=0; i<101; ++i) {
+    std::cout << " i " << i << " " <<
+        spline_G0(
+            annihilator(0,0,operator_time(beta*i/100.0-beta, 0)),
+            creator(0,0,operator_time(0.0, 0))) << " " <<
+        spline_G0(
+        annihilator(0,0,operator_time(beta*i/100.0, 0)),
+        creator(0,0,operator_time(0.0, 0)))<< " " <<
+    spline_G0(
+        annihilator(0,0,operator_time(beta*i/100.0+beta, 0)),
+        creator(0,0,operator_time(0.0, 0))
+
+    ) << std::endl;
+  }
+  */
 }
 
 template<typename T>
@@ -42,6 +58,20 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     itime_vertices_ = itime_vertices_init;
     recompute_sign(false);
   }
+  /*
+  for (int i=0; i<101; ++i) {
+    std::cout << " i " << i << " " <<
+    spline_G0(
+        annihilator(0,0,operator_time(beta*i/100.0-beta, 0)),
+        creator(0,0,operator_time(0.0, 0))) << " " <<
+        spline_G0(
+            annihilator(0,0,operator_time(beta*i/100.0, 0)),
+            creator(0,0,operator_time(0.0, 0))) << " " <<
+            spline_G0(
+                annihilator(0,0,operator_time(beta*i/100.0+beta, 0)),
+                creator(0,0,operator_time(0.0, 0))) << std::endl;
+  }
+  */
 }
 
 template<typename T, typename SPLINE_G0_TYPE>
@@ -150,9 +180,11 @@ bool SubmatrixUpdate<T>::sanity_check() {
   if (state==READY_FOR_UPDATE) {
     const T det_A_bak = det_A_;
     const T sign_bak = sign_;
-    recompute(true);
+    recompute_matrix(true);
     recompute_sign(true);
-    //std::cout << "debug det_A recomputed " << det_A_ << std::endl;
+    //std::cout << "debug sign_bak sign " << sign_bak << " " << sign_ << std::endl;
+    //std::cout << "debug det_A_ " << det_A_ << std::endl;
+    //std::cout << "pert_order " << itime_vertices_.num_interacting() << std::endl;
     assert(std::abs(det_A_bak-det_A_)/std::abs(det_A_)<1E-5);
     assert(std::abs(sign_bak-sign_)/std::abs(sign_)<1E-5);
   }
@@ -161,9 +193,11 @@ bool SubmatrixUpdate<T>::sanity_check() {
 }
 
 template<typename T>
-void SubmatrixUpdate<T>::recompute(bool check_error) {
+void SubmatrixUpdate<T>::recompute_matrix(bool check_error) {
   if (state==READY_FOR_UPDATE) {
-    invA_.recompute(spline_G0_, check_error);
+    const T det_A_bak = det_A_;
+    det_A_ = invA_.recompute_matrix(spline_G0_, check_error);
+    assert(std::abs(det_A_-det_A_bak)/std::abs(det_A_)<1E-8);
   }
 }
 
@@ -327,6 +361,11 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
   const T weight_rat = det_rat_A*(f_old/f_new)*(U_new/U_old);
   sign_rat = weight_rat/std::abs(weight_rat);
 
+  if (mycast<double>(sign_rat)<0.0) {
+    std::cout << "error " << det_rat_A << " " << f_old/f_new << " " << U_new/U_old << std::endl;
+    //exit(-1);
+  }
+
   return boost::make_tuple(det_rat_A, f_old/f_new, U_new/U_old);
 }
 
@@ -364,6 +403,8 @@ void SubmatrixUpdate<T>::perform_spin_flip(const std::vector<int>& pos, const st
 
   det_A_ *= det_rat_A;
   sign_ *= sign_rat;
+
+  //if (mycast<double>(sign_)<0.0) throw std::runtime_error("Sign is negative");
 
   //std::cout << "using det_rat_A = " << det_rat_A << std::endl;
   //std::cout << "new det_A = " << det_A_ << std::endl;

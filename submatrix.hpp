@@ -117,7 +117,7 @@ public:
 
     /*recompute A^{-1} and return det(A) and det(1-F)*/
     template<typename SPLINE_G0_TYPE>
-    std::pair<T,T> recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error);
+    std::pair<T,T> recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error);
 
     T compute_f_prod() const;
 
@@ -187,7 +187,7 @@ public:
     bool sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_matrix<T>* p_Uijkl, const itime_vertex_container& itime_vertices) const;
 
     template<typename SPLINE_G0_TYPE>
-    void recompute(const SPLINE_G0_TYPE& spline_G0, bool check_error);
+    T recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error);
 
     typename InvAMatrix<T>::value_type determinant() {
       typename InvAMatrix<T>::value_type det=1.0;
@@ -326,7 +326,6 @@ public:
     }
 
     const T sign() const {
-      assert(state==READY_FOR_UPDATE);
       return sign_;
     }
 
@@ -357,7 +356,7 @@ public:
     void vertex_insertion_removal_update(NVertexProb&, R& random);
 
     /* recomputes A^{-1} to avoid numerical errors*/
-    void recompute(bool check_error);
+    void recompute_matrix(bool check_error);
 
     //for debug
     bool sanity_check();
