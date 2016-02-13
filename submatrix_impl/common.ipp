@@ -17,7 +17,6 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     ops_ins(n_flavors),
     ops_replace(n_flavors)
 {
-  /*
   for (int i=0; i<101; ++i) {
     std::cout << " i " << i << " " <<
         spline_G0(
@@ -31,8 +30,10 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
         creator(0,0,operator_time(0.0, 0))
 
     ) << std::endl;
+    //std::cout << " i " << 0 << " " <<spline_G0(
+        //annihilator(0,0,operator_time(0.0, 0)),
+        //creator(0,0,operator_time(0.0, 0))) << std::endl;
   }
-  */
 }
 
 template<typename T>
@@ -361,6 +362,7 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
   const T weight_rat = det_rat_A*(f_old/f_new)*(U_new/U_old);
   sign_rat = weight_rat/std::abs(weight_rat);
 
+  //JUST FOR DEBUG
   if (mycast<double>(sign_rat)<0.0) {
     std::cout << "error " << det_rat_A << " " << f_old/f_new << " " << U_new/U_old << std::endl;
     //exit(-1);
@@ -435,13 +437,32 @@ void SubmatrixUpdate<T>::reject_spin_flip() {
 }
 
 template<typename  T>
-T SubmatrixUpdate<T>::compute_M(std::vector<alps::numeric::matrix<T> >& M) {
+void SubmatrixUpdate<T>::compute_M(std::vector<alps::numeric::matrix<T> >& M) {
   assert(M.size()==n_flavors());
 
   for (int flavor=0; flavor<n_flavors(); ++flavor) {
     invA_[flavor].compute_M(M[flavor], spline_G0_);
   }
-  return 0.0;
+}
+
+template<typename  T>
+void SubmatrixUpdate<T>::compute_M_from_scratch(std::vector<alps::numeric::matrix<T> >& M) {
+  assert(M.size()==n_flavors());
+
+  M.resize(n_flavors());
+  for (int flavor=0; flavor<n_flavors(); ++flavor) {
+    const int Nv = invA_[flavor].matrix().num_cols();
+    M[flavor].resize(Nv, Nv);
+    if (Nv>0) {
+      for (int j=0; j<Nv; ++j) {
+        for (int i=0; i<Nv; ++i) {
+          M[flavor](i,j) = spline_G0_(invA_[flavor].annihilators()[i], invA_[flavor].creators()[j]);
+        }
+        M[flavor](j,j) -= invA_[flavor].alpha_at(j);
+      }
+      alps::numeric::inverse_in_place(M[flavor]);
+    }
+  }
 }
 
 

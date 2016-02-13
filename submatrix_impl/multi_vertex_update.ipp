@@ -84,6 +84,7 @@ void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_ver
     throw std::runtime_error("Not implemented");
   }
 
+  //JUST FOR DEBUG
   //if (mycast<double>(prob)<0.0) throw std::runtime_error("prob is negative");
 
   if (std::abs(prob)>random()) {

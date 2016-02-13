@@ -431,11 +431,26 @@ public:
     using std::vector<V>::size;
 
     using std::vector<V>::operator[];
-    using std::vector<V>::push_back;
+    //using std::vector<V>::push_back;
+    using std::vector<V>::resize;
     using std::vector<V>::pop_back;
     using std::vector<V>::begin;
     using std::vector<V>::end;
     using std::vector<V>::erase;
+
+    void push_back(const V& x) {
+      bool equal_time = false;
+      for (int iv=0; iv<size(); ++iv) {
+        if (operator[](iv).time()==x.time()) {
+          equal_time = true;
+          break;
+        }
+      }
+      if (equal_time) {
+        std::runtime_error("ItimeVertexContainer::push_back: you try to insert a vertex at the imaginary time where there is already a vertex.");
+      }
+      std::vector<V>::push_back(x);
+    }
 };
 
 typedef ItimeVertexContainer<itime_vertex> itime_vertex_container;
@@ -816,6 +831,25 @@ find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& ve
 std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
 template<class V>
 void print_vertices(std::ostream &os, const V &v);
+
+void dump(std::ostream &os, const itime_vertex_container &itime_vertices);
+
+template<typename T>
+void load_config(std::ifstream &is, const general_U_matrix<T>& Uijkl, itime_vertex_container &itime_vertices) {
+  itime_vertices.resize(0);
+
+  int Nv;
+  is >> Nv;
+  if (Nv==0) return;
+
+  for (int iv=0; iv<Nv; ++iv) {
+    int type, af_state;
+    double time;
+    is >> type >> af_state >> time;
+    const vertex_definition<T>& vdef = Uijkl.get_vertex(type);
+    itime_vertices.push_back(itime_vertex(type, af_state, time, vdef.rank(), vdef.is_density_type()));
+  }
+}
 
 //U_MATRIX_H
 #endif 

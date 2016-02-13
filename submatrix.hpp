@@ -345,7 +345,9 @@ public:
     //returns a product of determinants of A matrices
     typename InvAMatrix<T>::value_type determinant();
 
-    T compute_M(std::vector<alps::numeric::matrix<T> >& M);
+    void compute_M(std::vector<alps::numeric::matrix<T> >& M);
+
+    void compute_M_from_scratch(std::vector<alps::numeric::matrix<T> >& M);
 
     const InvAMatrixFlavors<T>& invA() const {
       return invA_;

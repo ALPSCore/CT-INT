@@ -673,7 +673,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
     boost::random::variate_generator<boost::random::mt19937&, boost::random::uniform_smallint<> > Nv_prob(gen, dist);
     boost::random::variate_generator<boost::random::mt19937&, boost::random::uniform_01<> > random01(gen, dist01);
 
-    std::vector<alps::numeric::matrix<T> > M(n_flavors);
+    std::vector<alps::numeric::matrix<T> > M(n_flavors), M_scratch(n_flavors);
 
     for (int i_update=0; i_update<n_update; ++i_update) {
         //std::cout << "I_UPDATE " << i_update << " Nv0 = " << submatrix_update.pert_order() << std::endl;
@@ -683,6 +683,15 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
         //std::cout << "recompute " << std::endl;
         submatrix_update.recompute_matrix(true);
         submatrix_update.compute_M(M);
+        submatrix_update.compute_M_from_scratch(M_scratch);
+        for (int flavor=0; flavor<n_flavors; ++flavor) {
+            //std::cout << "M " << flavor << std::endl;
+            //std::cout << M[flavor] << std::endl;
+            //std::cout << M_scratch[flavor] << std::endl;
+            if (M[flavor].num_cols()>0) {
+                ASSERT_TRUE(alps::numeric::norm_square(M[flavor]-M_scratch[flavor])/alps::numeric::norm_square(M[flavor])<1E-8);
+            }
+        }
         //std::cout << " det_M " << alps::numeric::determinant(M[0]) << " " << alps::numeric::determinant(M[1]) << std::endl;
         //std::cout << " M[0] " << M[0] << std::endl;
         //std::cout << " M[1] " << M[1] << std::endl;

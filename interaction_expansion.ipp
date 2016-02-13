@@ -83,6 +83,7 @@ T BareGreenInterpolate<T>::operator()(const annihilator& c, const creator& cdagg
 
   const int site1=c.s(), site2=cdagger.s();
   double dt = c.t().time()-cdagger.t().time();
+  //double dt_bak = dt;
   if (dt==0.0) {
     if (c.t().small_index() > cdagger.t().small_index()) { //G(+delta)
       //return B_[flavor][site1][site2][0];
@@ -99,7 +100,11 @@ T BareGreenInterpolate<T>::operator()(const annihilator& c, const creator& cdagg
       dt += beta_;
       coeff = -1.0;
     }
-    assert(dt>=0 && dt<beta_);
+
+    //if (!(dt>=0 && dt<beta_)) {
+      //std::cout << " debug " << dt << " " << dt_bak << std::endl;
+    //}
+    assert(dt>=0 && dt<=beta_);
     const int time_index_1 = (int)(dt*ntau_*temp_);
     return coeff*(AB_[flavor][site1][site2][time_index_1].first*(dt-time_index_1*dbeta_) + AB_[flavor][site1][site2][time_index_1].second);
   }
@@ -269,11 +274,13 @@ g0_intpl(parms)
   }
 
   //submatrix update
+  itime_vertex_container itime_vertices_init;
+  //JUST FOR DEBUG
+  std::ifstream is("./config_in.txt");
+  load_config<typename TYPES::M_TYPE>(is, Uijkl, itime_vertices_init);
   submatrix_update = new SubmatrixUpdate<M_TYPE>(
       (parms["K_INS_MAX"] | 32), n_flavors,
-      g0_intpl,
-      //SPLINE_G0_HELPER<InteractionExpansion<TYPES> >(this),
-      &Uijkl, beta);
+      g0_intpl, &Uijkl, beta, itime_vertices_init);
 }
 
 template<class TYPES>
@@ -291,15 +298,40 @@ void InteractionExpansion<TYPES>::update()
 
   num_accepted_shift = 0;
   for(std::size_t i=0;i<measurement_period;++i){
-#ifndef NDEBUG
+//#ifndef NDEBUG
     std::cout << " step " << step << std::endl;
-#endif
+//#endif
     step++;
     boost::timer::cpu_timer timer;
 
     for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
       submatrix_update->vertex_insertion_removal_update(update_prop, random);
       //std::cout << "debug pert_order " << submatrix_update->pert_order() << std::endl;
+      //JUST FOR DEBUG
+      if (mycast<double>(submatrix_update->sign())<0.0) {
+        std::cout << "Error sign is negative! at node " << node << std::endl;
+
+        //computing M
+        std::vector<alps::numeric::matrix<M_TYPE> > M_from_A(n_flavors);
+        std::vector<alps::numeric::matrix<M_TYPE> > M_from_scratch(n_flavors);
+        submatrix_update->compute_M(M_from_A);
+        submatrix_update->compute_M_from_scratch(M_from_scratch);
+        for (int flavor=0; flavor<n_flavors; ++flavor) {
+          std::cout << "M " << flavor << std::endl;
+          std::cout << M_from_A[flavor] << std::endl;
+          std::cout << M_from_scratch[flavor] << std::endl;
+          std::cout << "det " << alps::numeric::determinant(M_from_A[flavor]) << " " << alps::numeric::determinant(M_from_scratch[flavor]) << std::endl;
+          if (M_from_A[flavor].num_cols()>0) {
+            std::cout << "diff = " << alps::numeric::norm_square(M_from_A[flavor]-M_from_scratch[flavor])/alps::numeric::norm_square(M_from_scratch[flavor]) << std::endl;
+          }
+        }
+
+      //JUST FOR DEBUG
+         std::ofstream os("./config_out.txt");
+        dump(os, submatrix_update->itime_vertices());
+
+        exit(-1);
+      }
     }
 
     double t_m = timer.elapsed().wall;
@@ -321,7 +353,8 @@ void InteractionExpansion<TYPES>::update()
 
     if(step % recalc_period ==0) {
       boost::timer::cpu_timer timer2;
-      submatrix_update->recompute(false);
+      std::cout << "recomputing ... "<< std::endl;
+      submatrix_update->recompute_matrix(true);
       t_meas[2] += timer2.elapsed().wall;
     }
   }
