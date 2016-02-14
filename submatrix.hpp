@@ -166,6 +166,9 @@ public:
       return sub_matrices_[flavor];
     }
 
+    template<typename SPLINE_G0_TYPE>
+    std::pair<T,T> init(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
+
     const InvAMatrix<T>& operator[](size_t flavor) const {
       assert(flavor<sub_matrices_.size());
       return sub_matrices_[flavor];
@@ -187,7 +190,7 @@ public:
     bool sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_matrix<T>* p_Uijkl, const itime_vertex_container& itime_vertices) const;
 
     template<typename SPLINE_G0_TYPE>
-    T recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error);
+    std::pair<T,T> recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error);
 
     typename InvAMatrix<T>::value_type determinant() {
       typename InvAMatrix<T>::value_type det=1.0;
@@ -199,9 +202,6 @@ public:
 
     template<typename SPLINE_G0_TYPE>
     void add_non_interacting_vertices(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
-
-    template<typename SPLINE_G0_TYPE>
-    T add_interacting_vertices(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
 
     void remove_rows_cols(const std::vector<double>& times);
 
@@ -376,7 +376,7 @@ private:
     InvAMatrixFlavors<T> invA_;
 
     //Monte Carlo variables
-    T det_A_, sign_;
+    T sign_det_A_, sign_;
     std::vector<InvGammaMatrix<T> > gamma_matrices_;
     itime_vertex_container itime_vertices_;//current configuration
     itime_vertex_container itime_vertices0_;//starting configuration for submatrix update set in init_update()
@@ -406,7 +406,7 @@ private:
     template<typename R>
     void removal_step(R&, int nv_rem);
 
-    T recompute_sign(bool check_error=false);
+    //T recompute_sign(bool check_error=false);
 };
 
 #include "./submatrix_impl/common.ipp"

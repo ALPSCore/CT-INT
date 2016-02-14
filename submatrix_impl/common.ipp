@@ -9,7 +9,7 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     coeff_det(n_flavors%2==0 ? 1 : -1),
     alpha_scale_(1),
     invA_(n_flavors),
-    det_A_(1.0),
+    sign_det_A_(1.0),
     sign_(1.0),
     state(READY_FOR_UPDATE),
     gamma_matrices_(n_flavors),
@@ -46,7 +46,7 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     coeff_det(n_flavors%2==0 ? 1 : -1),
     alpha_scale_(1),
     invA_(n_flavors),
-    det_A_(1.0),
+    sign_det_A_(1.0),
     sign_(1.0),
     state(READY_FOR_UPDATE),
     gamma_matrices_(n_flavors),
@@ -55,9 +55,21 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     ops_replace(n_flavors)
 {
   if (itime_vertices_init.size()!=0) {
-    det_A_ = invA_.add_interacting_vertices(p_Uijkl, spline_G0, itime_vertices_init, 0);
+    boost::tie(sign_det_A_,sign_) = invA_.init(p_Uijkl, spline_G0, itime_vertices_init, 0);
     itime_vertices_ = itime_vertices_init;
-    recompute_sign(false);
+
+    //sign_ = 1.0;
+    //for (int iv=0; iv<itime_vertices_init.size(); ++iv) {
+      //sign_ *= mysign(p_Uijkl->get_vertex(itime_vertices_init[iv].type()).Uval());
+    //}
+    //std::vector<alps::numeric::matrix<T> > M(n_flavors);
+    //compute_M_from_scratch(M);
+    //for (int flavor=0; flavor<n_flavors; ++flavor) {
+      //const T det_M = alps::numeric::safe_determinant(M[flavor]);
+      //sign_ *= det_M/std::abs(det_M);
+    //}
+
+    //std::cout << "Reconstructed sign_det_A, sign " << sign_det_A_ << " " << sign_ << std::endl;
   }
   /*
   for (int i=0; i<101; ++i) {
@@ -176,29 +188,48 @@ bool SubmatrixUpdate<T>::sanity_check() {
   //check A^{-1}
   if (state==READY_FOR_UPDATE) {
     result = result && invA_.sanity_check(spline_G0_, p_Uijkl_, itime_vertices_);
-  }
 
-  if (state==READY_FOR_UPDATE) {
-    const T det_A_bak = det_A_;
+    const T sign_det_A_bak = sign_det_A_;
     const T sign_bak = sign_;
-    recompute_matrix(true);
-    recompute_sign(true);
-    //std::cout << "debug sign_bak sign " << sign_bak << " " << sign_ << std::endl;
-    //std::cout << "debug det_A_ " << det_A_ << std::endl;
-    //std::cout << "pert_order " << itime_vertices_.num_interacting() << std::endl;
-    assert(std::abs(det_A_bak-det_A_)/std::abs(det_A_)<1E-5);
-    assert(std::abs(sign_bak-sign_)/std::abs(sign_)<1E-5);
+    recompute_matrix(true);//recompute A^{-1}
+    assert(my_equal(sign_bak, sign_, 1E-5));
+    assert(my_equal(sign_det_A_bak, sign_det_A_, 1E-5));
   }
 #endif
   return result;
 }
 
+/*
+ * Recompute A^{-1} and sign of Monte Carl weight.
+ */
 template<typename T>
 void SubmatrixUpdate<T>::recompute_matrix(bool check_error) {
   if (state==READY_FOR_UPDATE) {
-    const T det_A_bak = det_A_;
-    det_A_ = invA_.recompute_matrix(spline_G0_, check_error);
-    assert(std::abs(det_A_-det_A_bak)/std::abs(det_A_)<1E-8);
+    const T sign_det_A_bak = sign_det_A_;
+    const T sign_bak = sign_;
+    T f_sign;
+    boost::tie(sign_det_A_,f_sign) = invA_.recompute_matrix(spline_G0_, check_error);
+    sign_ = sign_det_A_/f_sign;
+    for (int iv=0; iv<itime_vertices_.size(); ++iv) {
+      assert (!itime_vertices_[iv].is_non_interacting());
+      sign_ *= mysign(-p_Uijkl_->get_vertex(itime_vertices_[iv].type()).Uval());
+    }
+
+    if (check_error) {
+      if (!my_equal(sign_,sign_bak)) {
+        std::cout << " Error in sign is " << std::abs(sign_-sign_bak) << std::endl;
+        //std::cout << "sign_ " << sign_ << std::endl;
+        //std::cout << "sign_bak " << sign_bak << std::endl;
+        //std::cout << "sign_det_A_ " << sign_det_A_ << std::endl;
+        //std::cout << "f_sign " << f_sign << std::endl;
+        //exit(-1);//FOR DEBUG
+      }
+      if (!my_equal(sign_det_A_,sign_det_A_bak)) {
+        std::cout << " Error in sign_det_A is " << std::abs(sign_det_A_-sign_det_A_bak) << std::endl;
+      }
+    }
+  } else {
+    throw std::logic_error("The call to SubmatrixUpdate<T>::recompute_matrix is illegal.");
   }
 }
 
@@ -281,7 +312,7 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
   }
 #endif
 
-  T f_new = 1.0, f_old = 1.0, U_new = 1.0, U_old = 1.0;
+  T f_rat = 1.0, U_rat = 1.0;
 
   //figure out which rows/cols are to be updated
   for (int ipos=0; ipos<pos.size(); ++ipos) {
@@ -293,9 +324,9 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
     const vertex_definition<T>& vdef = p_Uijkl_->get_vertex(v.type());
 
     if(v.is_non_interacting() && new_spin!=NON_INT_SPIN_STATE) {
-      U_new *= -vdef.Uval();
+      U_rat *= -vdef.Uval();
     } else if(!v.is_non_interacting() && new_spin==NON_INT_SPIN_STATE) {
-      U_old *= -vdef.Uval();
+      U_rat /= -vdef.Uval();
     }
 
     for (int rank=0; rank<vdef.rank(); ++rank) {
@@ -331,10 +362,10 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
 
       if (alpha_current!=alpha_new) {
         if (alpha_new!=ALPHA_NON_INT) {
-          f_new *= 1.0-eval_f(alpha_new);
+          f_rat *= 1.0-eval_f(alpha_new);
         }
         if (alpha_current!=ALPHA_NON_INT) {
-          f_old *= 1.0-eval_f(alpha_current);
+          f_rat /= 1.0-eval_f(alpha_current);
         }
       }
     }
@@ -355,20 +386,20 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
       throw std::runtime_error("Not implemented: try_replace");
       //det_rat_A *= gamma_matrices_[flavor].try_replace(p_Uijkl_, invA_[flavor], ops_ins[flavor]);
     } else {
+      std::cout << "debug info " << ops_rem[flavor].size() << " " << ops_ins[flavor].size() << " " << ops_replace[flavor].size() << std::endl;
       throw std::runtime_error("Not implemented: try_***");
     }
   }
 
-  const T weight_rat = det_rat_A*(f_old/f_new)*(U_new/U_old);
-  sign_rat = weight_rat/std::abs(weight_rat);
+  sign_rat = mysign(det_rat_A)*mysign(U_rat)/mysign(f_rat);
 
   //JUST FOR DEBUG
   if (mycast<double>(sign_rat)<0.0) {
-    std::cout << "error " << det_rat_A << " " << f_old/f_new << " " << U_new/U_old << std::endl;
+    std::cout << "error " << det_rat_A << " " << f_rat << " " << U_rat << std::endl;
     //exit(-1);
   }
 
-  return boost::make_tuple(det_rat_A, f_old/f_new, U_new/U_old);
+  return boost::make_tuple(det_rat_A, 1.0/f_rat, U_rat);
 }
 
 template<typename T>
@@ -403,7 +434,7 @@ void SubmatrixUpdate<T>::perform_spin_flip(const std::vector<int>& pos, const st
 
   //std::cout << "old det_A = " << det_A_ << std::endl;
 
-  det_A_ *= det_rat_A;
+  sign_det_A_ *= mysign(det_rat_A);
   sign_ *= sign_rat;
 
   //if (mycast<double>(sign_)<0.0) throw std::runtime_error("Sign is negative");
@@ -466,6 +497,7 @@ void SubmatrixUpdate<T>::compute_M_from_scratch(std::vector<alps::numeric::matri
 }
 
 
+/*
 template<typename  T>
 T SubmatrixUpdate<T>::recompute_sign(bool check_error) {
   assert(state==READY_FOR_UPDATE);
@@ -492,3 +524,4 @@ T SubmatrixUpdate<T>::recompute_sign(bool check_error) {
 #endif
   sign_ = weight/std::abs(weight);
 }
+*/

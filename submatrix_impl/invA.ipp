@@ -108,7 +108,7 @@ bool InvAMatrix<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0) const {
 }
 
 /*
- * recompute A^{-1} and return det(A) and det(1-F)
+ * recompute A^{-1} and return sign(det(A)) and sign(det(1-F))
  */
 template<typename T>
 template<typename SPLINE_G0_TYPE>
@@ -125,12 +125,12 @@ std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, 
     assert(matrix_.num_rows()==Nv);
   }
 
-  T f_prod = 1.0;
+  T sign_f_prod = 1.0;
 
   std::vector<T> F(Nv);
   for (int i=0; i<Nv; ++i) {
     F[i] = eval_f(alpha_at(i));
-    f_prod *= 1.0-F[i];
+    sign_f_prod *= (1.0-F[i])/std::abs(1.0-F[i]);
   }
   matrix_.resize(Nv, Nv);
   for (int j=0; j<Nv; ++j) {
@@ -139,9 +139,7 @@ std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, 
     }
     matrix_(j,j) += F[j];
   }
-  //std::cout << "recomupting debug_info " << spline_G0(annihilators_[0], creators_[0]) << " " << F[0] << std::endl;
-  //std::cout << "recomupting A " << matrix_(0,0) << std::endl;
-  const T det = alps::numeric::determinant(matrix_);
+  const T sign_det = alps::numeric::sign_determinant(matrix_);
   alps::numeric::inverse_in_place(matrix_);
 
   if (check_error) {
@@ -152,12 +150,11 @@ std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, 
         max_abs_val = std::max(max_abs_val, std::abs(matrix_bak(i,j)));
       }
     }
-    //JUST FOR DEBUG
-    if (max_diff>1E-16) {
+    if (max_diff>1E-8) {
       std::cout << " max diff in A^{-1} is " << max_diff << ", max abs value is " << max_abs_val << " . " << std::endl;
     }
   }
-  return std::make_pair(det,f_prod);
+  return std::make_pair(sign_det,sign_f_prod);
 }
 
 /*
@@ -207,12 +204,17 @@ InvAMatrixFlavors<T>::add_non_interacting_vertices(general_U_matrix<T>* p_Uijkl,
 }
 
 
+/*
+ * Add initiliaze vectors of operators with interacting vertices. A^{-1} is then constructed.
+ * Return sign(det(A)) and sign(Monte Carlo weight)=sign(det(A)*sign(-U)/det(1-F))
+ */
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-T
-InvAMatrixFlavors<T>::add_interacting_vertices(general_U_matrix<T>* p_Uijkl,
+std::pair<T,T>
+InvAMatrixFlavors<T>::init(general_U_matrix<T>* p_Uijkl,
                                                    const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index) {
   //add operators
+  T U_sign = 1.0;
   for (int iv=begin_index; iv<itime_vertices.size(); ++iv) {
     const itime_vertex& v = itime_vertices[iv];
     const vertex_definition<T>& vdef = p_Uijkl->get_vertex(v.type());
@@ -227,15 +229,13 @@ InvAMatrixFlavors<T>::add_interacting_vertices(general_U_matrix<T>* p_Uijkl,
           alpha,
           std::pair<vertex_t,size_t>(v.type(), rank));
     }
+    U_sign *= mysign(-vdef.Uval());
   }
 
-  T det_A = 1.0;
-  for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    T det_A_tmp, f_prod;
-    boost::tie(det_A_tmp,f_prod) = sub_matrices_[flavor].recompute_matrix(spline_G0, false);
-    det_A *= det_A_tmp;
-  }
-  return det_A;
+  T sign_det_A, f_sign;
+  boost::tie(sign_det_A,f_sign) = recompute_matrix(spline_G0, false);
+  T w = sign_det_A*U_sign/f_sign;
+  return std::make_pair(sign_det_A, mysign(w));
 }
 
 
@@ -538,17 +538,19 @@ InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_ma
   return result;
 }
 
+/*
+ * recompute A^{-1} and return sign(det(A)) and sign(det(1-F))
+ */
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-T InvAMatrixFlavors<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
-  T detA = 1.0;
+std::pair<T,T> InvAMatrixFlavors<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
+  T sign_detA = 1.0, f_sign = 1.0;
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    T detA_tmp, det_f_tmp;
-    boost::tie(detA_tmp,det_f_tmp) = sub_matrices_[flavor].recompute_matrix(spline_G0, check_error);
-    //std::cout << "det_A_flavor " << flavor << " " << detA_tmp << std::endl;
-    //std::cout << "det_f " << flavor << " " << det_f_tmp << std::endl;
-    detA *= detA_tmp;
+    T sign_detA_tmp, f_sign_tmp;
+    boost::tie(sign_detA_tmp,f_sign_tmp) = sub_matrices_[flavor].recompute_matrix(spline_G0, check_error);
+    sign_detA *= sign_detA_tmp;
+    f_sign *= f_sign_tmp;
   }
-  return detA;
+  return std::make_pair(sign_detA,f_sign);
 }
 

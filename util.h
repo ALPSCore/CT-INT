@@ -16,7 +16,7 @@
 
 template<typename T> T mycast(std::complex<double> val);
 template<typename T> T myconj(T val);
-
+template<typename T> T mysign(T x);
 
 //typedef alps::numeric::matrix<double> dense_matrix;
 //typedef alps::numeric::matrix<std::complex<double> > complex_dense_matrix;
@@ -172,6 +172,39 @@ namespace alps {
             }
             double norm_pow = std::pow(norm, static_cast<double>(N));
             return (p%2==0 ? det*norm_pow : -det*norm_pow);
+        }
+
+        template<class Matrix>
+        typename Matrix::value_type sign_determinant(Matrix M) {
+            std::vector<int> ipiv(num_rows(M));
+            const int N = num_rows(M);
+
+            if (N==0) {
+                return 1.0;
+            } else if (N==1) {
+                return mysign<typename Matrix::value_type>(M(0,0));
+            } else if (N==2) {
+                return mysign<typename Matrix::value_type>(M(0,0)*M(1,1)-M(0,1)*M(1,0));
+            }
+
+            double norm = std::sqrt(norm_square(M)/(N*N));
+            M /= norm;
+
+            int info = boost::numeric::bindings::lapack::getrf(M, ipiv);
+            if (info != 0)
+                throw std::runtime_error("Error in GETRF !");
+
+            typename Matrix::value_type sign_det = 1.0;
+            for (size_t i=0; i<N; ++i) {
+                sign_det *= mysign<typename Matrix::value_type>(M(i,i));
+            }
+            int p = 0;
+            for (size_t i=0; i<N-1; ++i) {
+                if (ipiv[i] != i+1) {
+                    ++p;
+                }
+            }
+            return (p%2==0 ? sign_det : -sign_det);
         }
 
 
@@ -462,5 +495,21 @@ double gen_rand_rejection_method(const P& norm_dist, double max_norm_dist, R& ra
     return x;
 };
 
+template<typename T>
+T mysign(T x) {
+    return x/std::abs(x);
+}
+
+template<typename T>
+bool my_equal(T x, T y, double eps=1E-8) {
+    return std::abs(x-y)/std::max(std::abs(x),std::abs(y))<eps;
+}
+
+template<typename T>
+bool my_rdiff(T x, T y) {
+    return std::abs(x-y)/std::max(std::abs(x),std::abs(y));
+}
+
 
 #endif //IMPSOLVER_UTIL_H
+

@@ -843,9 +843,10 @@ void load_config(std::ifstream &is, const general_U_matrix<T>& Uijkl, itime_vert
   if (Nv==0) return;
 
   for (int iv=0; iv<Nv; ++iv) {
-    int type, af_state;
+    int iv_in, type, af_state;
     double time;
-    is >> type >> af_state >> time;
+    is >> iv_in >> type >> af_state >> time;
+    //std::cout << "type, af_state, time " << type << " " << af_state << " " << time << std::endl;
     const vertex_definition<T>& vdef = Uijkl.get_vertex(type);
     itime_vertices.push_back(itime_vertex(type, af_state, time, vdef.rank(), vdef.is_density_type()));
   }
