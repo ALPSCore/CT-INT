@@ -25,6 +25,7 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R
 
     for (int iv=0; iv<new_vertices.size(); ++iv) {
       new_vertices[iv].set_non_interacting();//this does not modify the spin state but just hide it.
+      new_vertices[iv].set_unique_id(gen_new_vertex_id());
       itime_vertices_.push_back(new_vertices[iv]);
     }
     pos_vertices_ins[i_ins] = vertex_begin;

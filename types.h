@@ -36,6 +36,7 @@
 //includes
 #include <vector>
 #include <complex>
+#include <boost/cstdint.hpp>
 /// the array (vector) type to store frequence dependent Green's functions and Weiss fields
 typedef std::vector<double> vector_type;
 /// two arrays are needed for a single site problem: one for up and one for down spins
@@ -72,6 +73,8 @@ typedef double itime_t;
 typedef unsigned int itime_index_t;
 ///addressing type of matsubara frequency
 typedef unsigned int frequency_t;
+
+typedef boost::uint_fast64_t my_uint64;
 
 ///typedef to easily distinguish imaginary time and frequency (multiple) vectors
 typedef  multiple_vector_type itime_multiple_vector_t;

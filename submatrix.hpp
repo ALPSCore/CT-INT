@@ -43,7 +43,7 @@ class InvAMatrix
 {
 public:
     typedef T value_type;
-    typedef std::pair<vertex_t,size_t> vertex_info_type;
+    typedef boost::tuple<vertex_t,size_t,my_uint64> vertex_info_type;
 
     InvAMatrix();
 
@@ -70,16 +70,35 @@ public:
     void set_alpha_scale(double alpha_scale) {alpha_scale_ = alpha_scale;}
     std::vector<std::pair<vertex_t,size_t> > &vertex_info(){ return vertex_info_;}
     const std::vector<std::pair<vertex_t,size_t> > &vertex_info() const{ return vertex_info_;}
-    int find_row_col(double time, vertex_t type, size_t i_rank) const {
+
+    int find_row_col(my_uint64 v_uid, int i_rank) const {
       for(std::size_t i=0; i<creators_.size(); ++i) {
-        if (time==creators_[i].t().time() && vertex_info_[i].first==type && vertex_info_[i].second==i_rank) {
-          assert(annihilators_[i].t().time()==time);
+        //if (time==creators_[i].t().time() && vertex_info_[i].first==type && vertex_info_[i].second==i_rank) {
+        if (vertex_uid(i)==v_uid && boost::get<1>(vertex_info_[i])==i_rank) {
           return i;
         }
       }
       return -1;
     }
-    int find_row_col(double time) const;
+
+    std::vector<int> find_row_col(my_uint64 v_uid) const {
+      std::vector<int> pos;
+      for(std::size_t i=0; i<creators_.size(); ++i) {
+        if (vertex_uid(i)==v_uid) {
+          pos.push_back(i);
+        }
+      }
+      if (pos.size()==0) {
+        throw std::logic_error("No operator found in InvAMatrix::find_row_col().");
+      }
+      return pos;
+    }
+
+    my_uint64 vertex_uid(int pos) const {
+      assert(pos>=0 && pos<vertex_info_.size());
+      return boost::get<2>(vertex_info_[pos]);
+    }
+    //int find_row_col(const operator_time& op_time) const;
     template<typename SPLINE_G0_TYPE>
     bool sanity_check(const SPLINE_G0_TYPE& spline_G0) const;
     void swap_ops(size_t i1, size_t i2) {
@@ -113,7 +132,7 @@ public:
     void push_back_op(const creator& cdag_op, const annihilator& c_op, T alpha, const vertex_info_type& vertex_info);
     template<typename SPLINE_G0_TYPE>
     void extend(const SPLINE_G0_TYPE& spline_G0);
-    void remove_rows_cols(const std::vector<double>& times);
+    void remove_rows_cols(const std::vector<my_uint64>& v_uid);
 
     /*recompute A^{-1} and return det(A) and det(1-F)*/
     template<typename SPLINE_G0_TYPE>
@@ -144,7 +163,7 @@ private:
 
     //work space for update()
     alps::numeric::matrix<T> G0_left, invA0, G0_inv_gamma;
-    std::vector<T> coeff_A;
+    //std::vector<T> coeff_A;
     std::vector<int> pl;
 
     //cache for G0 obtained by interpolation
@@ -203,7 +222,8 @@ public:
     template<typename SPLINE_G0_TYPE>
     void add_non_interacting_vertices(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
 
-    void remove_rows_cols(const std::vector<double>& times);
+    //void remove_rows_cols(const std::vector<double>& times);
+    void remove_rows_cols(const std::vector<my_uint64>& vertex_uid);
 
     template<typename SPLINE_G0_TYPE>
     void update_matrix(const std::vector<InvGammaMatrix<T> >& inv_gamma_flavors, const SPLINE_G0_TYPE& spline_G0);
@@ -407,6 +427,9 @@ private:
     void removal_step(R&, int nv_rem);
 
     //T recompute_sign(bool check_error=false);
+    //For distingushing vertices
+    my_uint64 gen_new_vertex_id();
+    my_uint64 current_vertex_id_;
 };
 
 #include "./submatrix_impl/common.ipp"

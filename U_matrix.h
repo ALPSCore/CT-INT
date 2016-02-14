@@ -38,6 +38,7 @@
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/cstdint.hpp>
 
 #include "types.h"
 #include "util.h"
@@ -373,7 +374,8 @@ public:
                time_(-1),
                rank_(-1),
                is_density_type_(false),
-               is_non_interacting_(false)
+               is_non_interacting_(false),
+               unique_id_(0)
   {}
 
   itime_vertex(int vertex_type, int af_state, double time, int rank, bool is_density_type)
@@ -382,7 +384,8 @@ public:
              time_(time),
              rank_(rank),
              is_density_type_(is_density_type),
-             is_non_interacting_(false)
+             is_non_interacting_(false),
+             unique_id_(0)
   {}
 
   int af_state() const { return af_state_; }
@@ -396,12 +399,15 @@ public:
   bool is_non_interacting() const { return is_non_interacting_;}
   void set_non_interacting() { is_non_interacting_ = true;}
   void set_interacting() { is_non_interacting_ = false;}
+  void set_unique_id(my_uint64 id) {unique_id_ = id;}
+  my_uint64 unique_id() const {return unique_id_;}
 
 private:
   int vertex_type_, af_state_, rank_;
   double time_;
   bool is_density_type_; //, is_truely_non_density_type_;
   bool is_non_interacting_;
+  my_uint64 unique_id_;
 };
 
 template<class V>
@@ -437,6 +443,10 @@ public:
     using std::vector<V>::begin;
     using std::vector<V>::end;
     using std::vector<V>::erase;
+
+    //const V& operator[](unsigned int index) const {
+      //return operator[](index);
+    //}
 
     void push_back(const V& x) {
       bool equal_time = false;

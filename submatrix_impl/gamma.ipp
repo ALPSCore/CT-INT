@@ -109,7 +109,7 @@ T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& sp
 
   T gamma_prod = 1.0;
   for (int iop=0; iop<nop_add; ++iop) {
-    assert(invA.find_row_col(ops_ins[iop].op_t_.time())==ops_ins[iop].pos_in_A_);
+    //assert(invA.find_row_col(ops_ins[iop].op_t_)==ops_ins[iop].pos_in_A_);
     assert(ops_ins[iop].alpha0_==ops_ins[iop].alpha_current_);
     gamma_prod *= -gamma_func<T>(eval_f(ops_ins[iop].alpha_new_), eval_f(ops_ins[iop].alpha0_));
     row_col_info_.push_back(boost::make_tuple(ops_ins[iop].pos_in_A_, ops_ins[iop].alpha0_, ops_ins[iop].alpha_new_));
@@ -170,7 +170,7 @@ T InvGammaMatrix<T>::try_remove(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE&
     assert(ops_rem[iop].alpha0_ == ALPHA_NON_INT);
     assert(ops_rem[iop].alpha_current_ != ALPHA_NON_INT);
     assert(ops_rem[iop].alpha_new_ == ALPHA_NON_INT);
-    assert(invA.find_row_col(ops_rem[iop].op_t_.time())==ops_rem[iop].pos_in_A_);
+    //assert(invA.find_row_col(ops_rem[iop].op_t_)==ops_rem[iop].pos_in_A_);
 
     rows_cols_removed[iop] = find_row_col_gamma(ops_rem[iop].pos_in_A_);
     //gamma_prod *= -gamma_func<T>(eval_f(ops_rem[iop].alpha_current_), 1.0);

@@ -275,13 +275,19 @@ g0_intpl(parms)
 
   //submatrix update
   itime_vertex_container itime_vertices_init;
-
-  if (false) {
+  /*
+  if (true) {
     //JUST FOR DEBUG
     std::ifstream is("./config_in.txt");
     load_config<typename TYPES::M_TYPE>(is, Uijkl, itime_vertices_init);
     std::ofstream os("./config_out_copy.txt");
     dump(os, itime_vertices_init);
+  }
+  */
+  if (params.defined("PREFIX_LOAD_CONFIG")) {
+    std::ifstream is((params["PREFIX_LOAD_CONFIG"].template cast<std::string>()
+                      +std::string("-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    load_config<typename TYPES::M_TYPE>(is, Uijkl, itime_vertices_init);
   }
 
   submatrix_update = new SubmatrixUpdate<M_TYPE>(
@@ -305,18 +311,16 @@ void InteractionExpansion<TYPES>::update()
 
   num_accepted_shift = 0;
   for(std::size_t i=0;i<measurement_period;++i){
-//#ifndef NDEBUG
+#ifndef NDEBUG
     std::cout << " step " << step << std::endl;
-//#endif
+#endif
     step++;
     boost::timer::cpu_timer timer;
 
     for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
       submatrix_update->vertex_insertion_removal_update(update_prop, random);
-      //std::cout << "debug pert_order " << submatrix_update->pert_order() << std::endl;
-      //JUST FOR DEBUG
+      /*
       if (mycast<double>(submatrix_update->sign())<0.0) {
-      //if (true) {
         std::cout << "Recomputing A^{-1} " << std::endl;
         submatrix_update->recompute_matrix(true);
 
@@ -335,14 +339,12 @@ void InteractionExpansion<TYPES>::update()
           }
         }
 
-      //JUST FOR DEBUG
-        if (mycast<double>(submatrix_update->sign())<0.0) {
-          std::cout << "Error sign is negative! at node " << node << std::endl;
-          std::ofstream os("./config_out.txt");
-          dump(os, submatrix_update->itime_vertices());
-          exit(-1);
-        }
+        //std::cout << "Error sign is negative! at node " << node << std::endl;
+        std::ofstream os("./config_out.txt");
+        dump(os, submatrix_update->itime_vertices());
+        exit(-1);
       }
+      */
     }
 
     double t_m = timer.elapsed().wall;
@@ -364,7 +366,6 @@ void InteractionExpansion<TYPES>::update()
 
     if(step % recalc_period ==0) {
       boost::timer::cpu_timer timer2;
-      std::cout << "recomputing ... "<< std::endl;
       submatrix_update->recompute_matrix(true);
       t_meas[2] += timer2.elapsed().wall;
     }
@@ -430,6 +431,12 @@ void InteractionExpansion<TYPES>::finalize()
       }
       ofs << std::endl;
     }
+  }
+
+  if (params.defined("PREFIX_DUMP_CONFIG")) {
+    std::ofstream os((params["PREFIX_DUMP_CONFIG"].template cast<std::string>()
+                     +std::string("-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    dump(os, submatrix_update->itime_vertices());
   }
 
 }

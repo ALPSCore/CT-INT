@@ -19,17 +19,28 @@ InvAMatrix<T>::InvAMatrix() :
   assert(creators_.size()==0);
 }
 
+/*
 template<typename T>
 int
-InvAMatrix<T>::find_row_col(double time) const {
+InvAMatrix<T>::find_row_col(const operator_time& op_time) const {
+  int num_found = 0;
+  int r=-1;
   for(std::size_t i=0; i<creators_.size(); ++i) {
-    if (time==creators_[i].t().time()) {
-      assert(annihilators_[i].t().time()==time);
-      return i;
+    if (op_time==creators_[i].t()) {
+      assert(annihilators_[i].t()==op_time);
+      ++num_found;
+      r = i;
     }
   }
-  return -1;
+  if (r==-1) {
+    throw std::logic_error("InvAMatrix<T>::find_row_col: operator not found.");
+  }
+  if (num_found==2) {
+    throw std::logic_error("InvAMatrix<T>::find_row_col: more than one operator found.");
+  }
+  return r;
 }
+ */
 
 template<typename T>
 void
@@ -129,8 +140,12 @@ std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, 
 
   std::vector<T> F(Nv);
   for (int i=0; i<Nv; ++i) {
+    if (alpha_at(i)==ALPHA_NON_INT) {
+      throw std::logic_error("Encountered an operator corresponding to a non-interacting vertex in InvAMatrix<T>::recompute_matrix");
+    }
     F[i] = eval_f(alpha_at(i));
     sign_f_prod *= (1.0-F[i])/std::abs(1.0-F[i]);
+    //std::cout << "debug sign_f_prod " << i << " " << sign_f_prod << " " << F[i] << " " << alpha_at(i) << std::endl;
   }
   matrix_.resize(Nv, Nv);
   for (int j=0; j<Nv; ++j) {
@@ -193,7 +208,7 @@ InvAMatrixFlavors<T>::add_non_interacting_vertices(general_U_matrix<T>* p_Uijkl,
           creator(flavor_rank, vdef.sites()[2*rank], op_t),
           annihilator(flavor_rank, vdef.sites()[2*rank+1], op_t),
           ALPHA_NON_INT,
-          std::pair<vertex_t,size_t>(v.type(), rank));
+          boost::tuple<vertex_t,size_t,my_uint64 >(v.type(), rank, v.unique_id()));
     }
   }
 
@@ -227,7 +242,7 @@ InvAMatrixFlavors<T>::init(general_U_matrix<T>* p_Uijkl,
           creator(flavor_rank, vdef.sites()[2*rank], op_t),
           annihilator(flavor_rank, vdef.sites()[2*rank+1], op_t),
           alpha,
-          std::pair<vertex_t,size_t>(v.type(), rank));
+          boost::tuple<vertex_t,size_t,my_uint64 >(v.type(), rank, v.unique_id()));
     }
     U_sign *= mysign(-vdef.Uval());
   }
@@ -256,10 +271,13 @@ void InvAMatrix<T>::remove_rows_cols(const std::vector<int>& rows_cols) {
 
 template<typename T>
 void
-InvAMatrix<T>::remove_rows_cols(const std::vector<double>& times) {
-  std::vector<int> rows_removed;
-  for (int it=0; it<times.size(); ++it) {
-    rows_removed.push_back(find_row_col(times[it]));
+InvAMatrix<T>::remove_rows_cols(const std::vector<my_uint64>& v_uid) {
+  std::vector<int> rows_removed, tmp;
+  for (int it=0; it<v_uid.size(); ++it) {
+    tmp = find_row_col(v_uid[it]);
+    for (std::vector<int>::iterator it=tmp.begin(); it!=tmp.end(); ++it)
+      rows_removed.push_back(*it);
+    //rows_removed.push_back(find_row_col(v_uid[it]));
   }
   if (rows_removed.size()==0) return;
   std::sort(rows_removed.begin(), rows_removed.end());
@@ -299,12 +317,11 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
   mygemm(-1.0, G0_left, inv_gamma.matrix(), 0.0, G0_inv_gamma);
   mygemm(1.0, G0_inv_gamma, invA0, 1.0, matrix_);
 
+
+  /*
   coeff_A.resize(N);
   std::fill(coeff_A.begin(), coeff_A.end(), 1.0);
-
-  //std::cout << "debug Ngamma " << nop << std::endl;
   for (int l=0; l < nop; ++l) {
-    //std::cout << " iop " << l << " " << inv_gamma.alpha(l) << " " <<  inv_gamma.alpha0(l) << std::endl;
     const int i_row = pl[l];
     assert(inv_gamma.alpha0(l)==alpha_at(i_row));
     coeff_A[i_row] = 1.0/(
@@ -317,9 +334,30 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
   }
 
   //could be vectorized
-  for (int i_col=0; i_col<N; ++i_col) {
-    for (int i_row=0; i_row<N; ++i_row) {
+  for (int i_row=0; i_row<N; ++i_row) {
+    for (int i_col=0; i_col<N; ++i_col) {
       matrix_(i_row, i_col) *= coeff_A[i_row];
+    }
+  }
+  */
+
+  for (int l=0; l < nop; ++l) {
+    assert(inv_gamma.alpha(l)!=inv_gamma.alpha0(l));
+    if (inv_gamma.alpha(l)==inv_gamma.alpha0(l)) {
+      throw std::runtime_error("fatal error in update_matrix.");
+    }
+
+    const int i_row = pl[l];
+    assert(inv_gamma.alpha0(l)==alpha_at(i_row));
+    const T coeff = 1.0/(
+        1.0 +
+        gamma_func(
+            eval_f(inv_gamma.alpha(l)),
+            eval_f(inv_gamma.alpha0(l))
+        )
+    );
+    for (int i_col=0; i_col<N; ++i_col) {
+      matrix_(i_row, i_col) *= coeff;
     }
   }
 
@@ -487,9 +525,9 @@ InvAMatrixFlavors<T>::update_matrix(const std::vector<InvGammaMatrix<T> >& inv_g
 
 template<typename T>
 void
-InvAMatrixFlavors<T>::remove_rows_cols(const std::vector<double>& times) {
+InvAMatrixFlavors<T>::remove_rows_cols(const std::vector<my_uint64>& v_uid) {
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    sub_matrices_[flavor].remove_rows_cols(times);
+    sub_matrices_[flavor].remove_rows_cols(v_uid);
   }
 }
 
@@ -504,6 +542,8 @@ InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_ma
   std::vector<std::vector<creator> > creators_scr(n_flavors);
   std::vector<std::vector<annihilator> > annihilators_scr(n_flavors);
   std::vector<std::vector<T> > alpha_scr(n_flavors);
+  std::vector<std::vector<my_uint64 > > v_uid_scr(n_flavors);
+  std::vector<std::vector<my_uint64 > > rank_scr(n_flavors);
 
   for (int iv=0; iv<itime_vertices.size(); ++iv) {
     const itime_vertex& v = itime_vertices[iv];
@@ -518,6 +558,8 @@ InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_ma
           annihilator(flavor_rank, vdef.sites()[2*rank+1], op_t)
       );
       alpha_scr[flavor_rank].push_back(vdef.get_alpha(v.af_state(), rank));
+      v_uid_scr[flavor_rank].push_back(v.unique_id());
+      rank_scr[flavor_rank].push_back(rank);
     }
   }
 
@@ -528,7 +570,8 @@ InvAMatrixFlavors<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_ma
 
     //check operators one by one
     for (int iop=0; iop<creators_scr[flavor].size(); ++iop) {
-      const int pos = sub_matrices_[flavor].find_row_col(creators_scr[flavor][iop].t().time());
+      //const int pos = sub_matrices_[flavor].find_row_col(creators_scr[flavor][iop].t());
+      const int pos = sub_matrices_[flavor].find_row_col(v_uid_scr[flavor][iop], rank_scr[flavor][iop]);
       assert(sub_matrices_[flavor].creators()[pos]==creators_scr[flavor][iop]);
       assert(sub_matrices_[flavor].annihilators()[pos]==annihilators_scr[flavor][iop]);
       assert(sub_matrices_[flavor].alpha_at(pos)==alpha_scr[flavor][iop]);

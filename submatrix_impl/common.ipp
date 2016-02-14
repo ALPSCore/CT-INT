@@ -15,7 +15,8 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     gamma_matrices_(n_flavors),
     ops_rem(n_flavors),
     ops_ins(n_flavors),
-    ops_replace(n_flavors)
+    ops_replace(n_flavors),
+    current_vertex_id_(0)
 {
   for (int i=0; i<101; ++i) {
     std::cout << " i " << i << " " <<
@@ -52,11 +53,18 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     gamma_matrices_(n_flavors),
     ops_rem(n_flavors),
     ops_ins(n_flavors),
-    ops_replace(n_flavors)
+    ops_replace(n_flavors),
+    current_vertex_id_(0)
 {
   if (itime_vertices_init.size()!=0) {
-    boost::tie(sign_det_A_,sign_) = invA_.init(p_Uijkl, spline_G0, itime_vertices_init, 0);
+
     itime_vertices_ = itime_vertices_init;
+    for (int iv=0; iv<itime_vertices_.size(); ++iv) {
+      itime_vertices_[iv].set_unique_id(gen_new_vertex_id());
+      //std::cout << "uid " << itime_vertices_[iv].unique_id() << std::endl;
+    }
+    boost::tie(sign_det_A_,sign_) = invA_.init(p_Uijkl, spline_G0, itime_vertices_, 0);
+
 
     //sign_ = 1.0;
     //for (int iv=0; iv<itime_vertices_init.size(); ++iv) {
@@ -69,7 +77,7 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
       //sign_ *= det_M/std::abs(det_M);
     //}
 
-    //std::cout << "Reconstructed sign_det_A, sign " << sign_det_A_ << " " << sign_ << std::endl;
+    std::cout << "Reconstructed sign_det_A, sign " << sign_det_A_ << " " << sign_ << std::endl;
   }
   /*
   for (int i=0; i<101; ++i) {
@@ -218,11 +226,10 @@ void SubmatrixUpdate<T>::recompute_matrix(bool check_error) {
     if (check_error) {
       if (!my_equal(sign_,sign_bak)) {
         std::cout << " Error in sign is " << std::abs(sign_-sign_bak) << std::endl;
-        //std::cout << "sign_ " << sign_ << std::endl;
-        //std::cout << "sign_bak " << sign_bak << std::endl;
-        //std::cout << "sign_det_A_ " << sign_det_A_ << std::endl;
-        //std::cout << "f_sign " << f_sign << std::endl;
-        //exit(-1);//FOR DEBUG
+        std::cout << "sign_ " << sign_ << std::endl;
+        std::cout << "sign_bak " << sign_bak << std::endl;
+        std::cout << "sign_det_A_ " << sign_det_A_ << std::endl;
+        std::cout << "f_sign " << f_sign << std::endl;
       }
       if (!my_equal(sign_det_A_,sign_det_A_bak)) {
         std::cout << " Error in sign_det_A is " << std::abs(sign_det_A_-sign_det_A_bak) << std::endl;
@@ -263,22 +270,34 @@ void SubmatrixUpdate<T>::finalize_update() {
   invA_.update_matrix(gamma_matrices_, spline_G0_);
 
   //remove cols and rows corresponding to non-interacting vertices
-  std::vector<double> time_removed;
+  std::vector<my_uint64> uid_removed;
   itime_vertex_container new_itime_vertices;
   for (int iv=0; iv<itime_vertices_.size(); ++iv) {
     if (itime_vertices_[iv].is_non_interacting()) {
-      time_removed.push_back(itime_vertices_[iv].time());
+      uid_removed.push_back(itime_vertices_[iv].unique_id());
     } else {
       new_itime_vertices.push_back(itime_vertices_[iv]);
     }
   }
-  invA_.remove_rows_cols(time_removed);
+  invA_.remove_rows_cols(uid_removed);
   std::swap(itime_vertices_, new_itime_vertices);
 
   for (int flavor=0; flavor<n_flavors(); ++flavor) {
     gamma_matrices_[flavor].clear();
   }
 
+  //some check
+  for (int flavor=0; flavor<n_flavors(); ++flavor) {
+    const int Nv = invA_[flavor].annihilators().size();
+    if (invA_[flavor].creators().size()!=Nv) {
+      throw std::logic_error("creators().size() != annihilators().size()");
+    }
+    for (int iv=0; iv<Nv; ++iv) {
+      if (invA_[flavor].alpha_at(iv)==ALPHA_NON_INT) {
+        throw std::logic_error("Found an operator corresponding to a non-interacting vertex.");
+      }
+    }
+  }
   state = READY_FOR_UPDATE;
 }
 
@@ -341,7 +360,7 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
       const T alpha_new = new_spin == NON_INT_SPIN_STATE
                        ? ALPHA_NON_INT
                        : vdef.get_alpha(new_spin, rank);
-      const int pos_in_A = invA_[flavor_rank].find_row_col(op_t.time());
+      const int pos_in_A = invA_[flavor_rank].find_row_col(v.unique_id(), rank);
       assert(pos_in_A>=0);
       OperatorToBeUpdated<T> elem(op_t, pos_in_A, alpha0, alpha_current, alpha_new);
 
@@ -392,12 +411,6 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
   }
 
   sign_rat = mysign(det_rat_A)*mysign(U_rat)/mysign(f_rat);
-
-  //JUST FOR DEBUG
-  if (mycast<double>(sign_rat)<0.0) {
-    std::cout << "error " << det_rat_A << " " << f_rat << " " << U_rat << std::endl;
-    //exit(-1);
-  }
 
   return boost::make_tuple(det_rat_A, 1.0/f_rat, U_rat);
 }
@@ -525,3 +538,9 @@ T SubmatrixUpdate<T>::recompute_sign(bool check_error) {
   sign_ = weight/std::abs(weight);
 }
 */
+
+template<typename  T>
+my_uint64 SubmatrixUpdate<T>::gen_new_vertex_id() {
+  ++current_vertex_id_;
+  return current_vertex_id_;
+}
