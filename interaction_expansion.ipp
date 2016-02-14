@@ -275,15 +275,6 @@ g0_intpl(parms)
 
   //submatrix update
   itime_vertex_container itime_vertices_init;
-  /*
-  if (true) {
-    //JUST FOR DEBUG
-    std::ifstream is("./config_in.txt");
-    load_config<typename TYPES::M_TYPE>(is, Uijkl, itime_vertices_init);
-    std::ofstream os("./config_out_copy.txt");
-    dump(os, itime_vertices_init);
-  }
-  */
   if (params.defined("PREFIX_LOAD_CONFIG")) {
     std::ifstream is((params["PREFIX_LOAD_CONFIG"].template cast<std::string>()
                       +std::string("-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
@@ -319,32 +310,6 @@ void InteractionExpansion<TYPES>::update()
 
     for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
       submatrix_update->vertex_insertion_removal_update(update_prop, random);
-      /*
-      if (mycast<double>(submatrix_update->sign())<0.0) {
-        std::cout << "Recomputing A^{-1} " << std::endl;
-        submatrix_update->recompute_matrix(true);
-
-        //computing M
-        std::vector<alps::numeric::matrix<M_TYPE> > M_from_A(n_flavors);
-        std::vector<alps::numeric::matrix<M_TYPE> > M_from_scratch(n_flavors);
-        submatrix_update->compute_M(M_from_A);
-        submatrix_update->compute_M_from_scratch(M_from_scratch);
-        for (int flavor=0; flavor<n_flavors; ++flavor) {
-          std::cout << "M " << flavor << std::endl;
-          //std::cout << M_from_A[flavor] << std::endl;
-          //std::cout << M_from_scratch[flavor] << std::endl;
-          std::cout << "det " << alps::numeric::determinant(M_from_A[flavor]) << " " << alps::numeric::determinant(M_from_scratch[flavor]) << std::endl;
-          if (M_from_A[flavor].num_cols()>0) {
-            std::cout << "diff = " << alps::numeric::norm_square(M_from_A[flavor]-M_from_scratch[flavor])/alps::numeric::norm_square(M_from_scratch[flavor]) << std::endl;
-          }
-        }
-
-        //std::cout << "Error sign is negative! at node " << node << std::endl;
-        std::ofstream os("./config_out.txt");
-        dump(os, submatrix_update->itime_vertices());
-        exit(-1);
-      }
-      */
     }
 
     double t_m = timer.elapsed().wall;

@@ -85,12 +85,7 @@ void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_ver
     throw std::runtime_error("Not implemented");
   }
 
-  //JUST FOR DEBUG
-  //if (mycast<double>(prob)<0.0) throw std::runtime_error("prob is negative");
-
-  //JUST FOR DEBUG
-  //if (std::abs(prob)>random()) {
-  if (std::abs(prob)>random() || mycast<double>(prob) < 0.0) {
+  if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
     perform_spin_flip(pos_vertices_work, new_spins_work);
   } else {
@@ -135,11 +130,7 @@ void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
     throw std::runtime_error("Not implemented");
   }
 
-  //if (mycast<double>(prob)<0.0) throw std::runtime_error("prob is negative");
-
-  //JUST FOR DEBUG
-  //if (std::abs(prob)>random()) {
-  if (std::abs(prob)>random() || mycast<double>(prob) < 0.0) {
+  if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
     perform_spin_flip(pos_vertices_remove, new_spins_remove);
   } else {
