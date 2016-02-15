@@ -6,9 +6,11 @@
  */
 template<typename T>
 template<typename NVertexProb, typename R>
-void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& random) {
+T SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& random) {
   pos_vertices_ins.resize(k_ins_max_);
   num_vertices_ins.resize(k_ins_max_);
+
+  T weight_rat = 1.0;
 
   //add non-interacting vertices
   const int Nv0 = itime_vertices_.size();
@@ -44,12 +46,12 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R
     if (i_update%2==try_ins) {
       //std::cout << "trying: insertion " << i_ins <<  " nv " << num_vertices_ins[i_ins] << std::endl;
       assert(i_ins<pos_vertices_ins.size());
-      insertion_step(random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins]);
+      weight_rat *= insertion_step(random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins]);
       ++i_ins;
     } else {
       //std::cout << "trying: removal " << std::endl;
       int Nv = nv_prob(random.engine());
-      removal_step(random, Nv);
+      weight_rat *= removal_step(random, Nv);
     }
     for (int flavor=0; flavor<n_flavors(); ++flavor) {
       gamma_matrices_[flavor].sanity_check(invA_[flavor], spline_G0_);
@@ -58,11 +60,13 @@ void SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R
 
   //update A^{-1}
   finalize_update();
+
+  return weight_rat;
 };
 
 template<typename T>
 template<typename R>
-void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_vertices_ins) {
+T SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_vertices_ins) {
   assert(vertex_begin+num_vertices_ins<=itime_vertices_.size());
   assert(num_vertices_ins==1);
 
@@ -88,15 +92,17 @@ void SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_ver
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
     perform_spin_flip(pos_vertices_work, new_spins_work);
+    return det_rat_A*f_rat*U_rat;
   } else {
     //std::cout << "rejected " << std::endl;
     reject_spin_flip();
+    return 1.0;
   }
 }
 
 template<typename T>
 template<typename R>
-void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
+T SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
   const int Nv = itime_vertices_.size();
   std::vector<int> pos_int_vertices(Nv);
   int num_int = 0;
@@ -107,7 +113,7 @@ void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
     }
   }
 
-  if (num_int<nv_rem) return;//there are not an enough number of vertices to removed.
+  if (num_int<nv_rem) return 1.0;//there are not an enough number of vertices to removed.
 
   std::vector<int> rand_pos = pickup_a_few_numbers(num_int, nv_rem, random);
 
@@ -133,9 +139,11 @@ void SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
     perform_spin_flip(pos_vertices_remove, new_spins_remove);
+    return det_rat_A*f_rat*U_rat;
   } else {
     //std::cout << "rejected " << std::endl;
     reject_spin_flip();
+    return 1.0;
   }
 }
 

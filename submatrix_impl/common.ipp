@@ -77,7 +77,7 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
       //sign_ *= det_M/std::abs(det_M);
     //}
 
-    std::cout << "Reconstructed sign_det_A, sign " << sign_det_A_ << " " << sign_ << std::endl;
+    //std::cout << "Reconstructed sign_det_A, sign " << sign_det_A_ << " " << sign_ << std::endl;
   }
   /*
   for (int i=0; i<101; ++i) {
@@ -301,7 +301,7 @@ void SubmatrixUpdate<T>::finalize_update() {
   state = READY_FOR_UPDATE;
 }
 
-//returns the determinant ratios of A and 1-f, respectively.
+//returns the ratios of |A_new|/|A_old|, |1-f_old|/|1-f_new|, -U_new/-U_old, respectively
 template<typename T>
 boost::tuple<T,T,T>
 SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector<int>& new_spins) {
@@ -393,7 +393,8 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
   //compute determinant ratio of A (not M):
   det_rat_A = 1.0;
   for (int flavor=0; flavor<n_flavors(); ++flavor) {
-    if (ops_rem.size()==0 && ops_ins.size()==0 && ops_replace.size()==0) {
+    //std::cout << "debug info " << ops_rem[flavor].size() << " " << ops_ins[flavor].size() << " " << ops_replace[flavor].size() << std::endl;
+    if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()==0) {
       continue;
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()>0 && ops_replace[flavor].size()==0) {
         det_rat_A *= gamma_matrices_[flavor].try_add(invA_[flavor], spline_G0_, ops_ins[flavor]);
@@ -420,7 +421,7 @@ void SubmatrixUpdate<T>::perform_spin_flip(const std::vector<int>& pos, const st
   assert(state==TRYING_SPIN_FLIP);
 
   for (int flavor=0; flavor<n_flavors(); ++flavor) {
-    if (ops_rem.size()==0 && ops_ins.size()==0 && ops_replace.size()==0) {
+    if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()==0) {
       continue;
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()>0 && ops_replace[flavor].size()==0) {
       gamma_matrices_[flavor].perform_add();
@@ -462,7 +463,7 @@ void SubmatrixUpdate<T>::reject_spin_flip() {
   assert(state==TRYING_SPIN_FLIP);
 
   for (int flavor=0; flavor<n_flavors(); ++flavor) {
-    if (ops_rem.size()==0 && ops_ins.size()==0 && ops_replace.size()==0) {
+    if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()==0) {
       continue;
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()>0 && ops_replace[flavor].size()==0) {
       gamma_matrices_[flavor].reject_add();
@@ -490,9 +491,11 @@ void SubmatrixUpdate<T>::compute_M(std::vector<alps::numeric::matrix<T> >& M) {
 }
 
 template<typename  T>
-void SubmatrixUpdate<T>::compute_M_from_scratch(std::vector<alps::numeric::matrix<T> >& M) {
+std::pair<T,T> SubmatrixUpdate<T>::compute_M_from_scratch(std::vector<alps::numeric::matrix<T> >& M) {
   assert(M.size()==n_flavors());
 
+  T sign = 1.0;
+  T weight = 1.0;
   M.resize(n_flavors());
   for (int flavor=0; flavor<n_flavors(); ++flavor) {
     const int Nv = invA_[flavor].matrix().num_cols();
@@ -504,9 +507,21 @@ void SubmatrixUpdate<T>::compute_M_from_scratch(std::vector<alps::numeric::matri
         }
         M[flavor](j,j) -= invA_[flavor].alpha_at(j);
       }
+      const T det = alps::numeric::determinant(M[flavor]);
+      sign *= mysign(det);
+      weight *= det;
       alps::numeric::inverse_in_place(M[flavor]);
     }
   }
+
+  for (int iv=0; iv<itime_vertices_.size(); ++iv) {
+    if (!itime_vertices_[iv].is_non_interacting()) {
+      const T Uval = p_Uijkl_->get_vertex(itime_vertices_[iv].type()).Uval();
+      sign *= mysign(-Uval);
+      weight *= -Uval;
+    }
+  }
+  return std::make_pair(sign,weight);
 }
 
 

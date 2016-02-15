@@ -367,15 +367,19 @@ public:
 
     void compute_M(std::vector<alps::numeric::matrix<T> >& M);
 
-    void compute_M_from_scratch(std::vector<alps::numeric::matrix<T> >& M);
+    std::pair<T,T> compute_M_from_scratch(std::vector<alps::numeric::matrix<T> >& M);
 
     const InvAMatrixFlavors<T>& invA() const {
       return invA_;
     }
 
-    //vertices insertion and removal updates
+    //vertices insertion and removal updates. Return the ratio of Monte Carlo weights of the initial and final states.
     template<typename NVertexProb, typename R>
-    void vertex_insertion_removal_update(NVertexProb&, R& random);
+    T vertex_insertion_removal_update(NVertexProb&, R& random);
+
+    //spin flip update
+    template<typename R>
+    T spin_flip_update(R& random);
 
     /* recomputes A^{-1} to avoid numerical errors*/
     void recompute_matrix(bool check_error);
@@ -421,10 +425,14 @@ private:
 
     //auxially functions for multi-vertex insertion and removal defined in multi_vertex_update.ipp
     template<typename R>
-    void insertion_step(R& random, int vertex_begin, int num_vertices_ins);
+    T insertion_step(R& random, int vertex_begin, int num_vertices_ins);
 
     template<typename R>
-    void removal_step(R&, int nv_rem);
+    T removal_step(R&, int nv_rem);
+
+    //auxially functions for spin flip update defined in spin_flip_update.ipp
+    template<typename R>
+    T spin_flip_step(R& random, int pos_vertex);
 
     //T recompute_sign(bool check_error=false);
     //For distingushing vertices
@@ -436,5 +444,6 @@ private:
 #include "./submatrix_impl/invA.ipp"
 #include "./submatrix_impl/gamma.ipp"
 #include "./submatrix_impl/multi_vertex_update.ipp"
+#include "./submatrix_impl/spin_flip_update.ipp"
 
 #endif //IMPSOLVER_SUBMATRIX_UPDATE_HPP

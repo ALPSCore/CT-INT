@@ -425,7 +425,7 @@ public:
     typedef typename std::vector<V>::iterator iterator;
     typedef typename std::vector<V>::const_iterator const_iterator;
 
-    int num_interacting() {
+    int num_interacting() const {
       int count = 0;
       for (int iv=0; iv<size(); ++iv) {
         if(!operator[](iv).is_non_interacting()) ++count;

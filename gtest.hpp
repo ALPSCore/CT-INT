@@ -80,3 +80,29 @@ struct DiagonalG0 {
   double beta_;
 };
 
+//Interpolation of G0
+template<typename T>
+struct OffDiagonalG0 {
+    OffDiagonalG0 (double beta, int n_site, const std::vector<double>& E, const boost::multi_array<T,2>& phase) : beta_(beta), n_site_(n_site), E_(E), phase_(phase) {}
+
+    T operator() (const annihilator& c_op, const creator& cdagg_op) {
+      const double dt = c_op.t().time()-cdagg_op.t().time();
+      double dt_tmp = dt;
+      if (dt_tmp > beta_) dt_tmp -= beta_;
+      if (dt_tmp < 0) dt_tmp += beta_;
+
+      if (c_op.s()==cdagg_op.s()) {
+        //return -(1.0 / (beta_ * beta_)) * (dt_tmp - 0.5 * beta_) * (dt_tmp - 0.5 * beta_) - 0.25 + (-dt+0.5*beta_)/(10*beta_);
+        const double E_tmp = E_[c_op.s()];
+        return  -std::exp((beta_-dt_tmp)*E_tmp)/(1.0+std::exp(beta_*E_tmp));
+      } else {
+        //std::cout << myconj(phase_[c_op.s()]) << " " << phase_[cdagg_op.s()] << myconj(phase_[c_op.s()])*phase_[cdagg_op.s()] << std::endl;
+        return (-dt+0.5*beta_)/(2*beta_)*phase_[c_op.s()][cdagg_op.s()];
+      }
+    }
+
+    double beta_;
+    int n_site_;
+    std::vector<double> E_;
+    boost::multi_array<T,2> phase_;
+};

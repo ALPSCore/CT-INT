@@ -642,18 +642,32 @@ TEST(MatrixLibrary, submatrix_view) {
     }
 }
 
-TEST(SubmatrixUpdate, single_vertex_insertion)
+TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
 {
     typedef std::complex<double> T;
-    const int n_sites = 1;
+    const int n_sites = 3;
     const double U = 2.0;
     const double alpha = 1E-2;
-    const double beta = 4.0;
+    const double beta = 200.0;
     const int Nv_max = 1;
     const int n_flavors = 2;
-    const int k_ins_max = 10;
-    const int n_update = 100;
+    const int k_ins_max = 32;
+    const int n_update = 5;
     const int seed = 100;
+
+    std::vector<double> E(n_sites);
+    boost::multi_array<T,2> phase(boost::extents[n_sites][n_sites]);
+
+    for (int i=0; i<n_sites; ++i) {
+        E[i] = (double) i;
+        //std::cout << phase[i] << std::endl;
+    }
+    for (int i=0; i<n_sites; ++i) {
+        for (int j=i; j<n_sites; ++j) {
+            phase[i][j] = std::exp(std::complex<double>(0.0, 1.*i*(2*j+1.0)));
+            phase[j][i] = myconj(phase[i][j]);
+        }
+    }
 
     general_U_matrix<T> Uijkl(n_sites, U, alpha);
 
@@ -661,7 +675,8 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
     itime_vertices_init.push_back(itime_vertex(0, 0, 0.5*beta, 2, true));
 
     /* initialize submatrix_update */
-    SubmatrixUpdate<T> submatrix_update(k_ins_max, n_flavors, DiagonalG0<T>(beta), &Uijkl, beta, itime_vertices_init);
+    //SubmatrixUpdate<T> submatrix_update(k_ins_max, n_flavors, DiagonalG0<T>(beta), &Uijkl, beta, itime_vertices_init);
+    SubmatrixUpdate<T> submatrix_update(k_ins_max, n_flavors, OffDiagonalG0<T>(beta, n_sites, E, phase), &Uijkl, beta, itime_vertices_init);
 
     submatrix_update.sanity_check();
 
@@ -675,28 +690,38 @@ TEST(SubmatrixUpdate, single_vertex_insertion)
 
     std::vector<alps::numeric::matrix<T> > M(n_flavors), M_scratch(n_flavors);
 
+
     for (int i_update=0; i_update<n_update; ++i_update) {
-        //std::cout << "I_UPDATE " << i_update << " Nv0 = " << submatrix_update.pert_order() << std::endl;
-        //submatrix_update.vertex_insertion_removal_update(Nv_prob, random01);
-        submatrix_update.vertex_insertion_removal_update(dist, random01);
-        assert(submatrix_update.sanity_check());
-        //std::cout << "recompute " << std::endl;
+        T sign_from_M0, weight_from_M0;
+        boost::tie(sign_from_M0,weight_from_M0) = submatrix_update.compute_M_from_scratch(M_scratch);
+
+        const T weight_rat = submatrix_update.vertex_insertion_removal_update(dist, random01);
+        const T sign_bak = submatrix_update.sign();
+
+        ASSERT_TRUE(submatrix_update.sanity_check());
         submatrix_update.recompute_matrix(true);
         submatrix_update.compute_M(M);
-        submatrix_update.compute_M_from_scratch(M_scratch);
+        T sign_from_M, weight_from_M;
+        boost::tie(sign_from_M,weight_from_M) = submatrix_update.compute_M_from_scratch(M_scratch);
+
+        ASSERT_TRUE(my_equal(weight_from_M/weight_from_M0, weight_rat, 1E-5));
+
+        //std::cout << "sign " << sign_bak << std::endl;
+        //std::cout << "sign_from_M " << sign_from_M << std::endl;
+        ASSERT_TRUE(std::abs(sign_bak-submatrix_update.sign())<1.0e-5);
+        ASSERT_TRUE(std::abs(sign_from_M-submatrix_update.sign())<1.0e-5);
+        //std::cout << " Nv " << submatrix_update.itime_vertices().num_interacting() << std::endl;
         for (int flavor=0; flavor<n_flavors; ++flavor) {
-            //std::cout << "M " << flavor << std::endl;
-            //std::cout << M[flavor] << std::endl;
-            //std::cout << M_scratch[flavor] << std::endl;
             if (M[flavor].num_cols()>0) {
                 ASSERT_TRUE(alps::numeric::norm_square(M[flavor]-M_scratch[flavor])/alps::numeric::norm_square(M[flavor])<1E-8);
             }
         }
-        //std::cout << " det_M " << alps::numeric::determinant(M[0]) << " " << alps::numeric::determinant(M[1]) << std::endl;
-        //std::cout << " M[0] " << M[0] << std::endl;
-        //std::cout << " M[1] " << M[1] << std::endl;
-        //std::cout << " v[0] " << submatrix_update.itime_vertices()[0] << std::endl;
-        assert(mycast<double>(submatrix_update.sign())>0.0);
+
+        const T weight_rat2 = submatrix_update.spin_flip_update(random01);
+
+        T sign_from_M2, weight_from_M2;
+        boost::tie(sign_from_M2,weight_from_M2) = submatrix_update.compute_M_from_scratch(M_scratch);
+        ASSERT_TRUE(my_equal(weight_from_M2/weight_from_M, weight_rat2, 1E-5));
     }
 
     //std::cout << DiagonalG0<T>(beta)(0.0) << std::endl;
