@@ -7,15 +7,25 @@
 template<typename T>
 template<typename NVertexProb, typename R>
 T SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& random) {
-  pos_vertices_ins.resize(k_ins_max_);
-  num_vertices_ins.resize(k_ins_max_);
+
+  int num_ins_try = 0;
+  std::vector<bool> try_ins(2*k_ins_max_, false);
+  for (int i_update=0; i_update<2*k_ins_max_; ++i_update) {
+    if (random()<0.5) {
+      try_ins[i_update] = true;
+      ++num_ins_try;
+    }
+  }
+
+  pos_vertices_ins.resize(num_ins_try);
+  num_vertices_ins.resize(num_ins_try);
 
   T weight_rat = 1.0;
 
   //add non-interacting vertices
   const int Nv0 = itime_vertices_.size();
   int vertex_begin = Nv0;
-  for (int i_ins=0; i_ins<k_ins_max_; ++i_ins) {
+  for (int i_ins=0; i_ins<num_ins_try; ++i_ins) {
     int Nv = nv_prob(random.engine());
     assert(Nv>0);
     std::vector<itime_vertex> new_vertices;
@@ -40,10 +50,9 @@ T SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& r
   init_update(Nv0);
 
   //perform actual updates
-  const int try_ins = random()<0.5 ? 0 : 1;
   int i_ins = 0;
   for (int i_update=0; i_update<2*k_ins_max_; ++i_update) {
-    if (i_update%2==try_ins) {
+    if (try_ins[i_update]) {
       //std::cout << "trying: insertion " << i_ins <<  " nv " << num_vertices_ins[i_ins] << std::endl;
       assert(i_ins<pos_vertices_ins.size());
       weight_rat *= insertion_step(random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins]);
@@ -53,10 +62,13 @@ T SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& r
       int Nv = nv_prob(random.engine());
       weight_rat *= removal_step(random, Nv);
     }
+#ifndef NDEBUG
     for (int flavor=0; flavor<n_flavors(); ++flavor) {
       gamma_matrices_[flavor].sanity_check(invA_[flavor], spline_G0_);
     }
+#endif
   }
+  assert(i_ins==num_ins_try);
 
   //update A^{-1}
   finalize_update();
