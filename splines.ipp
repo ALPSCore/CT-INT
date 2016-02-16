@@ -60,11 +60,11 @@ InteractionExpansion<TYPES>::green0_spline_for_M(const annihilator& c, const cre
     itime_t time_shift = c.t().small_index() > cdagger.t().small_index() ? beta*1E-10 : -beta*1E-10;
     result = green0_spline_new(delta_t+time_shift, flavor, site1, site2);
   }
-  if(std::abs(result-g0_intpl(c,cdagger))>1E-8) {
-    std::cout << " time " << c.t().time() - cdagger.t().time() << std::endl;
-    std::cout << " small_inex " << c.t().small_index() << " " <<  cdagger.t().small_index() << std::endl;
-    std::cout << " debug " << result << " " << g0_intpl(c, cdagger) << std::endl;
-  }
+  //if(std::abs(result-g0_intpl(c,cdagger))>1E-8) {
+    //std::cout << " time " << c.t().time() - cdagger.t().time() << std::endl;
+    //std::cout << " small_inex " << c.t().small_index() << " " <<  cdagger.t().small_index() << std::endl;
+    //std::cout << " debug " << result << " " << g0_intpl(c, cdagger) << std::endl;
+  //}
   assert(std::abs(result-g0_intpl(c,cdagger))<1E-8);
   return result;
 }
