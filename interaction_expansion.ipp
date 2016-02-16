@@ -83,31 +83,47 @@ T BareGreenInterpolate<T>::operator()(const annihilator& c, const creator& cdagg
 
   const int site1=c.s(), site2=cdagger.s();
   double dt = c.t().time()-cdagger.t().time();
-  //double dt_bak = dt;
   if (dt==0.0) {
     if (c.t().small_index() > cdagger.t().small_index()) { //G(+delta)
-      //return B_[flavor][site1][site2][0];
       return AB_[flavor][site1][site2][0].second;
     } else { //G(-delta)
       return -AB_[flavor][site1][site2][ntau_].second;
     }
   } else {
     T coeff = 1.0;
-    if (dt>=beta_) {
+    while (dt>=beta_) {
       dt -= beta_;
-      coeff = -1.0;
-    } else if (dt<0.0) {
+      coeff *= -1.0;
+    }
+    while (dt<0.0) {
       dt += beta_;
-      coeff = -1.0;
+      coeff *= -1.0;
     }
 
-    //if (!(dt>=0 && dt<beta_)) {
-      //std::cout << " debug " << dt << " " << dt_bak << std::endl;
-    //}
     assert(dt>=0 && dt<=beta_);
     const int time_index_1 = (int)(dt*ntau_*temp_);
     return coeff*(AB_[flavor][site1][site2][time_index_1].first*(dt-time_index_1*dbeta_) + AB_[flavor][site1][site2][time_index_1].second);
   }
+}
+
+//if delta_t==0, we assume delta_t = +0
+template<typename  T>
+T BareGreenInterpolate<T>::operator()(double delta_t, int flavor, int site1, int site2) const {
+  double dt = delta_t;
+  T coeff = 1.0;
+  while (dt>=beta_) {
+    dt -= beta_;
+    coeff *= -1.0;
+  }
+  while (dt<0.0) {
+    dt += beta_;
+    coeff *= -1.0;
+  }
+
+  if (dt==0.0) dt += 1E-8;
+
+  const int time_index_1 = (int)(dt*ntau_*temp_);
+  return coeff*(AB_[flavor][site1][site2][time_index_1].first*(dt-time_index_1*dbeta_) + AB_[flavor][site1][site2][time_index_1].second);
 }
 
 template<class TYPES>
@@ -124,9 +140,9 @@ n_tau_inv(1./n_tau),
 n_self(parms["NSELF"] | (int)(10*n_tau)),
 n_legendre(parms["N_LEGENDRE"] | 0),
 mc_steps((boost::uint64_t)parms["SWEEPS"]),
-therm_steps((unsigned int)parms["THERMALIZATION"]),        
+therm_steps((unsigned int)parms["THERMALIZATION"]),
 max_time_in_seconds(parms["MAX_TIME"] | 86400),
-beta((double)parms["BETA"]),                        
+beta((double)parms["BETA"]),
 temperature(1./beta),
 Uijkl(alps::make_deprecated_parameters(parms)),
 M_flavors(n_flavors),

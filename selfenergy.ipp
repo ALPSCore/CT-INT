@@ -167,7 +167,7 @@ void InteractionExpansion<TYPES>::compute_Sl() {
 
         //interpolate G0
         for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
-          gR(p, site_B) = mycast<M_TYPE>(coeff*green0_spline_new(time_a_shifted, z, annihilators[p].s(), site_B));
+          gR(p, site_B) = mycast<M_TYPE>(coeff*g0_intpl(time_a_shifted, z, annihilators[p].s(), site_B));
         }
       }
 

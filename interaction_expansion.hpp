@@ -180,6 +180,7 @@ public:
     BareGreenInterpolate(const alps::params& p);
 
     T operator()(const annihilator& c, const creator& cdagg) const;
+    T operator()(double delta_t, int flavor, int site1, int site2) const;
 
 private:
     const double beta_, temp_;
