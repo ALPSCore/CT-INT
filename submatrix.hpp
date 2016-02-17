@@ -11,6 +11,7 @@
 
 #include <boost/lambda/lambda.hpp>
 #include <boost/function.hpp>
+#include <boost/numeric/bindings/blas/level1.hpp>
 
 #include <alps/mcbase.hpp>
 

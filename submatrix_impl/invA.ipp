@@ -304,10 +304,18 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
   for (int l=0; l<nop; ++l) {
     pl[l] = inv_gamma.pos_in_invA(l);
   }
+  /*
   for (int l=0; l<nop; ++l) {
     for (int j=0; j<N; ++j) {
       invA0(l, j) = matrix_(pl[l],j);
     }
+  }
+  */
+  for (int l=0; l<nop; ++l) {
+    boost::numeric::bindings::blas::detail::copy(N, &matrix_(pl[l],0), matrix_.stride2(), &invA0(l,0), invA0.stride2());
+    //for (int j=0; j<N; ++j) {
+      //invA0(l, j) = matrix_(pl[l],j);
+    //}
   }
   for (int l=0; l<nop; ++l) {
     alps::numeric::submatrix_view<T> view(G0_left, 0, l, N, 1);
