@@ -12,6 +12,7 @@
 #include <alps/numeric/matrix.hpp>
 #include <boost/numeric/bindings/lapack/computational/getrf.hpp>
 #include <boost/numeric/bindings/stride.hpp>
+#include <boost/numeric/bindings/blas/level1.hpp>
 #include <alps/numeric/matrix/algorithms.hpp>
 
 template<typename T> T mycast(std::complex<double> val);
@@ -403,11 +404,26 @@ namespace boost { namespace numeric { namespace bindings { namespace detail {
 
  }}}}
 
+template<class T>
+void blas_swap_cols(alps::numeric::matrix<T>& mat, int i, int j) {
+    if (i==j) return;
+    boost::numeric::bindings::blas::detail::swap(mat.num_rows(), &mat(0,i), 1 , &mat(0,j), 1);
+}
+
+template<class T>
+void blas_swap_rows(alps::numeric::matrix<T>& mat, int i, int j) {
+    if (i==j) return;
+    const int stride = mat.stride2();
+    boost::numeric::bindings::blas::detail::swap(mat.num_cols(), &mat(i,0), stride , &mat(j,0), stride);
+}
+
 template<class T, class InputIterator>
 void swap_cols_rows(alps::numeric::matrix<T>& mat, InputIterator first, InputIterator end) {
     for (InputIterator it=first; it!=end; ++it) {
-        mat.swap_cols(it->first, it->second);
-        mat.swap_rows(it->first, it->second);
+        blas_swap_cols(mat, it->first, it->second);
+        blas_swap_rows(mat, it->first, it->second);
+        //mat.swap_cols(it->first, it->second);
+        //mat.swap_rows(it->first, it->second);
     }
 }
 

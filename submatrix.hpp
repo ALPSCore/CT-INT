@@ -114,8 +114,8 @@ public:
     }
     void swap_rows_cols(size_t i1, size_t i2) {
       swap_ops(i1, i2);
-      matrix_.swap_cols(i1, i2);
-      matrix_.swap_rows(i1, i2);
+      blas_swap_cols(matrix_, i1, i2);
+      blas_swap_rows(matrix_, i1, i2);
     }
     template<class InputIterator>
     void swap_ops2(InputIterator first, InputIterator end) {
@@ -332,10 +332,10 @@ class SubmatrixUpdate
 public:
     typedef boost::function<T(const annihilator&,const creator&)> SPLINE_G0_TYPE;
 
-    SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta, const alps::params &p);
+    SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta);//, const alps::params &p);
 
     SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta,
-                    const itime_vertex_container& itime_vertices_init, const alps::params &p);
+                    const itime_vertex_container& itime_vertices_init);//, const alps::params &p);
 
 
     InvAMatrix<T>& submatrix(size_t flavor) {

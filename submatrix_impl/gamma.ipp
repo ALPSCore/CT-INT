@@ -84,8 +84,8 @@ void InvGammaMatrix<T>::swap_rows_and_cols(int i, int j) {
   assert(i<row_col_info_.size());
   assert(j<row_col_info_.size());
   std::swap(row_col_info_[i], row_col_info_[j]);
-  matrix_.swap_rows(i, j);
-  matrix_.swap_cols(i, j);
+  blas_swap_rows(matrix_,i, j);
+  blas_swap_cols(matrix_,i, j);
 }
 
 template<typename T>
@@ -170,10 +170,8 @@ T InvGammaMatrix<T>::try_remove(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE&
     assert(ops_rem[iop].alpha0_ == ALPHA_NON_INT);
     assert(ops_rem[iop].alpha_current_ != ALPHA_NON_INT);
     assert(ops_rem[iop].alpha_new_ == ALPHA_NON_INT);
-    //assert(invA.find_row_col(ops_rem[iop].op_t_)==ops_rem[iop].pos_in_A_);
 
     rows_cols_removed[iop] = find_row_col_gamma(ops_rem[iop].pos_in_A_);
-    //gamma_prod *= -gamma_func<T>(eval_f(ops_rem[iop].alpha_current_), 1.0);
     gamma_prod *= -gamma_func<T>(eval_f(ops_rem[iop].alpha_current_), eval_f(ops_rem[iop].alpha0_));
   }
 

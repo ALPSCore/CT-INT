@@ -299,7 +299,7 @@ g0_intpl(parms)
 
   submatrix_update = new SubmatrixUpdate<M_TYPE>(
       (parms["K_INS_MAX"] | 32), n_flavors,
-      g0_intpl, &Uijkl, beta, itime_vertices_init, parms);
+      g0_intpl, &Uijkl, beta, itime_vertices_init);//, parms);
 
 }
 
