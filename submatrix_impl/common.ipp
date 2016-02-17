@@ -1,7 +1,7 @@
 #include "../submatrix.hpp"
 
 template<typename T>
-SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta) :
+SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta, const alps::params &p) :
     k_ins_max_(k_ins_max),
     spline_G0_(spline_G0),
     p_Uijkl_(p_Uijkl),
@@ -16,30 +16,13 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     ops_rem(n_flavors),
     ops_ins(n_flavors),
     ops_replace(n_flavors),
-    current_vertex_id_(0)
-{
-  for (int i=0; i<101; ++i) {
-    std::cout << " i " << i << " " <<
-        spline_G0(
-            annihilator(0,0,operator_time(beta*i/100.0-beta, 0)),
-            creator(0,0,operator_time(0.0, 0))) << " " <<
-        spline_G0(
-        annihilator(0,0,operator_time(beta*i/100.0, 0)),
-        creator(0,0,operator_time(0.0, 0)))<< " " <<
-    spline_G0(
-        annihilator(0,0,operator_time(beta*i/100.0+beta, 0)),
-        creator(0,0,operator_time(0.0, 0))
-
-    ) << std::endl;
-    //std::cout << " i " << 0 << " " <<spline_G0(
-        //annihilator(0,0,operator_time(0.0, 0)),
-        //creator(0,0,operator_time(0.0, 0))) << std::endl;
-  }
-}
+    current_vertex_id_(0),
+    params(p)
+{}
 
 template<typename T>
 SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta,
-                                    const itime_vertex_container& itime_vertices_init) :
+                                    const itime_vertex_container& itime_vertices_init, const alps::params &p) :
     k_ins_max_(k_ins_max),
     spline_G0_(spline_G0),
     p_Uijkl_(p_Uijkl),
@@ -54,45 +37,17 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
     ops_rem(n_flavors),
     ops_ins(n_flavors),
     ops_replace(n_flavors),
-    current_vertex_id_(0)
+    current_vertex_id_(0),
+    params(p)
 {
   if (itime_vertices_init.size()!=0) {
 
     itime_vertices_ = itime_vertices_init;
     for (int iv=0; iv<itime_vertices_.size(); ++iv) {
       itime_vertices_[iv].set_unique_id(gen_new_vertex_id());
-      //std::cout << "uid " << itime_vertices_[iv].unique_id() << std::endl;
     }
     boost::tie(sign_det_A_,sign_) = invA_.init(p_Uijkl, spline_G0, itime_vertices_, 0);
-
-
-    //sign_ = 1.0;
-    //for (int iv=0; iv<itime_vertices_init.size(); ++iv) {
-      //sign_ *= mysign(p_Uijkl->get_vertex(itime_vertices_init[iv].type()).Uval());
-    //}
-    //std::vector<alps::numeric::matrix<T> > M(n_flavors);
-    //compute_M_from_scratch(M);
-    //for (int flavor=0; flavor<n_flavors; ++flavor) {
-      //const T det_M = alps::numeric::safe_determinant(M[flavor]);
-      //sign_ *= det_M/std::abs(det_M);
-    //}
-
-    //std::cout << "Reconstructed sign_det_A, sign " << sign_det_A_ << " " << sign_ << std::endl;
   }
-  /*
-  for (int i=0; i<101; ++i) {
-    std::cout << " i " << i << " " <<
-    spline_G0(
-        annihilator(0,0,operator_time(beta*i/100.0-beta, 0)),
-        creator(0,0,operator_time(0.0, 0))) << " " <<
-        spline_G0(
-            annihilator(0,0,operator_time(beta*i/100.0, 0)),
-            creator(0,0,operator_time(0.0, 0))) << " " <<
-            spline_G0(
-                annihilator(0,0,operator_time(beta*i/100.0+beta, 0)),
-                creator(0,0,operator_time(0.0, 0))) << std::endl;
-  }
-  */
 }
 
 template<typename T, typename SPLINE_G0_TYPE>
@@ -119,70 +74,6 @@ T eval_Gij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_A
     return invA_G0(0,0);
   }
 }
-
-/*
-// G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
-// cols specifies {j}
-template<typename T, typename SPLINE_G0_TYPE, typename M>
-void eval_Gij_col(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int col, M& Gij) {
-  static alps::numeric::matrix<T> G0;
-
-  const int Nv = invA.matrix().num_rows();
-  const T alpha_col = invA.alpha_at(col);
-  assert(Gij.num_rows()==Nv);
-  assert(Gij.num_cols()==1);
-  if (alpha_col!=ALPHA_NON_INT) {
-    const T fj = eval_f(alpha_col);
-    for (int iv=0; iv<Nv; ++iv) {
-      Gij(iv,0) = (fj*invA.matrix()(iv,col))/(fj-1.0);
-    }
-    Gij(col,0) = (fj*invA.matrix()(col,col)-1.0)/(fj-1.0);
-  } else {
-    G0.resize_values_not_retained(Nv,1);
-    for (int iv=0; iv<Nv; ++iv) {
-      G0(iv,0) = spline_G0(invA.annihilators()[iv], invA.creators()[col]);
-    }
-    mygemm((T) 1.0, invA.matrix(), G0, (T) 0.0, Gij);
-  }
-}
-
-// G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
-// cols specifies {j}
-template<typename T, typename SPLINE_G0_TYPE, typename M>
-void eval_Gij_col(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, const std::vector<int>& rows, int col, M& Gij) {
-  static alps::numeric::matrix<T> G0, invA_tmp;
-
-  const int Nv = invA.matrix().num_rows();
-  const T alpha_col = invA.alpha_at(col);
-  const int n_rows = rows.size();
-
-  assert(Gij.num_rows()==n_rows);
-  assert(Gij.num_cols()==1);
-
-  if (alpha_col!=ALPHA_NON_INT) {
-    const T fj = eval_f(alpha_col);
-    for (int iv=0; iv<n_rows; ++iv) {
-      if (rows[iv]!=col) {
-        Gij(iv,0) = (fj*invA.matrix()(rows[iv],col))/(fj-1.0);
-      } else {
-        Gij(iv,0) = (fj*invA.matrix()(rows[iv],col)-1.0)/(fj-1.0);
-      }
-    }
-  } else {
-    G0.resize_values_not_retained(Nv,1);
-    invA_tmp.resize_values_not_retained(n_rows,Nv);
-    for (int iv=0; iv<n_rows; ++iv) {
-      for (int iv2=0; iv2<Nv; ++iv2) {
-        invA_tmp(iv,iv2) = invA.matrix()(rows[iv], iv2);
-      }
-    }
-    for (int iv=0; iv<Nv; ++iv) {
-      G0(iv,0) = spline_G0(invA.annihilators()[iv], invA.creators()[col]);
-    }
-    mygemm((T) 1.0, invA_tmp, G0, (T) 0.0, Gij);
-  }
-}
-*/
 
 template<typename T>
 bool SubmatrixUpdate<T>::sanity_check() {
@@ -446,15 +337,9 @@ void SubmatrixUpdate<T>::perform_spin_flip(const std::vector<int>& pos, const st
     }
   }
 
-  //std::cout << "old det_A = " << det_A_ << std::endl;
-
   sign_det_A_ *= mysign(det_rat_A);
   sign_ *= sign_rat;
 
-  //if (mycast<double>(sign_)<0.0) throw std::runtime_error("Sign is negative");
-
-  //std::cout << "using det_rat_A = " << det_rat_A << std::endl;
-  //std::cout << "new det_A = " << det_A_ << std::endl;
   sanity_check();
 }
 
@@ -473,7 +358,6 @@ void SubmatrixUpdate<T>::reject_spin_flip() {
       gamma_matrices_[flavor].reject_add_remove();
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()>0) {
       throw std::runtime_error("Not implemented");
-      //gamma_matrices_[flavor].reject_replace();
     } else {
       throw std::runtime_error("Not implemented");
     }
@@ -490,6 +374,9 @@ void SubmatrixUpdate<T>::compute_M(std::vector<alps::numeric::matrix<T> >& M) {
   }
 }
 
+/*
+ * Return sign of Monte Carlo weight and weight itselft.
+ */
 template<typename  T>
 std::pair<T,T> SubmatrixUpdate<T>::compute_M_from_scratch(std::vector<alps::numeric::matrix<T> >& M) {
   assert(M.size()==n_flavors());
@@ -523,36 +410,6 @@ std::pair<T,T> SubmatrixUpdate<T>::compute_M_from_scratch(std::vector<alps::nume
   }
   return std::make_pair(sign,weight);
 }
-
-
-/*
-template<typename  T>
-T SubmatrixUpdate<T>::recompute_sign(bool check_error) {
-  assert(state==READY_FOR_UPDATE);
-  // -U |G0-alpha| = -U |A|/|1-f|
-
-  T prod_f = 1.0;
-  for (int flavor=0; flavor<n_flavors(); ++flavor) {
-    prod_f *= invA_[flavor].compute_f_prod();
-  }
-
-  T prod_U = 1.0;
-  for (int iv=0; iv<itime_vertices_.size(); ++iv) {
-    assert (!itime_vertices_[iv].is_non_interacting());
-    prod_U *= -p_Uijkl_->get_vertex(itime_vertices_[iv].type()).Uval();
-  }
-
-  const T weight = det_A_*prod_U/prod_f;
-  //std::cout << "debug_weight " << det_A_ << " " << prod_U << " " << 1.0/prod_f << std::endl;
-#ifndef NDEBUG
-  if (check_error) {
-    //std::cout << "debug sign " << sign_<< " " << weight/std::abs(weight) << std::endl;
-    assert(std::abs(sign_ - weight/std::abs(weight))<1E-5);
-  }
-#endif
-  sign_ = weight/std::abs(weight);
-}
-*/
 
 template<typename  T>
 my_uint64 SubmatrixUpdate<T>::gen_new_vertex_id() {

@@ -222,19 +222,6 @@ public:
 
 protected:
 
-    /*
-  template<typename SOLVER>
-  class SPLINE_G0_HELPER {
-  public:
-      SPLINE_G0_HELPER(SOLVER* solver) : solver_(solver) {}
-
-      typename SOLVER::M_TYPE operator() (const annihilator& c, const creator& cdagger) {
-        return solver_->green0_spline_for_M(c, cdagger);
-      };
-      SOLVER* solver_;
-  };
-     */
-
   /*functions*/
   /*io & initialization*/
   void initialize_simulation(const alps::params &parms); // called by constructor
@@ -242,11 +229,6 @@ protected:
   // in file io.cpp
   void print(std::ostream &os);
   
-  /*green's function*/
-  // in file spines.cpp
-  M_TYPE green0_spline_for_M(const annihilator& c, const creator& cdagger);//with correct treatment of equal-time Green's function
-  M_TYPE green0_spline_new(const itime_t delta_t, const spin_t flavor, const site_t site1, const site_t site2);
-
   // in file observables.ipp
   void measure_observables(std::valarray<double>& timings);
   void initialize_observables(void);
@@ -259,9 +241,7 @@ protected:
 
   // in file interaction_expansion.hpp
   void sanity_check();
-  bool is_irreducible(const itime_vertex_container& vertices);
   bool is_quantum_number_conserved(const itime_vertex_container& vertices);
-  bool is_quantum_number_within_range(const itime_vertex_container& vertices);
 
   void prepare_for_measurement(); //called once after thermalization is done
 
@@ -373,7 +353,6 @@ std::ostream& operator << (std::ostream& os, const simple_hist &h);
 #include "interaction_expansion.ipp"
 #include "selfenergy.ipp"
 #include "io.ipp"
-#include "splines.ipp"
 #include "observables.ipp"
 
 #endif

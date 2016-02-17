@@ -12,10 +12,13 @@
 #include <boost/lambda/lambda.hpp>
 #include <boost/function.hpp>
 
+#include <alps/mcbase.hpp>
+
 #include "operator.hpp"
 #include "U_matrix.h"
 #include "fastupdate_formula.h"
 
+//The following should be moved to U_matrix.h
 const double ALPHA_NON_INT = 1E+100;
 const int NON_INT_SPIN_STATE = -1;
 
@@ -329,10 +332,10 @@ class SubmatrixUpdate
 public:
     typedef boost::function<T(const annihilator&,const creator&)> SPLINE_G0_TYPE;
 
-    SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta);
+    SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta, const alps::params &p);
 
     SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta,
-                    const itime_vertex_container& itime_vertices_init);
+                    const itime_vertex_container& itime_vertices_init, const alps::params &p);
 
 
     InvAMatrix<T>& submatrix(size_t flavor) {
@@ -363,10 +366,19 @@ public:
     }
 
     //returns a product of determinants of A matrices
-    typename InvAMatrix<T>::value_type determinant();
+    //typename InvAMatrix<T>::value_type determinant();
 
+    /*
+     * Compute M=G0^-1 from A^{-1}
+     * For measuring self-energy
+     */
     void compute_M(std::vector<alps::numeric::matrix<T> >& M);
 
+    /*
+     * Compute M=G0^-1 from scratch
+     * Return sign of Monte Carlo weight and weight itselft.
+     * This is very expensive. Only for test use.
+     */
     std::pair<T,T> compute_M_from_scratch(std::vector<alps::numeric::matrix<T> >& M);
 
     const InvAMatrixFlavors<T>& invA() const {
@@ -412,6 +424,9 @@ private:
 
     //work array for all types of updates
     std::vector<int> new_spins_work, pos_vertices_work;
+
+    //parameters
+    alps::params params;
 
     //auxially functions common to all types of updates
     void init_update(int begin_index);

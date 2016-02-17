@@ -6,7 +6,6 @@
       <sourceFolder url="file://$MODULE_DIR$/main_real.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/main_complex.cpp" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/auxiliary.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/gtest/gtest_main.cc" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/gtest/gtest-all.cc" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/legendre.cpp" isTestSource="false" />

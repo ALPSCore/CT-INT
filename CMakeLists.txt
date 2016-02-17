@@ -49,14 +49,10 @@ link_directories(${CHYB_LIBRARY_DIRS})
 set(ALPS_ROOT ${ALPS_LIBRARY_DIRS} $ENV{BLAS_LAPACK_DIRS} CACHE STRINGS "CHYB library dirs")
 set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
         fouriertransform.C
-        auxiliary.cpp
         observables.ipp
-        fastupdate.ipp
         solver.ipp
         io.ipp
-        splines.ipp
         interaction_expansion.ipp
-        model.ipp
         util.cpp
         legendre.cpp legendre.h fastupdate_formula.h U_matrix.cpp update_statistics.h wang_landau.h measurements.hpp selfenergy.ipp operator.cpp)
 

@@ -158,6 +158,8 @@ void InteractionExpansion<TYPES>::compute_Sl() {
 
     //shift times of operators by time_shift
     for (std::size_t random_walk=0; random_walk<num_random_walk; ++random_walk) {
+      //boost::timer::cpu_timer t1;
+
       const double time_shift = beta * random();
 
       for (unsigned int p = 0; p < Nv; ++p) {//annihilation operators
@@ -171,7 +173,11 @@ void InteractionExpansion<TYPES>::compute_Sl() {
         }
       }
 
+      //boost::timer::cpu_timer t2;
+
       gemm(M_flavors[z], gR, M_gR);
+
+      //boost::timer::cpu_timer t3;
 
       //compute legendre coefficients
       for (unsigned int q = 0; q < Nv; ++q) {//creation operators
@@ -180,6 +186,8 @@ void InteractionExpansion<TYPES>::compute_Sl() {
         x_vals[q] = 2 * time_c_shifted*temperature - 1.0;
       }
       legendre_transformer.compute_legendre(x_vals, legendre_vals_all);//P_l[x(tau_q)]
+
+      //boost::timer::cpu_timer t4;
 
       for (unsigned int q = 0; q < Nv; ++q) {//creation operators
         const unsigned int site_c = creators[q].s();
@@ -193,6 +201,13 @@ void InteractionExpansion<TYPES>::compute_Sl() {
           }
         }
       }
+
+      //boost::timer::cpu_timer t5;
+      //std::cout << "debug " << step << " " <<
+          //t2.elapsed().wall*1E-6-t1.elapsed().wall*1E-6 << " " <<
+          //t3.elapsed().wall*1E-6-t2.elapsed().wall*1E-6 << " " <<
+          //t4.elapsed().wall*1E-6-t3.elapsed().wall*1E-6 << " " <<
+          //t5.elapsed().wall*1E-6-t4.elapsed().wall*1E-6 << std::endl;
     }//random_walk
 
     //pass data to ALPS library
@@ -238,13 +253,14 @@ void InteractionExpansion<TYPES>::measure_densities()
     alps::numeric::vector<M_TYPE> g0_taui(Nv);
     for (unsigned int s=0;s<n_site;++s) {
       for (unsigned int j=0;j<Nv;++j)
-        g0_tauj[j] = mycast<M_TYPE>(green0_spline_new(annihilators[j].t().time()-tau, z, annihilators[j].s(), s));//CHECK THE TREATMENT OF EQUAL-TIME Green's function
+        g0_tauj[j] = mycast<M_TYPE>(g0_intpl(annihilators[j].t().time()-tau, z, annihilators[j].s(), s));//CHECK THE TREATMENT OF EQUAL-TIME Green's function
       for (unsigned int i=0;i<Nv;++i)
-        g0_taui[i] = mycast<M_TYPE>(green0_spline_new(tau-creators[i].t().time(),z, s, creators[i].s()));
+        g0_taui[i] = mycast<M_TYPE>(g0_intpl(tau-creators[i].t().time(),z, s, creators[i].s()));
       if (M_flavors[z].num_cols()>0) {
         gemv(M_flavors[z],g0_tauj,M_g0_tauj);
       }
-      dens[z][s] += mycast<double>(green0_spline_new(-beta*1E-10,z,s,s));//tau=-0
+      //dens[z][s] += mycast<double>(green0_spline_new(-beta*1E-10,z,s,s));//tau=-0
+      dens[z][s] += mycast<double>(g0_intpl(-beta*1E-10,z,s,s));//tau=-0
       for (unsigned int j=0;j<Nv;++j)
         dens[z][s] -= mycast<double>(g0_taui[j]*M_g0_tauj[j]);
     }

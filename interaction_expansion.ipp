@@ -299,7 +299,7 @@ g0_intpl(parms)
 
   submatrix_update = new SubmatrixUpdate<M_TYPE>(
       (parms["K_INS_MAX"] | 32), n_flavors,
-      g0_intpl, &Uijkl, beta, itime_vertices_init);
+      g0_intpl, &Uijkl, beta, itime_vertices_init, parms);
 
 }
 
@@ -471,6 +471,7 @@ bool InteractionExpansion<TYPES>::is_quantum_number_conserved(const itime_vertex
 
 
 //This makes sence in the absence of a bath
+/*
 template<class TYPES>
 bool InteractionExpansion<TYPES>::is_quantum_number_within_range(const itime_vertex_container& vertices) {
   const int Nv = vertices.size();
@@ -497,6 +498,7 @@ bool InteractionExpansion<TYPES>::is_quantum_number_within_range(const itime_ver
 
   return true;
 }
+*/
 
 template<class TYPES>
 void InteractionExpansion<TYPES>::sanity_check() {
