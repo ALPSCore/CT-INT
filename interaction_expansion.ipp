@@ -173,7 +173,7 @@ is_thermalized_in_previous_step_(false),
 //window_dist(boost::random::exponential_distribution<>(1/window_width)),
 //shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
-n_shift(parms["N_SHIFT_VERTEX"] | 1),
+n_shift(parms["N_SHIFT_VERTEX"] | 0),
 n_spin_flip(parms["N_SPIN_FLIP"] | 1),
 force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
 single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
@@ -190,8 +190,6 @@ update_manager(parms, Uijkl, g0_intpl, node==0)
 
   //initialize the simulation variables
   initialize_simulation(parms);
-
-
 
   //submatrix update
   itime_vertex_container itime_vertices_init;
@@ -235,7 +233,7 @@ void InteractionExpansion<TYPES>::update()
     boost::timer::cpu_timer timer;
 
     for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
-      submatrix_update->vertex_insertion_removal_update(update_manager, random);
+      update_manager.do_ins_rem_update(*submatrix_update, Uijkl, random);
     }
 
     double t_m = timer.elapsed().wall;
@@ -243,9 +241,9 @@ void InteractionExpansion<TYPES>::update()
     //for (int i_shift=0; i_shift<n_shift; ++i_shift)
       //shift_update();
 
-    //for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip) {
-      //submatrix_update->spin_flip_update(random);
-    //}
+    for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip) {
+      update_manager.do_spin_flip_update(*submatrix_update, Uijkl, random);
+    }
 
     t_meas[0] += t_m;
     t_meas[1] += (timer.elapsed().wall-t_m);

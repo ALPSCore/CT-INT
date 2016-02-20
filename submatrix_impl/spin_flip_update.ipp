@@ -4,6 +4,7 @@
 /***
  * Spin flip update
  */
+/*
 template<typename T>
 template<typename R>
 T SubmatrixUpdate<T>::spin_flip_update(R& random) {
@@ -63,3 +64,4 @@ T SubmatrixUpdate<T>::spin_flip_step(R& random, int pos_vertex) {
     return 1.0;
   }
 }
+ */

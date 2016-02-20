@@ -618,7 +618,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
     params["N_MULTI_VERTEX_UPDATE"] = Nv_max;
     params["DOUBLE_VERTEX_UPDATE_A"] = 1.0/beta;
     params["DOUBLE_VERTEX_UPDATE_B"] = 1.0e-2;
-    MultiVertexUpdateManager<T> manager(params, Uijkl, OffDiagonalG0<T>(beta, n_sites, E, phase), true);
+    VertexUpdateManager<T> manager(params, Uijkl, OffDiagonalG0<T>(beta, n_sites, E, phase), false);
 
     /* initialize RND generator */
     //std::vector<double> probs(Nv_max, 1.0);
@@ -635,7 +635,8 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
         T sign_from_M0, weight_from_M0;
         boost::tie(sign_from_M0,weight_from_M0) = submatrix_update.compute_M_from_scratch(M_scratch);
 
-        const T weight_rat = submatrix_update.vertex_insertion_removal_update(manager, random01);
+        //const T weight_rat = submatrix_update.vertex_insertion_removal_update(manager, random01);
+        const T weight_rat = manager.do_ins_rem_update(submatrix_update, Uijkl, random01);
         const T sign_bak = submatrix_update.sign();
 
         ASSERT_TRUE(submatrix_update.sanity_check());
@@ -657,7 +658,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
             }
         }
 
-        const T weight_rat2 = submatrix_update.spin_flip_update(random01);
+        const T weight_rat2 = manager.do_spin_flip_update(submatrix_update, Uijkl, random01);
 
         T sign_from_M2, weight_from_M2;
         boost::tie(sign_from_M2,weight_from_M2) = submatrix_update.compute_M_from_scratch(M_scratch);

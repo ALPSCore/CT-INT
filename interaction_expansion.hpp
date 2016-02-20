@@ -352,7 +352,7 @@ protected:
 
   BareGreenInterpolate<M_TYPE> g0_intpl;
 
-  MultiVertexUpdateManager<M_TYPE> update_manager;
+  VertexUpdateManager<M_TYPE> update_manager;
 
 };
 

@@ -134,18 +134,27 @@ void SubmatrixUpdate<T>::recompute_matrix(bool check_error) {
 
 
 template<typename T>
-void SubmatrixUpdate<T>::init_update(int begin_index) {
+void SubmatrixUpdate<T>::init_update(const std::vector<itime_vertex>& non_int_itime_vertices) {
   assert(state==READY_FOR_UPDATE);
 
+  const int begin_index = itime_vertices_.size();
+
   //set starting point
+  for (int iv=0; iv<non_int_itime_vertices.size(); ++iv) {
+    itime_vertices_.push_back(non_int_itime_vertices[iv]);
+    itime_vertices_[iv+begin_index].set_non_interacting();
+    itime_vertices_[iv+begin_index].set_unique_id(gen_new_vertex_id());
+  }
   itime_vertices0_ = itime_vertices_;// tilde C^0 in Eq. (20)
 
+#ifndef NDEBUG
   for (int iv=0; iv<begin_index; ++iv) {
     assert(!itime_vertices0_[iv].is_non_interacting());
   }
   for (int iv=begin_index; iv<itime_vertices0_.size(); ++iv) {
     assert(itime_vertices0_[iv].is_non_interacting());
   }
+#endif
 
   //extend the size of A^{-1} if we have non-interacting vertices
   if (begin_index<itime_vertices_.size()) {

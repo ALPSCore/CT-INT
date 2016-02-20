@@ -4,6 +4,7 @@
 /***
  * Vertex insertion and removal
  */
+/*
 template<typename T>
 template<typename MANAGER, typename R>
 T SubmatrixUpdate<T>::vertex_insertion_removal_update(MANAGER& manager, R& random) {
@@ -32,14 +33,6 @@ T SubmatrixUpdate<T>::vertex_insertion_removal_update(MANAGER& manager, R& rando
     std::vector<itime_vertex> new_vertices;
     boost::tie(new_vertices,ins_info[i_ins]) = manager.gen_itime_vertices_insertion(*p_Uijkl_, random);
     const int Nv = new_vertices.size();
-
-    //int Nv = nv_prob(random.engine());
-    //std::vector<itime_vertex> new_vertices;
-    //if (Nv==1) {
-      //new_vertices = generate_itime_vertices(*p_Uijkl_,random,beta_,Nv,all_type());
-    //} else {
-      //new_vertices = generate_itime_vertices(*p_Uijkl_,random,beta_,Nv,all_type());
-    //}
 
     for (int iv=0; iv<new_vertices.size(); ++iv) {
       new_vertices[iv].set_non_interacting();//this does not modify the spin state but just hide it.
@@ -107,12 +100,6 @@ T SubmatrixUpdate<T>::insertion_step(MANAGER& manager, R& random, int vertex_beg
 
   T prob = det_rat_A*f_rat*U_rat*acc_corr;
 
-  //if (num_vertices_ins==1) {
-    //prob *= beta_*p_Uijkl_->n_vertex_type()/(itime_vertices_.num_interacting()+1.0);
-  //} else {
-    //throw std::runtime_error("Not implemented num_vertices_ins");
-  //}
-
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
     perform_spin_flip(pos_vertices_work, new_spins_work);
@@ -160,4 +147,4 @@ T SubmatrixUpdate<T>::removal_step(MANAGER& manager, R& random) {
     return 1.0;
   }
 }
-
+ */
