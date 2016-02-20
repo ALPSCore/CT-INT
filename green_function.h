@@ -451,9 +451,9 @@ void print_group(const std::vector<std::vector<T> >& group) {
   }
 }
 
-template<typename T, typename S>//Expected T,S=double or T=std::complex<double>
+template<typename T, typename S, typename G>//Expected T,S=double or T=std::complex<double>
 std::vector<std::vector<quantum_number_t> >
-make_quantum_numbers(const green_function<T>& gf, const std::vector<vertex_definition<S> >& vertices,
+make_quantum_numbers(const G& gf, const std::vector<vertex_definition<S> >& vertices,
                      std::vector<std::vector<std::vector<size_t> > >& groups,
                      std::vector<std::vector<int> >& group_map,
                      double eps=1E-10) {

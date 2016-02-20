@@ -5,8 +5,8 @@
  * Vertex insertion and removal
  */
 template<typename T>
-template<typename NVertexProb, typename R>
-T SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& random) {
+template<typename MANAGER, typename R>
+T SubmatrixUpdate<T>::vertex_insertion_removal_update(MANAGER& manager, R& random) {
 
   int num_ins_try = 0;
   std::vector<bool> try_ins(2*k_ins_max_, false);
@@ -22,18 +22,24 @@ T SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& r
 
   T weight_rat = 1.0;
 
+  std::vector<typename MANAGER::insertion_removal_info_type> ins_info(num_ins_try);
+
   //add non-interacting vertices
   const int Nv0 = itime_vertices_.size();
   int vertex_begin = Nv0;
   for (int i_ins=0; i_ins<num_ins_try; ++i_ins) {
-    int Nv = nv_prob(random.engine());
-    assert(Nv>0);
+
     std::vector<itime_vertex> new_vertices;
-    if (Nv==1) {
-      new_vertices = generate_itime_vertices(*p_Uijkl_,random,beta_,Nv,all_type());
-    } else {
-      new_vertices = generate_itime_vertices(*p_Uijkl_,random,beta_,Nv,all_type());
-    }
+    boost::tie(new_vertices,ins_info[i_ins]) = manager.gen_itime_vertices_insertion(*p_Uijkl_, random);
+    const int Nv = new_vertices.size();
+
+    //int Nv = nv_prob(random.engine());
+    //std::vector<itime_vertex> new_vertices;
+    //if (Nv==1) {
+      //new_vertices = generate_itime_vertices(*p_Uijkl_,random,beta_,Nv,all_type());
+    //} else {
+      //new_vertices = generate_itime_vertices(*p_Uijkl_,random,beta_,Nv,all_type());
+    //}
 
     for (int iv=0; iv<new_vertices.size(); ++iv) {
       new_vertices[iv].set_non_interacting();//this does not modify the spin state but just hide it.
@@ -52,16 +58,16 @@ T SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& r
   //perform actual updates
   int i_ins = 0;
   for (int i_update=0; i_update<2*k_ins_max_; ++i_update) {
+    T rtmp;
     if (try_ins[i_update]) {
-      //std::cout << "trying: insertion " << i_ins <<  " nv " << num_vertices_ins[i_ins] << std::endl;
       assert(i_ins<pos_vertices_ins.size());
-      weight_rat *= insertion_step(random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins]);
+      rtmp = insertion_step(manager, random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins]);
+      manager.feedback_insertion(ins_info[i_ins], rtmp!=1.0);
       ++i_ins;
     } else {
-      //std::cout << "trying: removal " << std::endl;
-      int Nv = nv_prob(random.engine());
-      weight_rat *= removal_step(random, Nv);
+      rtmp = removal_step(manager, random);
     }
+    weight_rat *= rtmp;
 #ifndef NDEBUG
     for (int flavor=0; flavor<n_flavors(); ++flavor) {
       gamma_matrices_[flavor].sanity_check(invA_[flavor], spline_G0_);
@@ -77,10 +83,13 @@ T SubmatrixUpdate<T>::vertex_insertion_removal_update(NVertexProb& nv_prob, R& r
 };
 
 template<typename T>
-template<typename R>
-T SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_vertices_ins) {
+template<typename MANAGER, typename R>
+T SubmatrixUpdate<T>::insertion_step(MANAGER& manager, R& random, int vertex_begin, int num_vertices_ins) {
   assert(vertex_begin+num_vertices_ins<=itime_vertices_.size());
-  assert(num_vertices_ins==1);
+
+  if (num_vertices_ins==0) {
+    return 1.0;
+  }
 
   T det_rat_A, f_rat, U_rat;
 
@@ -88,18 +97,21 @@ T SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_vertic
   pos_vertices_work.resize(num_vertices_ins);
   for (int iv=0; iv<num_vertices_ins; ++iv) {
     assert(iv+vertex_begin<itime_vertices_.size());
+    assert(itime_vertices_[iv+vertex_begin].is_non_interacting());
     new_spins_work[iv] = itime_vertices_[iv+vertex_begin].af_state();
     pos_vertices_work[iv] = iv+vertex_begin;
   }
 
   boost::tie(det_rat_A,f_rat,U_rat) = try_spin_flip(pos_vertices_work, new_spins_work);
-  T prob = det_rat_A*f_rat*U_rat;
+  const double acc_corr = manager.acc_rate_corr_insertion(itime_vertices_, pos_vertices_work, random);
 
-  if (num_vertices_ins==1) {
-    prob *= beta_*p_Uijkl_->n_vertex_type()/(itime_vertices_.num_interacting()+1.0);
-  } else {
-    throw std::runtime_error("Not implemented");
-  }
+  T prob = det_rat_A*f_rat*U_rat*acc_corr;
+
+  //if (num_vertices_ins==1) {
+    //prob *= beta_*p_Uijkl_->n_vertex_type()/(itime_vertices_.num_interacting()+1.0);
+  //} else {
+    //throw std::runtime_error("Not implemented num_vertices_ins");
+  //}
 
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
@@ -113,40 +125,30 @@ T SubmatrixUpdate<T>::insertion_step(R& random, int vertex_begin, int num_vertic
 }
 
 template<typename T>
-template<typename R>
-T SubmatrixUpdate<T>::removal_step(R& random, int nv_rem) {
+template<typename MANAGER, typename R>
+T SubmatrixUpdate<T>::removal_step(MANAGER& manager, R& random) {
   const int Nv = itime_vertices_.size();
-  std::vector<int> pos_int_vertices(Nv);
-  int num_int = 0;
-  for (int iv=0; iv<Nv; ++iv) {
-    if (!itime_vertices_[iv].is_non_interacting()) {
-      pos_int_vertices[num_int] = iv;
-      ++num_int;
-    }
+  std::vector<int> pos_vertices_remove;
+  const double acc_corr = manager.pick_up_vertices_to_be_removed(itime_vertices_, random, pos_vertices_remove);
+  const int nv_rem = pos_vertices_remove.size();
+
+  //no vertices to be removed
+  if (nv_rem==0) {
+    return 1.0;
   }
 
-  if (num_int<nv_rem) return 1.0;//there are not an enough number of vertices to removed.
-
-  std::vector<int> rand_pos = pickup_a_few_numbers(num_int, nv_rem, random);
-
-  std::vector<int> pos_vertices_remove(nv_rem);
-  for (int iv=0; iv<nv_rem; ++iv) {
-    pos_vertices_remove[iv] = pos_int_vertices[rand_pos[iv]];
-    assert(pos_vertices_remove[iv]<Nv);
+#ifndef NDEBUG
+  for (int iv=0; iv<pos_vertices_remove.size(); ++iv) {
     assert(!itime_vertices_[pos_vertices_remove[iv]].is_non_interacting());
   }
+#endif
+
   std::vector<int> new_spins_remove(nv_rem, NON_INT_SPIN_STATE);
 
   T det_rat_A, f_rat, U_rat;
   boost::tie(det_rat_A,f_rat,U_rat) = try_spin_flip(pos_vertices_remove, new_spins_remove);
 
-  T prob = det_rat_A*f_rat*U_rat;
-
-  if (nv_rem==1) {
-    prob *= itime_vertices_.num_interacting()/(beta_*p_Uijkl_->n_vertex_type());
-  } else {
-    throw std::runtime_error("Not implemented");
-  }
+  T prob = det_rat_A*f_rat*U_rat*acc_corr;
 
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;

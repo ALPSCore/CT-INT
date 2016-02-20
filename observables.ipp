@@ -94,10 +94,12 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
     sz2_name<<"Sz2_"<<i;
     sz0_szj_name<<"Sz0_Sz"<<i;
   }
+  /*
   for (int iv=0; iv<n_multi_vertex_update; ++iv)  {
       measurements << alps::ngs::RealVectorObservable("VertexInsertion_"+boost::lexical_cast<std::string>(iv+1));
       measurements << alps::ngs::RealVectorObservable("VertexRemoval_"+boost::lexical_cast<std::string>(iv+1));
   }
+  */
   measurements << alps::ngs::SimpleRealVectorObservable("MeasurementTimeMsec");
   measurements << alps::ngs::SimpleRealVectorObservable("UpdateTimeMsec");
   measurements << alps::ngs::RealObservable("RecomputeTime");
@@ -106,6 +108,7 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
       tmp<<"VertexHistogram_"<<flavor;
       measurements << alps::ngs::SimpleRealVectorObservable(tmp.str().c_str());
   }
+  /*
   measurements << alps::ngs::SimpleRealObservable("AcceptanceRateShift");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval");
@@ -116,16 +119,18 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift_sum");
-  measurements << alps::ngs::RealVectorObservable("PerturbationOrderVertex");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion_count");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion_sum");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_count");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_sum");
-  if (n_multi_vertex_update>1) {
-    measurements << alps::ngs::SimpleRealObservable("QuantumNumberConserved");
-  }
+  */
+
+  measurements << alps::ngs::RealVectorObservable("PerturbationOrderVertex");
+  //if (n_multi_vertex_update>1) {
+    //measurements << alps::ngs::SimpleRealObservable("QuantumNumberConserved");
+  //}
   measurements << alps::ngs::SimpleRealVectorObservable("PertOrderHistogram");
   measurements.reset(true);
 }
@@ -176,6 +181,7 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
       vertex_histograms[flavor]->clear();
   }
 
+  /*
   if (n_multi_vertex_update>1) {
       measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
       measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
@@ -213,6 +219,7 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
   }
   simple_statistics_ins.reset();
   simple_statistics_rem.reset();
+   */
 
   std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
   const itime_vertex_container& itime_vertices = submatrix_update->itime_vertices();

@@ -126,13 +126,18 @@ T BareGreenInterpolate<T>::operator()(double delta_t, int flavor, int site1, int
   return coeff*(AB_[flavor][site1][site2][time_index_1].first*(dt-time_index_1*dbeta_) + AB_[flavor][site1][site2][time_index_1].second);
 }
 
+template<typename  T>
+bool BareGreenInterpolate<T>::is_zero(int site1, int site2, int flavor, double eps) const {
+  return std::abs(operator()(beta_*1E-5, flavor, site1, site2))<eps && std::abs(operator()(beta_*(1-1E-5), flavor, site1, site2))<eps;
+}
+
 template<class TYPES>
 InteractionExpansion<TYPES>::InteractionExpansion(const alps::params &parms, int node, const boost::mpi::communicator& communicator)
 : InteractionExpansionBase(parms,node,communicator),
 node(node),
 max_order(parms["MAX_ORDER"] | 2048),
-n_flavors(parms["FLAVORS"] | (parms["N_ORBITALS"] | 2)),
-n_site(parms["SITES"] | 1),
+n_flavors(parms["FLAVORS"]),
+n_site(parms["SITES"]),
 n_matsubara((int)(parms["NMATSUBARA"]|parms["N_MATSUBARA"])),
 n_matsubara_measurements(parms["NMATSUBARA_MEASUREMENTS"] | (int)n_matsubara),
 n_tau((int)(parms["N"]|parms["N_TAU"])),
@@ -155,17 +160,17 @@ bare_green_matsubara(n_matsubara,n_site, n_flavors),
 bare_green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
 legendre_transformer(n_matsubara,n_legendre),
-n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
-statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
-statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
-statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, 1),
-statistics_dv_rem(0, 0, 0),
-statistics_dv_ins(0, 0, 0),
-simple_statistics_ins(n_multi_vertex_update),
-simple_statistics_rem(n_multi_vertex_update),
+//n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
+//statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
+//statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
+//statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, 1),
+//statistics_dv_rem(0, 0, 0),
+//statistics_dv_ins(0, 0, 0),
+//simple_statistics_ins(n_multi_vertex_update),
+//simple_statistics_rem(n_multi_vertex_update),
 is_thermalized_in_previous_step_(false),
-window_width(parms.defined("WINDOW_WIDTH") ? beta*static_cast<double>(parms["WINDOW_WIDTH"]) : 1000.0*beta),
-window_dist(boost::random::exponential_distribution<>(1/window_width)),
+//window_width(parms.defined("WINDOW_WIDTH") ? beta*static_cast<double>(parms["WINDOW_WIDTH"]) : 1000.0*beta),
+//window_dist(boost::random::exponential_distribution<>(1/window_width)),
 //shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
 n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
 n_shift(parms["N_SHIFT_VERTEX"] | 1),
@@ -174,7 +179,8 @@ force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATI
 single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
 pert_order_hist(max_order+1),
 comm(communicator),
-g0_intpl(parms)
+g0_intpl(parms),
+update_manager(parms, Uijkl, g0_intpl, node==0)
 {
   //other parameters
   step=0;
@@ -182,112 +188,10 @@ g0_intpl(parms)
   measurement_time=0;
   update_time=0;
 
-  //load bare Green's function
-  boost::tie(bare_green_matsubara,bare_green_itime) =
-      read_bare_green_functions<typename TYPES::COMPLEX_TYPE>(parms);//G(tau) is assume to be complex.
-
-  //make quantum numbers
-  if (n_multi_vertex_update>1) {
-    quantum_number_vertices = make_quantum_numbers<typename TYPES::COMPLEX_TYPE,typename TYPES::M_TYPE>(bare_green_itime, Uijkl.get_vertices(), groups, group_map, almost_zero);
-    qn_dim = quantum_number_vertices[0][0].size();
-    group_dim.clear(); group_dim.resize(qn_dim, 0);
-    const int qn_dim_f = qn_dim/n_flavors;
-    for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-      for (int g=0; g<groups[flavor].size(); ++g) {
-        group_dim[g+flavor*qn_dim_f] = groups[flavor][g].size();
-      }
-    }
-
-    //for double vertex update
-    find_valid_pair_multi_vertex_update(Uijkl.get_vertices(), quantum_number_vertices, mv_update_valid_pair, mv_update_valid_pair_flag);
-    if (mv_update_valid_pair.size()==0)
-      throw std::runtime_error("No valid vertex pair for double vertex update. Please deactivate double vertex update.");
-
-    //for shift update
-    if (n_shift>0 && n_multi_vertex_update>1) {
-      shift_update_valid.resize(Uijkl.n_vertex_type(), false);
-      for (int i_pair=0; i_pair<mv_update_valid_pair.size(); ++i_pair) {
-        shift_update_valid[mv_update_valid_pair[i_pair].first] = true;
-        shift_update_valid[mv_update_valid_pair[i_pair].second] = true;
-      }
-    }
-  }
-
-  is_density_density_type.resize(Uijkl.n_vertex_type());
-  for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
-    is_density_density_type[iv] = Uijkl.get_vertex(iv).is_density_type();
-  }
-
-  //occ changes
-  if (n_multi_vertex_update>1) {
-    for (int iv=0; iv<Uijkl.n_vertex_type(); ++iv) {
-      Uijkl.get_vertex(iv).make_quantum_numbers(group_map, qn_dim/n_flavors);
-    }
-  }
-
-  if (n_multi_vertex_update>1) {
-    symm_exp_dist = SymmExpDist(parms["DOUBLE_VERTEX_UPDATE_A"], parms["DOUBLE_VERTEX_UPDATE_B"], beta);
-    statistics_dv_ins = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
-    statistics_dv_rem = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
-  }
-
-
-  //set up parameters for updates
-  std::vector<double> proposal_prob(n_multi_vertex_update, 1.0);
-  if (params.defined("MULTI_VERTEX_UPDATE_PROPOSAL_RATE")) {
-    proposal_prob.resize(0);
-    std::stringstream ss(params["MULTI_VERTEX_UPDATE_PROPOSAL_RATE"].template cast<std::string>());
-    double rtmp;
-    while (ss >> rtmp) {
-      proposal_prob.push_back(rtmp);
-    }
-    if (proposal_prob.size()!=n_multi_vertex_update)
-      throw std::runtime_error("The number of elements in MULTI_VERTEX_UPDATE_PROPOSAL_RATE is different from N_MULTI_VERTEX_UPDATE");
-  }
-  update_prop = update_proposer(n_multi_vertex_update, proposal_prob);
-
   //initialize the simulation variables
   initialize_simulation(parms);
 
-  if(node==0 && n_multi_vertex_update>1) {
-    print(std::cout);
 
-    std::cout << std::endl << "Analysis of quantum numbers"  << std::endl;
-    for (int flavor=0; flavor<n_flavors; ++flavor) {
-      std::cout << "  Flavor " << flavor << " has " << groups[flavor].size() << " group(s)." << std::endl;
-      print_group(groups[flavor]);
-    }
-    std::cout << std::endl;
-    std::cout << std::endl;
-
-    if (mv_update_valid_pair.size()>0) {
-      std::cout << std::endl << "Vertex pairs for double vertex update." << std::endl;
-      for (int i=0; i<mv_update_valid_pair.size(); ++i)
-        std::cout << " type " << mv_update_valid_pair[i].first << ", type " << mv_update_valid_pair[i].second << std::endl;
-    } else {
-      std::cout << std::endl << "No vertex pairs for double vertex update." << std::endl;
-    }
-  }
-  vertex_histograms=new simple_hist *[n_flavors];
-  vertex_histogram_size=100;
-  for(unsigned int i=0;i<n_flavors;++i){
-    vertex_histograms[i]=new simple_hist(vertex_histogram_size);
-  }
-
-  //shift update
-  if (n_shift>0 && n_multi_vertex_update>1 && node==0) {
-    int count = 0;
-    std::cout << std::endl << "Shift updates will be performed for the following vertices." << std::endl;
-    for(int iv=0; iv<shift_update_valid.size(); ++iv) {
-      if (shift_update_valid[iv]) {
-        std::cout << " iv = " << iv << std::endl;
-        ++count;
-      }
-    }
-    if (count==0)
-      std::cout << "No vertices found." << std::endl;
-    std::cout << std::endl;
-  }
 
   //submatrix update
   itime_vertex_container itime_vertices_init;
@@ -300,6 +204,12 @@ g0_intpl(parms)
   submatrix_update = new SubmatrixUpdate<M_TYPE>(
       (parms["K_INS_MAX"] | 32), n_flavors,
       g0_intpl, &Uijkl, beta, itime_vertices_init);//, parms);
+
+  vertex_histograms=new simple_hist *[n_flavors];
+  vertex_histogram_size=100;
+  for(unsigned int i=0;i<n_flavors;++i){
+    vertex_histograms[i]=new simple_hist(vertex_histogram_size);
+  }
 
 }
 
@@ -316,7 +226,7 @@ void InteractionExpansion<TYPES>::update()
 
   pert_order_hist = 0.;
 
-  num_accepted_shift = 0;
+  //num_accepted_shift = 0;
   for(std::size_t i=0;i<measurement_period;++i){
 #ifndef NDEBUG
     std::cout << " step " << step << std::endl;
@@ -325,7 +235,7 @@ void InteractionExpansion<TYPES>::update()
     boost::timer::cpu_timer timer;
 
     for (int i_ins_rem=0; i_ins_rem<n_ins_rem; ++i_ins_rem) {
-      submatrix_update->vertex_insertion_removal_update(update_prop, random);
+      submatrix_update->vertex_insertion_removal_update(update_manager, random);
     }
 
     double t_m = timer.elapsed().wall;
@@ -333,9 +243,9 @@ void InteractionExpansion<TYPES>::update()
     //for (int i_shift=0; i_shift<n_shift; ++i_shift)
       //shift_update();
 
-    for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip) {
-      submatrix_update->spin_flip_update(random);
-    }
+    //for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip) {
+      //submatrix_update->spin_flip_update(random);
+    //}
 
     t_meas[0] += t_m;
     t_meas[1] += (timer.elapsed().wall-t_m);
@@ -350,6 +260,10 @@ void InteractionExpansion<TYPES>::update()
       boost::timer::cpu_timer timer2;
       submatrix_update->recompute_matrix(true);
       t_meas[2] += timer2.elapsed().wall;
+    }
+
+    for(spin_t flavor=0; flavor<n_flavors; ++flavor) {
+      vertex_histograms[flavor]->count(submatrix_update->invA()[flavor].creators().size());
     }
   }
 
@@ -368,6 +282,7 @@ void InteractionExpansion<TYPES>::update()
 
   t_meas *= 1E-6/measurement_period;
   measurements["UpdateTimeMsec"] << t_meas;
+
 }
 
 template<class TYPES>
@@ -511,6 +426,7 @@ void InteractionExpansion<TYPES>::sanity_check() {
 template<class TYPES>
 void InteractionExpansion<TYPES>::prepare_for_measurement()
 {
+  /*
   this->statistics_ins.reset();
   this->statistics_rem.reset();
   this->statistics_shift.reset();
@@ -518,4 +434,5 @@ void InteractionExpansion<TYPES>::prepare_for_measurement()
   this->simple_statistics_rem.reset();
   this->statistics_dv_ins.reset();
   this->statistics_dv_rem.reset();
+  */
 }

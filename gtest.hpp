@@ -17,6 +17,7 @@
 #include"update_statistics.h"
 #include"operator.hpp"
 #include"submatrix.hpp"
+#include "update_manager.hpp"
 
 template<class T>
 void randomize_matrix(alps::numeric::matrix<T>& mat, size_t seed=100) {
@@ -47,6 +48,10 @@ private:
 template<typename T>
 struct DiagonalG0 {
   DiagonalG0 (double beta) : beta_(beta) {}
+
+  int nsite() const {return 1;}
+  int nflavor() const {return 2;}
+  bool is_zero(int site1, int site2, int flavor, double eps) const {return site1!=site2;}
 
   T operator() (double dt) const {
     //const double dt = c_op.t().time()-cdagg_op.t().time();
@@ -84,6 +89,10 @@ struct DiagonalG0 {
 template<typename T>
 struct OffDiagonalG0 {
     OffDiagonalG0 (double beta, int n_site, const std::vector<double>& E, const boost::multi_array<T,2>& phase) : beta_(beta), n_site_(n_site), E_(E), phase_(phase) {}
+
+    int nsite() const {return n_site_;}
+    int nflavor() const {return 2;}
+    bool is_zero(int site1, int site2, int flavor, double eps) const {return false;}
 
     T operator() (const annihilator& c_op, const creator& cdagg_op) {
       const double dt = c_op.t().time()-cdagg_op.t().time();

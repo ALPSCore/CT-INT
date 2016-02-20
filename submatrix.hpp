@@ -366,9 +366,6 @@ public:
       return itime_vertices_;
     }
 
-    //returns a product of determinants of A matrices
-    //typename InvAMatrix<T>::value_type determinant();
-
     /*
      * Compute M=G0^-1 from A^{-1}
      * For measuring self-energy
@@ -387,8 +384,8 @@ public:
     }
 
     //vertices insertion and removal updates. Return the ratio of Monte Carlo weights of the initial and final states.
-    template<typename NVertexProb, typename R>
-    T vertex_insertion_removal_update(NVertexProb&, R& random);
+    template<typename MANAGER, typename R>
+    T vertex_insertion_removal_update(MANAGER& manager, R& random);
 
     //spin flip update
     template<typename R>
@@ -440,11 +437,11 @@ private:
     void reject_spin_flip();
 
     //auxially functions for multi-vertex insertion and removal defined in multi_vertex_update.ipp
-    template<typename R>
-    T insertion_step(R& random, int vertex_begin, int num_vertices_ins);
+    template<typename MANAGER, typename R>
+    T insertion_step(MANAGER& manager, R& random, int vertex_begin, int num_vertices_ins);
 
-    template<typename R>
-    T removal_step(R&, int nv_rem);
+    template<typename MANAGER, typename R>
+    T removal_step(MANAGER&, R&);
 
     //auxially functions for spin flip update defined in spin_flip_update.ipp
     template<typename R>

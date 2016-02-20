@@ -60,6 +60,7 @@
 #include "legendre.h"
 #include "update_statistics.h"
 #include "wang_landau.h"
+#include "update_manager.hpp"
 
 /*types*/
 class c_or_cdagger;
@@ -146,6 +147,7 @@ private:
   std::vector<unsigned long> hist_;
 };
 
+/*
 class SymmExpDist {
 public:
     SymmExpDist() : a_(0), b_(0), beta_(0), coeff_(0), coeffX_(0) {}
@@ -160,6 +162,7 @@ public:
 private:
     double a_, b_, beta_, coeff_, coeffX_;
 };
+*/
 
 typedef struct real_number_solver {
   typedef double M_TYPE;
@@ -181,6 +184,11 @@ public:
 
     T operator()(const annihilator& c, const creator& cdagg) const;
     T operator()(double delta_t, int flavor, int site1, int site2) const;
+
+    int nsite() const {return n_sites_;};
+    int nflavor() const {return n_flavors_;};
+
+    bool is_zero(int site1, int site2, int flavor, double eps) const;
 
 private:
     const double beta_, temp_;
@@ -259,7 +267,7 @@ protected:
   const boost::uint64_t mc_steps;                        
   const unsigned long therm_steps;                
   const double max_time_in_seconds;
-  const size_t n_multi_vertex_update;
+  //const size_t n_multi_vertex_update;
   const int n_ins_rem;
   const int n_shift;
   const int n_spin_flip;
@@ -285,13 +293,13 @@ protected:
   int qn_dim;
 
   //double vertex update
-  std::vector<std::pair<int,int> > mv_update_valid_pair;
-  boost::multi_array<bool,2> mv_update_valid_pair_flag;
+  //std::vector<std::pair<int,int> > mv_update_valid_pair;
+  //boost::multi_array<bool,2> mv_update_valid_pair_flag;
 
-  std::vector<bool> is_density_density_type;
+  //std::vector<bool> is_density_density_type;
 
   //for shift update
-  std::vector<bool> shift_update_valid;
+  //std::vector<bool> shift_update_valid;
 
   const unsigned int recalc_period;                
   const unsigned int measurement_period;
@@ -308,9 +316,9 @@ protected:
   boost::shared_ptr<FourierTransformer> fourier_ptr;
   
   //for window update
-  double window_width;
-  boost::random::exponential_distribution<> window_dist;
-  SymmExpDist symm_exp_dist;
+  //double window_width;
+  //boost::random::exponential_distribution<> window_dist;
+  //SymmExpDist symm_exp_dist;
 
   simple_hist pert_hist;
   unsigned int hist_max_index;
@@ -323,14 +331,14 @@ protected:
   clock_t measurement_time;
 
   //Statistics about multi-vertex updates (imaginary time information)
-  scalar_histogram_flavors statistics_rem, statistics_ins, statistics_shift, statistics_dv_rem, statistics_dv_ins;
+  //scalar_histogram_flavors statistics_rem, statistics_ins, statistics_shift, statistics_dv_rem, statistics_dv_ins;
 
   //only acceptance rate
-  simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
-  int num_accepted_shift;
+  //simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
+  //int num_accepted_shift;
 
   //just for test
-  update_proposer update_prop;
+  //update_proposer update_prop;
 
   LegendreTransformer legendre_transformer;
 
@@ -343,6 +351,9 @@ protected:
   std::vector<double> pert_order_dynamics;
 
   BareGreenInterpolate<M_TYPE> g0_intpl;
+
+  MultiVertexUpdateManager<M_TYPE> update_manager;
+
 };
 
 /*aux functions*/
