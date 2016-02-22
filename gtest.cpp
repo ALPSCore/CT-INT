@@ -636,7 +636,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
         boost::tie(sign_from_M0,weight_from_M0) = submatrix_update.compute_M_from_scratch(M_scratch);
 
         //const T weight_rat = submatrix_update.vertex_insertion_removal_update(manager, random01);
-        const T weight_rat = manager.do_ins_rem_update(submatrix_update, Uijkl, random01);
+        const T weight_rat = manager.do_ins_rem_update(submatrix_update, Uijkl, random01, 1.0);
         const T sign_bak = submatrix_update.sign();
 
         ASSERT_TRUE(submatrix_update.sanity_check());
@@ -663,6 +663,8 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
         T sign_from_M2, weight_from_M2;
         boost::tie(sign_from_M2,weight_from_M2) = submatrix_update.compute_M_from_scratch(M_scratch);
         ASSERT_TRUE(my_equal(weight_from_M2/weight_from_M, weight_rat2, 1E-5));
+
+        const T weight_rat3 = manager.do_shift_update(submatrix_update, Uijkl, random01, false);
     }
 
     //std::cout << DiagonalG0<T>(beta)(0.0) << std::endl;

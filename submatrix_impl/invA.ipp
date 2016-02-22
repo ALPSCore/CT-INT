@@ -19,29 +19,6 @@ InvAMatrix<T>::InvAMatrix() :
   assert(creators_.size()==0);
 }
 
-/*
-template<typename T>
-int
-InvAMatrix<T>::find_row_col(const operator_time& op_time) const {
-  int num_found = 0;
-  int r=-1;
-  for(std::size_t i=0; i<creators_.size(); ++i) {
-    if (op_time==creators_[i].t()) {
-      assert(annihilators_[i].t()==op_time);
-      ++num_found;
-      r = i;
-    }
-  }
-  if (r==-1) {
-    throw std::logic_error("InvAMatrix<T>::find_row_col: operator not found.");
-  }
-  if (num_found==2) {
-    throw std::logic_error("InvAMatrix<T>::find_row_col: more than one operator found.");
-  }
-  return r;
-}
- */
-
 template<typename T>
 void
 InvAMatrix<T>::push_back_op(const creator& cdag_op, const annihilator& c_op, T alpha, const vertex_info_type& vertex_info) {
@@ -277,7 +254,6 @@ InvAMatrix<T>::remove_rows_cols(const std::vector<my_uint64>& v_uid) {
     tmp = find_row_col(v_uid[it]);
     for (std::vector<int>::iterator it=tmp.begin(); it!=tmp.end(); ++it)
       rows_removed.push_back(*it);
-    //rows_removed.push_back(find_row_col(v_uid[it]));
   }
   if (rows_removed.size()==0) return;
   std::sort(rows_removed.begin(), rows_removed.end());
@@ -304,18 +280,8 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
   for (int l=0; l<nop; ++l) {
     pl[l] = inv_gamma.pos_in_invA(l);
   }
-  /*
-  for (int l=0; l<nop; ++l) {
-    for (int j=0; j<N; ++j) {
-      invA0(l, j) = matrix_(pl[l],j);
-    }
-  }
-  */
   for (int l=0; l<nop; ++l) {
     boost::numeric::bindings::blas::detail::copy(N, &matrix_(pl[l],0), matrix_.stride2(), &invA0(l,0), invA0.stride2());
-    //for (int j=0; j<N; ++j) {
-      //invA0(l, j) = matrix_(pl[l],j);
-    //}
   }
   for (int l=0; l<nop; ++l) {
     alps::numeric::submatrix_view<T> view(G0_left, 0, l, N, 1);
@@ -324,30 +290,6 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
 
   mygemm(-1.0, G0_left, inv_gamma.matrix(), 0.0, G0_inv_gamma);
   mygemm(1.0, G0_inv_gamma, invA0, 1.0, matrix_);
-
-
-  /*
-  coeff_A.resize(N);
-  std::fill(coeff_A.begin(), coeff_A.end(), 1.0);
-  for (int l=0; l < nop; ++l) {
-    const int i_row = pl[l];
-    assert(inv_gamma.alpha0(l)==alpha_at(i_row));
-    coeff_A[i_row] = 1.0/(
-                             1.0 +
-                                 gamma_func(
-                                     eval_f(inv_gamma.alpha(l)),
-                                     eval_f(inv_gamma.alpha0(l))
-                                 )
-    );
-  }
-
-  //could be vectorized
-  for (int i_row=0; i_row<N; ++i_row) {
-    for (int i_col=0; i_col<N; ++i_col) {
-      matrix_(i_row, i_col) *= coeff_A[i_row];
-    }
-  }
-  */
 
   for (int l=0; l < nop; ++l) {
     assert(inv_gamma.alpha(l)!=inv_gamma.alpha0(l));
@@ -441,10 +383,6 @@ void InvAMatrix<T>::eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gi
     }
     Gij(col,0) = (fj*matrix_(col,col)-1.0)/(fj-1.0);
   } else {
-    //G0.resize_values_not_retained(Nv,1);
-    //for (int iv=0; iv<Nv; ++iv) {
-    //G0(iv,0) = spline_G0(annihilators_[iv], creators_[col]);
-    //}
     alps::numeric::submatrix_view<T> G0_view = compute_G0_col(spline_G0, col);
     mygemm((T) 1.0, matrix_, G0_view, (T) 0.0, Gij);
   }
@@ -474,17 +412,6 @@ void InvAMatrix<T>::eval_Gij_col_part(const SPLINE_G0_TYPE& spline_G0, const std
       }
     }
   } else {
-    /*
-    invA_tmp.resize_values_not_retained(n_rows,Nv);
-    for (int iv2=0; iv2<Nv; ++iv2) {
-      for (int iv=0; iv<n_rows; ++iv) {
-        invA_tmp(iv,iv2) = matrix_(rows[iv], iv2);
-      }
-    }
-    alps::numeric::submatrix_view<T> G0_view = compute_G0_col(spline_G0, col);
-    mygemm((T) 1.0, invA_tmp, G0_view, (T) 0.0, Gij);
-    */
-
     alps::numeric::submatrix_view<T> G0_view = compute_G0_col(spline_G0, col);
     alps::numeric::matrix<T> G_tmp(1,1);
     for (int iv=0; iv<n_rows; ++iv) {

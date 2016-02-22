@@ -132,6 +132,7 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
     //measurements << alps::ngs::SimpleRealObservable("QuantumNumberConserved");
   //}
   measurements << alps::ngs::SimpleRealVectorObservable("PertOrderHistogram");
+  measurements << alps::ngs::SimpleRealVectorObservable("ACCEPTANCE_RATE_EXCHANGE");
   measurements.reset(true);
 }
 

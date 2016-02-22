@@ -102,7 +102,6 @@ public:
       assert(pos>=0 && pos<vertex_info_.size());
       return boost::get<2>(vertex_info_[pos]);
     }
-    //int find_row_col(const operator_time& op_time) const;
     template<typename SPLINE_G0_TYPE>
     bool sanity_check(const SPLINE_G0_TYPE& spline_G0) const;
     void swap_ops(size_t i1, size_t i2) {
@@ -167,7 +166,6 @@ private:
 
     //work space for update()
     alps::numeric::matrix<T> G0_left, invA0, G0_inv_gamma;
-    //std::vector<T> coeff_A;
     std::vector<int> pl;
 
     //cache for G0 obtained by interpolation
@@ -226,7 +224,6 @@ public:
     template<typename SPLINE_G0_TYPE>
     void add_non_interacting_vertices(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
 
-    //void remove_rows_cols(const std::vector<double>& times);
     void remove_rows_cols(const std::vector<my_uint64>& vertex_uid);
 
     template<typename SPLINE_G0_TYPE>
@@ -394,11 +391,6 @@ public:
 
     void finalize_update();
 
-    //vertices insertion and removal updates. Return the ratio of Monte Carlo weights of the initial and final states.
-    //template<typename MANAGER, typename R>
-    //T vertex_insertion_removal_update(MANAGER& manager, R& random);
-    //template<typename R> T spin_flip_update(R& random);
-
     /* recomputes A^{-1} to avoid numerical errors*/
     void recompute_matrix(bool check_error);
 
@@ -425,30 +417,11 @@ private:
 
     //workspace
     T det_rat_A, sign_rat;
-    //std::vector<int> pos_vertices_ins, num_vertices_ins;//size of k_ins_max_
     std::vector<std::vector<OperatorToBeUpdated<T> > > ops_rem, ops_ins, ops_replace;//operator_time and new alpha
-
-    //work array for all types of updates
-    //std::vector<int> new_spins_work, pos_vertices_work;
 
     //parameters
     alps::params params;
 
-    //the heart of submatrix update
-
-    //auxially functions for multi-vertex insertion and removal defined in multi_vertex_update.ipp
-    //template<typename MANAGER, typename R>
-    //T insertion_step(MANAGER& manager, R& random, int vertex_begin, int num_vertices_ins);
-
-    //template<typename MANAGER, typename R>
-    //T removal_step(MANAGER&, R&);
-
-    //auxially functions for spin flip update defined in spin_flip_update.ipp
-    //template<typename R>
-    //T spin_flip_step(R& random, int pos_vertex);
-
-    //T recompute_sign(bool check_error=false);
-    //For distingushing vertices
     my_uint64 gen_new_vertex_id();
     my_uint64 current_vertex_id_;
 };
@@ -456,7 +429,5 @@ private:
 #include "./submatrix_impl/common.ipp"
 #include "./submatrix_impl/invA.ipp"
 #include "./submatrix_impl/gamma.ipp"
-//#include "./submatrix_impl/multi_vertex_update.ipp"
-//#include "./submatrix_impl/spin_flip_update.ipp"
 
 #endif //IMPSOLVER_SUBMATRIX_UPDATE_HPP

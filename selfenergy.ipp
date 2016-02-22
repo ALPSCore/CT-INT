@@ -227,6 +227,13 @@ void InteractionExpansion<TYPES>::compute_Sl() {
         measurements[Sl_imag_name.str().c_str()] << Sl_imag;
       }//site2
     }//site1
+
+    if (params.defined("PREFIX_OUTPUT_TIME_SERIES")) {
+      for (unsigned int site1 = 0; site1 < n_site; ++site1) {
+        Sl_dynamics.push_back(Sl[site1][site1][0]*sign/static_cast<double>(num_random_walk));
+      }
+    }
+
   }//z
 }
 

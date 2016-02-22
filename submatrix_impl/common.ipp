@@ -23,7 +23,7 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
 
 template<typename T>
 SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE spline_G0, general_U_matrix<T>* p_Uijkl, double beta,
-                                    const itime_vertex_container& itime_vertices_init) ://, const alps::params &p) :
+                                    const itime_vertex_container& itime_vertices_init) :
     k_ins_max_(k_ins_max),
     spline_G0_(spline_G0),
     p_Uijkl_(p_Uijkl),

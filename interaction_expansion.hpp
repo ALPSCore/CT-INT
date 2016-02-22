@@ -32,7 +32,6 @@
 
 #include <algorithm>
 #include <fstream>
-//#include <functional>
 #include <cmath>
 
 #include <boost/multi_array.hpp>
@@ -43,6 +42,7 @@
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/exponential_distribution.hpp>
 #include <boost/multi_array.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <alps/ngs.hpp>
 #include <alps/mcbase.hpp>
@@ -147,23 +147,6 @@ private:
   std::vector<unsigned long> hist_;
 };
 
-/*
-class SymmExpDist {
-public:
-    SymmExpDist() : a_(0), b_(0), beta_(0), coeff_(0), coeffX_(0) {}
-    SymmExpDist(double a_in, double b_in, double beta_in) : a_(a_in), b_(b_in), beta_(beta_in),
-                                                            coeff_(1/((2/a_)*(1-std::exp(-a_*beta_))+b_*beta_)),
-                                                            coeffX_(2*(1-std::exp(-a_*beta_))/(a_*beta_)+b_) {}
-
-    double operator()(double dtau) const {return coeff_*bare_value(dtau);}
-    double bare_value(double dtau) const {return std::exp(-a_*dtau)+std::exp(-a_*(beta_-dtau))+ b_;}
-    double coeff_X(double dtau) const {return coeffX_;}
-
-private:
-    double a_, b_, beta_, coeff_, coeffX_;
-};
-*/
-
 typedef struct real_number_solver {
   typedef double M_TYPE;
   typedef double REAL_TYPE;
@@ -175,7 +158,6 @@ typedef struct complex_number_solver {
     typedef double REAL_TYPE;
     typedef std::complex<double> COMPLEX_TYPE;
 } complex_number_solver;
-
 
 template<typename T>
 class BareGreenInterpolate {
@@ -234,6 +216,8 @@ protected:
   /*io & initialization*/
   void initialize_simulation(const alps::params &parms); // called by constructor
 
+  void exchange_update();
+
   // in file io.cpp
   void print(std::ostream &os);
   
@@ -279,7 +263,13 @@ protected:
   general_U_matrix<M_TYPE> Uijkl; //for any general two-body interaction
 
   /*heart of submatrix update*/
-  SubmatrixUpdate<M_TYPE> *submatrix_update;
+  const int num_U_scale;
+  const double min_U_scale;
+  typedef boost::shared_ptr<SubmatrixUpdate<M_TYPE> > WALKER_P_TYPE;
+  std::vector<WALKER_P_TYPE> walkers;
+  std::vector<double> U_scale_vals;//index: index of walkers, key: values of U
+  std::vector<double> U_scale_index;//index: index of U scales, key: index of walkers
+  WALKER_P_TYPE submatrix_update;//pointer to walker with the physical U_SCALE=1
 
   //for measurement of Green's function
   //M is computed from A in measure_observables.
@@ -348,6 +338,7 @@ protected:
 
   //only for test
   std::vector<typename TYPES::COMPLEX_TYPE> Wk_dynamics;
+  std::vector<typename TYPES::COMPLEX_TYPE> Sl_dynamics;
   std::vector<double> pert_order_dynamics;
 
   BareGreenInterpolate<M_TYPE> g0_intpl;

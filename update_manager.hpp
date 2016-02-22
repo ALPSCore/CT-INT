@@ -53,17 +53,20 @@ public:
   //fix parameters
   //void finish_learning();
   template<typename R>
-  T do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random);
+  T do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random, double U_scale);
 
   template<typename R>
   T do_spin_flip_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random);
 
+  template<typename R>
+  T do_shift_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random, bool tune_step_size);
+
 private:
   template<typename R>
-  T insertion_step(SubmatrixUpdate<T>& submatrix, R& random, int vertex_begin, int num_vertices_ins);
+  T insertion_step(SubmatrixUpdate<T>& submatrix, R& random, int vertex_begin, int num_vertices_ins, double U_scale);
 
   template<typename R>
-  T removal_step(SubmatrixUpdate<T>& submatrix, R& random);
+  T removal_step(SubmatrixUpdate<T>& submatrix, R& random, double U_scale);
 
   template<typename R>
   std::pair<std::vector<itime_vertex>, double>
@@ -109,6 +112,7 @@ private:
   //for shift update
   std::vector<bool> shift_update_valid;
   int num_shift_valid_vertex_types;
+  double shift_step_size;
 
   //only acceptance rate
   simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
@@ -130,9 +134,10 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
     sv_update_vertices(),
     sv_update_vertices_flag(num_vertex_type, false),
     n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
-    n_shift(parms["N_SHIFT_VERTEX"] | 1),
+    n_shift(parms["N_VERTEX_SHIFT"] | 1),
     shift_update_valid(num_vertex_type, false),
     num_shift_valid_vertex_types(0),
+    shift_step_size(parms["VERTEX_SHIFT_STEP_SIZE"] | 0.1*beta),
     simple_statistics_ins(n_multi_vertex_update),
     simple_statistics_rem(n_multi_vertex_update),
     statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
@@ -176,7 +181,6 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
     //for double vertex update
     find_valid_pair_multi_vertex_update(Uijkl.get_vertices(), quantum_number_vertices, mv_update_valid_pair, mv_update_valid_pair_flag);
 
-    //std::cout << " debug " << parms["DOUBLE_VERTEX_UPDATE_A"] << " " <<  parms["DOUBLE_VERTEX_UPDATE_B"] <<  beta << std::endl;
     symm_exp_dist = SymmExpDist(parms["DOUBLE_VERTEX_UPDATE_A"], parms["DOUBLE_VERTEX_UPDATE_B"], beta);
 
     statistics_dv_ins = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
@@ -184,12 +188,15 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
   }
 
   if (n_shift>0) {
+    /*
     const std::vector<vertex_definition<T> >& v_defs_tmp = Uijkl.get_vertices();
     for (int iv=0; iv<sv_update_vertices_flag.size(); ++iv) {
       if (!sv_update_vertices_flag[iv]) {
         shift_update_valid[iv] = true;
       }
     }
+    */
+    std::fill(shift_update_valid.begin(), shift_update_valid.end(), true);
     num_shift_valid_vertex_types = std::accumulate(shift_update_valid.begin(),shift_update_valid.end(),0);
   }
 
@@ -249,7 +256,7 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
 
 template<typename T>
 template<typename R>
-T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random) {
+T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random, double U_scale) {
 
   int num_ins_try = 0;
   std::vector<bool> try_ins(2*k_ins_max, false);
@@ -278,7 +285,6 @@ T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const
 
     for (int iv=0; iv<new_vertices.size(); ++iv) {
       new_vertices[iv].set_non_interacting();//this does not modify the spin state but just hide it.
-      //new_vertices[iv].set_unique_id(gen_new_vertex_id());
       new_vertices_all.push_back(new_vertices[iv]);
     }
     pos_vertices_ins[i_ins] = vertex_begin;
@@ -297,10 +303,10 @@ T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const
     T rtmp;
     if (try_ins[i_update]) {
       assert(i_ins<pos_vertices_ins.size());
-      rtmp = insertion_step(submatrix, random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins]);
+      rtmp = insertion_step(submatrix, random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins], U_scale);
       ++i_ins;
     } else {
-      rtmp = removal_step(submatrix, random);
+      rtmp = removal_step(submatrix, random, U_scale);
     }
     weight_rat *= rtmp;
   }
@@ -314,7 +320,7 @@ T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const
 
 template<typename T>
 template<typename R>
-T VertexUpdateManager<T>::insertion_step(SubmatrixUpdate<T>& submatrix, R& random, int vertex_begin, int num_vertices_ins) {
+T VertexUpdateManager<T>::insertion_step(SubmatrixUpdate<T>& submatrix, R& random, int vertex_begin, int num_vertices_ins, double U_scale) {
   assert(vertex_begin+num_vertices_ins<=submatrix.pert_order());
 
   if (num_vertices_ins==0) {
@@ -337,7 +343,7 @@ T VertexUpdateManager<T>::insertion_step(SubmatrixUpdate<T>& submatrix, R& rando
   boost::tie(det_rat_A,f_rat,U_rat) = submatrix.try_spin_flip(pos_vertices_work, new_spins_work);
   const double acc_corr = acc_rate_corr_insertion(itime_vertices, pos_vertices_work, random);
 
-  T prob = det_rat_A*f_rat*U_rat*acc_corr;
+  T prob = det_rat_A*f_rat*U_rat*acc_corr*std::pow(U_scale, 1.0*num_vertices_ins);
 
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
@@ -352,7 +358,7 @@ T VertexUpdateManager<T>::insertion_step(SubmatrixUpdate<T>& submatrix, R& rando
 
 template<typename T>
 template<typename R>
-T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random) {
+T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random, double U_scale) {
   const int Nv = submatrix.pert_order();
   std::vector<int> pos_vertices_remove;
   const double acc_corr = pick_up_vertices_to_be_removed(submatrix.itime_vertices(), random, pos_vertices_remove);
@@ -374,7 +380,7 @@ T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random)
   T det_rat_A, f_rat, U_rat;
   boost::tie(det_rat_A,f_rat,U_rat) = submatrix.try_spin_flip(pos_vertices_remove, new_spins_remove);
 
-  T prob = det_rat_A*f_rat*U_rat*acc_corr;
+  T prob = det_rat_A*f_rat*U_rat*acc_corr*std::pow(U_scale, -1.0*nv_rem);
 
   if (std::abs(prob)>random()) {
     //std::cout << "accepted " << std::endl;
@@ -390,6 +396,7 @@ T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random)
 //template<typename T>
 //template<typename M>
 //void VertexUpdateManager<T>::create_observables(M& measurements) {
+  //measurements << alps::ngs::SimpleRealObservable("AcceptanceRateShift");
   /*
   measurements << alps::ngs::SimpleRealObservable("AcceptanceRateShift");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion");
@@ -642,5 +649,68 @@ T VertexUpdateManager<T>::spin_flip_step(SubmatrixUpdate<T>& submatrix, const ge
     return 1.0;
   }
 }
+
+template<typename T>
+template<typename R>
+T VertexUpdateManager<T>::do_shift_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random, bool tune_step_size) {
+  const int Nv0 = submatrix.pert_order();
+  const int num_shift = std::min(Nv0, k_ins_max);
+
+  std::vector<int> num_vertices_shift(num_shift, 1);
+
+  T weight_rat = 1.0;
+
+  std::vector<itime_vertex> new_vertices_all;
+  const std::vector<int>& pos_vertices_shift = pickup_a_few_numbers(Nv0, num_shift, random);
+  for (int i_shift=0; i_shift<num_shift; ++i_shift) {
+    itime_vertex new_vertex = submatrix.itime_vertices()[pos_vertices_shift[i_shift]];
+    new_vertex.set_time(mymod(new_vertex.time()+(random()-0.5)*shift_step_size, beta));
+    new_vertex.set_non_interacting();
+    new_vertices_all.push_back(new_vertex);
+  }
+
+  //set starting point
+  assert(new_vertices_all.size()==num_shift);
+  submatrix.init_update(new_vertices_all);
+
+  //perform actual updates
+  const double magic_number = std::pow(1.01, 1.0/num_shift);
+  std::vector<int> pos_vertices_tmp(2), new_spins_tmp(2);
+  for (int i_update=0; i_update<num_shift; ++i_update) {
+    T det_rat_A, f_rat, U_rat;
+    pos_vertices_tmp[0] = pos_vertices_shift[i_update];
+    pos_vertices_tmp[1] = i_update+Nv0;
+    assert(
+      submatrix.itime_vertices()[pos_vertices_tmp[0]].type()==
+      submatrix.itime_vertices()[pos_vertices_tmp[1]].type()
+    );
+    new_spins_tmp[0] = NON_INT_SPIN_STATE;
+    new_spins_tmp[1] = submatrix.itime_vertices()[pos_vertices_tmp[0]].af_state();
+
+    boost::tie(det_rat_A,f_rat,U_rat) = submatrix.try_spin_flip(pos_vertices_tmp, new_spins_tmp);
+    assert(std::abs(U_rat-1.0)<1E-8);
+    const T prob = det_rat_A*f_rat*U_rat;
+
+    if (std::abs(prob)>random()) {
+      submatrix.perform_spin_flip(pos_vertices_tmp, new_spins_tmp);
+      if (tune_step_size) {
+        shift_step_size = std::min(shift_step_size*magic_number, beta);
+      }
+      weight_rat *= prob;
+    } else {
+      submatrix.reject_spin_flip();
+      if (tune_step_size) {
+        shift_step_size = std::min(shift_step_size/magic_number, beta);
+      }
+    }
+  } //i_update
+
+  //update A^{-1}
+  submatrix.finalize_update();
+
+  return weight_rat;
+};
+
+
 
 #endif //IMPSOLVER_UPDATE_MANAGER_HPP
