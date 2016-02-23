@@ -50,7 +50,6 @@ set(ALPS_ROOT ${ALPS_LIBRARY_DIRS} $ENV{BLAS_LAPACK_DIRS} CACHE STRINGS "CHYB li
 set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
         fouriertransform.C
         observables.ipp
-        solver.ipp
         io.ipp
         interaction_expansion.ipp
         util.cpp

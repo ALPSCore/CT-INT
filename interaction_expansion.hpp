@@ -179,6 +179,9 @@ private:
     double dbeta_;//beta/ntau
 };
 
+template<typename T>
+std::pair<T,T> compute_weight(const general_U_matrix<T>& Uijkl, const itime_vertex_container& itime_vertices);
+
 class InteractionExpansionBase: public alps::mcbase {
 public:
     InteractionExpansionBase(const alps::params &p, int rank, const boost::mpi::communicator &communicator) : alps::mcbase(p,rank) {};

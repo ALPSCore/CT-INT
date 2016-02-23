@@ -403,7 +403,7 @@ private:
     SPLINE_G0_TYPE spline_G0_; //for interpolation of G0
     general_U_matrix<T>* p_Uijkl_;
     const double beta_;
-    const T coeff_det;
+    //const T coeff_det;
 
     SubmatrixState state;
     double alpha_scale_;

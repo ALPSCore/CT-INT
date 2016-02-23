@@ -19,6 +19,10 @@
 #include "U_matrix.h"
 //#include "update_statistics.h"
 
+template<typename T, typename SPLINE_G0>
+std::pair<T,T>
+compute_weight(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, const itime_vertex_container& itime_vertices);
+
 class SymmExpDist {
 public:
     SymmExpDist() : a_(0), b_(0), beta_(0), coeff_(0), coeffX_(0) {}
@@ -711,6 +715,40 @@ T VertexUpdateManager<T>::do_shift_update(SubmatrixUpdate<T>& submatrix, const g
   return weight_rat;
 };
 
+template<typename T, typename SPLINE_G0, typename UnaryOperator, typename R>
+T global_update_impl(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, itime_vertex_container& itime_vertices,
+                   const UnaryOperator& op, R& random01, const T weight_old) {
+  itime_vertex_container itime_vertices_new;
+  for (int iv=0; iv<itime_vertices.size(); ++iv) {
+    itime_vertices_new.push_back(op(itime_vertices[iv]));
+  }
 
+  const T weight_new = compute_weight(Uijkl, spline_G0, itime_vertices_new);
+  const T prob = weight_new/weight_old;
+  if (std::abs(prob)>random01()) {
+    std::swap(itime_vertices_new, itime_vertices);
+    return weight_new;
+  } else {
+    return weight_old;
+  }
+}
+
+/*
+struct GlobalOrbitalFlip {
+  GlobalOrbitalFlip(int orb1, int orb2) : orb1_(orb1), orb2_(orb2);
+
+  itime_vertex operator()(itime_vertex v) {
+  }
+  int orb1_, orb2_;
+};
+
+template<typename T, typename SPLINE_G0, typename UnaryOperator, typename R>
+T global_updates(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, itime_vertex_container& itime_vertices, R& random01) {
+
+  T weight = compute_weight(Uijkl, spline_G0, itime_vertices);
+
+  weight = global_update_impl(Uijkl, spline_G0, itime_vertices, op, random01, weight);
+}
+ */
 
 #endif //IMPSOLVER_UPDATE_MANAGER_HPP

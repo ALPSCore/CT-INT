@@ -241,7 +241,7 @@ InteractionExpansion<TYPES>::~InteractionExpansion()
 template<class TYPES>
 void InteractionExpansion<TYPES>::update()
 {
-  std::valarray<double> t_meas(0.0, 3*num_U_scale);
+  std::valarray<double> t_meas(0.0, 3*num_U_scale), t_meas_tot(0.0, 3);
 
   pert_order_hist = 0.;
 
@@ -253,16 +253,15 @@ void InteractionExpansion<TYPES>::update()
     step++;
 
     for (int i_walker=0; i_walker<num_U_scale; ++i_walker) {
-      //std::cout << "   walker " << i_walker << std::endl;
-      double U_scale_walker;
       int U_index_walker;
       for (int iu=0; iu<num_U_scale; ++iu) {
         if (U_scale_index[iu]==i_walker) {
           U_index_walker = iu;
-          U_scale_walker = U_scale_vals[iu];
           break;
         }
       }
+      const double U_scale_walker = U_scale_vals[U_index_walker];
+      //std::cout << "   walker " << i_walker << " " << U_scale_walker << " " << walkers[i_walker]->pert_order() << std::endl;
       //if (U_scale_walker+0.1<random()) {
         //continue;
       //}
@@ -284,6 +283,7 @@ void InteractionExpansion<TYPES>::update()
         update_manager.do_shift_update(*walkers[i_walker], Uijkl, random, !is_thermalized());
         //update_manager.do_shift_update(*walkers[i_walker], Uijkl, random, false);
       }
+      //std::cout << "   walker " << i_walker << " " << U_scale_walker << " " << walkers[i_walker]->pert_order() << std::endl;
 
       for (int i_spin_flip=0; i_spin_flip<n_spin_flip; ++i_spin_flip) {
         update_manager.do_spin_flip_update(*walkers[i_walker], Uijkl, random);
@@ -292,10 +292,14 @@ void InteractionExpansion<TYPES>::update()
       t_meas[0+3*U_index_walker] += t_m;
       t_meas[1+3*U_index_walker] += (timer.elapsed().wall-t_m);
 
+      t_meas_tot[0] += t_m;
+      t_meas_tot[1] += (timer.elapsed().wall-t_m);
+
       if(step % recalc_period ==0) {
         boost::timer::cpu_timer timer2;
         submatrix_update->recompute_matrix(true);
         t_meas[2+3*U_index_walker] += timer2.elapsed().wall;
+        t_meas_tot[2] += timer2.elapsed().wall;
       }
 
       //measurement for walker with physical U
@@ -332,6 +336,7 @@ void InteractionExpansion<TYPES>::update()
 
   t_meas *= 1E-6/measurement_period;
   measurements["UpdateTimeMsec"] << t_meas;
+  measurements["UpdateTimeMsecAllWalkers"] << t_meas_tot;
 
 }
 
@@ -341,15 +346,26 @@ void InteractionExpansion<TYPES>::exchange_update() {
     return;
   }
   std::valarray<double> acc(0.0, num_U_scale-1);
-  for (int iu=0; iu<num_U_scale-1; ++iu) {
-    const int i_walker0 = U_scale_index[iu];
-    const int i_walker1 = U_scale_index[iu+1];
+  //for (int iu=0; iu<num_U_scale; ++iu) {
+    //std::cout << "U_scale_index[iu] " << iu << " " << U_scale_index[iu] << std::endl;
+  //}
+  //const int iu_begin = random()<0.5 ? 0 : 1;
+  for (int iu1=0; iu1<num_U_scale-1; ++iu1) {
+    for (int iu2=iu1+1; iu2<num_U_scale; ++iu2) {
+      const int i_walker1 = U_scale_index[iu1];
+      const int i_walker2 = U_scale_index[iu2];
 
-    const double prob = std::pow(U_scale_vals[iu+1]/U_scale_vals[iu],
-                                 walkers[i_walker0]->pert_order()-walkers[i_walker1]->pert_order());
-    if (prob>random()) {
-      acc[iu] = 1.0;
-      std::swap(U_scale_index[iu], U_scale_index[iu+1]);
+      const double prob = std::pow(U_scale_vals[iu2]/U_scale_vals[iu1],
+                                   walkers[i_walker1]->pert_order() - walkers[i_walker2]->pert_order());
+
+      //std::cout << "exchange rate " << iu1 << " " << iu2 << " : " << i_walker1 << " " << i_walker2 << " " << prob << std::endl;
+
+      if (prob > random()) {
+        if (iu2-iu1 == 1) {
+          acc[iu1] = 1.0;
+        }
+        std::swap(U_scale_index[iu1], U_scale_index[iu2]);
+      }
     }
   }
   submatrix_update = walkers[U_scale_index[num_U_scale-1]];
@@ -376,7 +392,8 @@ void InteractionExpansion<TYPES>::exchange_update() {
   //}
   //std::cout << std::endl;
   //if (node==1) {
-    //std::cout << " U_scale " << step << " " <<  U_scale_index[num_U_scale-1] << " " << U_scale_index[0] << std::endl;
+  //std::cout << " U_scale_end " << step << " " <<  U_scale_index[num_U_scale-1] << " " << walkers[U_scale_index[num_U_scale-1]]->pert_order() << std::endl;
+  //std::cout << " U_scale_begin " << step << " " <<  U_scale_index[0] << " " << walkers[U_scale_index[0]]->pert_order() << std::endl;
   //}
 #ifndef NDEBUG
   std::cout << " U_scale_index: ";
@@ -563,4 +580,47 @@ void InteractionExpansion<TYPES>::prepare_for_measurement()
   this->statistics_dv_ins.reset();
   this->statistics_dv_rem.reset();
   */
+}
+
+template<typename T, typename SPLINE_G0>
+std::pair<T,T>
+compute_weight(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, const itime_vertex_container& itime_vertices) {
+  T weight_U = 1.0, weight_det = 1.0;
+
+  const int nflavors = Uijkl.nf();
+  std::vector<std::vector<annihilator> > annihilators(nflavors);
+  std::vector<std::vector<creator> > creators(nflavors);
+  std::vector<std::vector<T> > alpha(nflavors);
+  for (int iv=0; iv<itime_vertices.size(); ++iv) {
+    const itime_vertex &v = itime_vertices[iv];
+    const vertex_definition<T> &vdef = Uijkl.get_vertex(v.type());
+    weight_U *= -vdef.Uval();
+    for (int rank = 0; rank < v.rank(); ++rank) {
+      const int flavor_rank = vdef.flavors()[rank];
+      operator_time op_t(v.time(), -rank);
+      creators[flavor_rank].push_back(
+        creator(flavor_rank, vdef.sites()[2 * rank], op_t)
+      );
+      annihilators[flavor_rank].push_back(
+        annihilator(flavor_rank, vdef.sites()[2 * rank + 1], op_t)
+      );
+      alpha[flavor_rank].push_back(vdef.get_alpha(v.af_state(), rank));
+    }
+  }
+
+  alps::numeric::matrix<T> G0, work;
+  for (int flavor=0; flavor<nflavors; ++flavor) {
+    const int Nv = alpha[flavor].size();
+    G0.resize_values_not_retained(Nv, Nv);
+    work.resize_values_not_retained(Nv, Nv);
+    for (int j=0; j<Nv; ++j) {
+      for (int i=0; i<Nv; ++i) {
+        G0(i,j) = spline_G0(annihilators[flavor][i], creators[flavor][j]);
+      }
+      G0(j,j) -= alpha[flavor][j];
+    }
+    weight_det *= alps::numeric::determinant_no_copy(G0, work);
+  }
+
+  return std::make_pair(weight_U, weight_det);
 }

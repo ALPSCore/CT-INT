@@ -102,6 +102,7 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
   */
   measurements << alps::ngs::SimpleRealVectorObservable("MeasurementTimeMsec");
   measurements << alps::ngs::SimpleRealVectorObservable("UpdateTimeMsec");
+  measurements << alps::ngs::SimpleRealVectorObservable("UpdateTimeMsecAllWalkers");
   measurements << alps::ngs::RealObservable("RecomputeTime");
   for(spin_t flavor=0;flavor<n_flavors;++flavor) {
       std::stringstream tmp;
