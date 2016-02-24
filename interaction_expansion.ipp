@@ -159,7 +159,7 @@ recalc_period(parms["RECALC_PERIOD"] | 5000),
 measurement_period(parms["MEASUREMENT_PERIOD"] | 500*n_flavors*n_site),
 convergence_check_period(parms["CONVERGENCE_CHECK_PERIOD"] | (int)recalc_period),
 almost_zero(parms["ALMOSTZERO"] | 1.e-16),
-seed(parms["SEED"] | 0),
+seed(parms["SEED"]+node),
 bare_green_matsubara(n_matsubara,n_site, n_flavors),
 bare_green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
@@ -199,7 +199,7 @@ update_manager(parms, Uijkl, g0_intpl, node==0)
   itime_vertex_container itime_vertices_init;
   if (params.defined("PREFIX_LOAD_CONFIG")) {
     std::ifstream is((params["PREFIX_LOAD_CONFIG"].template cast<std::string>()
-                      +std::string("-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+                      +std::string("-config-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     load_config<typename TYPES::M_TYPE>(is, Uijkl, itime_vertices_init);
   }
 
@@ -223,6 +223,11 @@ update_manager(parms, Uijkl, g0_intpl, node==0)
     );
   }
   submatrix_update = walkers[walkers.size()-1];
+#ifndef NDEBUG
+    for (int i_walker=0; i_walker<num_U_scale; ++i_walker) {
+    std::cout << " step " << step <<  " node " << node << " w " << i_walker << " pert " << walkers[i_walker]->pert_order() << std::endl;
+    }
+#endif
 
   vertex_histograms=new simple_hist *[n_flavors];
   vertex_histogram_size=100;
@@ -249,7 +254,6 @@ void InteractionExpansion<TYPES>::update()
 #ifndef NDEBUG
     std::cout << " step " << step << std::endl;
 #endif
-    //std::cout << " step " << step << std::endl;
     step++;
 
     for (int i_walker=0; i_walker<num_U_scale; ++i_walker) {
@@ -467,7 +471,7 @@ void InteractionExpansion<TYPES>::finalize()
 
   if (params.defined("PREFIX_DUMP_CONFIG")) {
     std::ofstream os((params["PREFIX_DUMP_CONFIG"].template cast<std::string>()
-                      +std::string("-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+                      +std::string("-config-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     dump(os, submatrix_update->itime_vertices());
   }
 
