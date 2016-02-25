@@ -128,10 +128,12 @@ std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, 
   for (int j=0; j<Nv; ++j) {
     for (int i=0; i<Nv; ++i) {
       matrix_(i,j) = -spline_G0(annihilators_[i], creators_[j])*(F[j]-1.0);
+      //std::cout << "i,j " << i << " " << j << " " << matrix_(i,j) << std::endl;
     }
     matrix_(j,j) += F[j];
   }
   const T sign_det = alps::numeric::sign_determinant(matrix_);
+  //std::cout << "debug sign_det " << sign_det << " " << sign_bak << std::endl;
   alps::numeric::inverse_in_place(matrix_);
 
   if (check_error) {

@@ -354,7 +354,13 @@ public:
       return invA_.size();
     };
 
+    //this should be called when there are no non-interacting vertices
     int pert_order() const {
+#ifndef NDEBUG
+      for (int i=0; i<itime_vertices_.size(); ++i) {
+        assert(!itime_vertices_[i].is_non_interacting());
+      }
+#endif
       return itime_vertices_.size();
     }
 

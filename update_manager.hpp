@@ -89,6 +89,7 @@ private:
   const double beta;
   const int n_flavors;
   const int k_ins_max;
+  const int max_order;
   const int num_vertex_type;
   const int n_multi_vertex_update;
   const int n_shift;
@@ -134,6 +135,7 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
   : beta(parms["BETA"]),
     n_flavors(parms["FLAVORS"]),
     k_ins_max(parms["K_INS_MAX"] | 32),
+    max_order(parms["MAX_ORDER"] | 2048),
     num_vertex_type(Uijkl.get_vertices().size()),
     sv_update_vertices(),
     sv_update_vertices_flag(num_vertex_type, false),
@@ -307,7 +309,11 @@ T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const
     T rtmp;
     if (try_ins[i_update]) {
       assert(i_ins<pos_vertices_ins.size());
-      rtmp = insertion_step(submatrix, random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins], U_scale);
+      if (submatrix.itime_vertices().num_interacting()+num_vertices_ins[i_ins]>max_order) {
+        rtmp = 1.0;
+      } else {
+        rtmp = insertion_step(submatrix, random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins], U_scale);
+      }
       ++i_ins;
     } else {
       rtmp = removal_step(submatrix, random, U_scale);
@@ -325,7 +331,7 @@ T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const
 template<typename T>
 template<typename R>
 T VertexUpdateManager<T>::insertion_step(SubmatrixUpdate<T>& submatrix, R& random, int vertex_begin, int num_vertices_ins, double U_scale) {
-  assert(vertex_begin+num_vertices_ins<=submatrix.pert_order());
+  assert(vertex_begin+num_vertices_ins<=submatrix.itime_vertices().size());
 
   if (num_vertices_ins==0) {
     return 1.0;
@@ -338,7 +344,7 @@ T VertexUpdateManager<T>::insertion_step(SubmatrixUpdate<T>& submatrix, R& rando
   std::vector<int> new_spins_work(num_vertices_ins);
   std::vector<int> pos_vertices_work(num_vertices_ins);
   for (int iv=0; iv<num_vertices_ins; ++iv) {
-    assert(iv+vertex_begin<submatrix.pert_order());
+    assert(iv+vertex_begin<submatrix.itime_vertices().size());
     assert(itime_vertices[iv+vertex_begin].is_non_interacting());
     new_spins_work[iv] = itime_vertices[iv+vertex_begin].af_state();
     pos_vertices_work[iv] = iv+vertex_begin;
@@ -363,7 +369,7 @@ T VertexUpdateManager<T>::insertion_step(SubmatrixUpdate<T>& submatrix, R& rando
 template<typename T>
 template<typename R>
 T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random, double U_scale) {
-  const int Nv = submatrix.pert_order();
+  //const int Nv = submatrix.pert_order();
   std::vector<int> pos_vertices_remove;
   const double acc_corr = pick_up_vertices_to_be_removed(submatrix.itime_vertices(), random, pos_vertices_remove);
   const int nv_rem = pos_vertices_remove.size();

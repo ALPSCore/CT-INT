@@ -647,7 +647,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
 
         ASSERT_TRUE(my_equal(weight_from_M/weight_from_M0, weight_rat, 1E-5));
 
-        //std::cout << "sign " << sign_bak << std::endl;
+        //std::cout << "sign " << sign_bak << " " << submatrix_update.sign() << std::endl;
         //std::cout << "sign_from_M " << sign_from_M << std::endl;
         ASSERT_TRUE(std::abs(sign_bak-submatrix_update.sign())<1.0e-5);
         ASSERT_TRUE(std::abs(sign_from_M-submatrix_update.sign())<1.0e-5);

@@ -225,7 +225,7 @@ update_manager(parms, Uijkl, g0_intpl, node==0)
   submatrix_update = walkers[walkers.size()-1];
 #ifndef NDEBUG
     for (int i_walker=0; i_walker<num_U_scale; ++i_walker) {
-    std::cout << " step " << step <<  " node " << node << " w " << i_walker << " pert " << walkers[i_walker]->pert_order() << std::endl;
+      std::cout << " step " << step <<  " node " << node << " w " << i_walker << " pert " << walkers[i_walker]->pert_order() << std::endl;
     }
 #endif
 
@@ -273,7 +273,8 @@ void InteractionExpansion<TYPES>::update()
         //std::cout << " U_scale " << step << " " <<  U_scale_walker << std::endl;
       //}
 #ifndef NDEBUG
-      std::cout << " walker " << i_walker << std::endl;
+      //std::cout << " walker " << i_walker << std::endl;
+      std::cout << " step " << step <<  " node " << node << " w " << i_walker << " pert " << walkers[i_walker]->pert_order() << std::endl;
 #endif
       boost::timer::cpu_timer timer;
 
