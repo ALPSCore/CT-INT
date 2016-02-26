@@ -145,7 +145,7 @@ std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, 
       }
     }
     if (max_diff>1E-8) {
-      std::cout << " max diff in A^{-1} is " << max_diff << ", max abs value is " << max_abs_val << " . " << std::endl;
+      std::cout << " max diff in A^{-1} is " << max_diff << ", max entry in abs(A^{-1}) is " << max_abs_val << " . " << std::endl;
     }
   }
   return std::make_pair(sign_det,sign_f_prod);
