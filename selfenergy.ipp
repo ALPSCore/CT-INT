@@ -118,7 +118,7 @@ void InteractionExpansion<TYPES>::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
 template<class TYPES>
 void InteractionExpansion<TYPES>::compute_Sl() {
   static boost::multi_array<std::complex<double>,3> Sl(boost::extents[n_site][n_site][n_legendre]);
-  const size_t num_random_walk = 100;
+  const size_t num_random_walk = 10;
 
   const M_TYPE sign = submatrix_update->sign();
   const double temperature = 1.0/beta;

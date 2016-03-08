@@ -199,6 +199,18 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
     //for double vertex update
     find_valid_pair_multi_vertex_update(Uijkl.get_vertices(), quantum_number_vertices, mv_update_valid_pair, mv_update_valid_pair_flag);
 
+    if (parms.defined("DOUBLE_VERTEX_UPDATE_PAIRS")) {
+      std::stringstream ss(parms["DOUBLE_VERTEX_UPDATE_PAIRS"].template cast<std::string>());
+      int v1,v2;
+      while (ss >> v1) {
+        ss >> v2;
+        if (!mv_update_valid_pair_flag[v1][v2]) {
+          mv_update_valid_pair.push_back(std::make_pair(v1,v2));
+          mv_update_valid_pair_flag[v1][v2] = mv_update_valid_pair_flag[v2][v1] = true;
+        }
+      }
+    }
+
     symm_exp_dist = SymmExpDist(parms["DOUBLE_VERTEX_UPDATE_A"], parms["DOUBLE_VERTEX_UPDATE_B"], beta);
 
     //statistics_dv_ins = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());

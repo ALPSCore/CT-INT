@@ -116,7 +116,7 @@ void SubmatrixUpdate<T>::recompute_matrix(bool check_error) {
     }
 
     if (check_error) {
-      if (!my_equal(sign_,sign_bak)) {
+      if (!my_equal(sign_,sign_bak, 0.5)) {
         std::cout << " Error in sign is " << std::abs(sign_-sign_bak) << std::endl;
         std::cout << "sign_ " << sign_ << std::endl;
         std::cout << "sign_bak " << sign_bak << std::endl;
