@@ -349,6 +349,7 @@ public:
   void set_non_interacting() { is_non_interacting_ = true;}
   void set_interacting() { is_non_interacting_ = false;}
   void set_unique_id(my_uint64 id) {unique_id_ = id;}
+  void set_vertex_type(int vertex_type) {vertex_type_ = vertex_type;}
   my_uint64 unique_id() const {return unique_id_;}
 
 private:

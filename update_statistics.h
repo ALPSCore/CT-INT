@@ -118,15 +118,17 @@ private:
 
 //compute a spread of vertices in imaginary time
 template<class V>
-double compute_spread(const V& vertices, double beta) {
+double compute_spread(typename V::const_iterator v_begin, typename V::const_iterator v_end, double beta) {
    double x=0,y =0;
    const double coeff = 2*M_PI/beta;
-   const int Nv = vertices.size();
+   //const int Nv = vertices.size();
+   const int Nv = std::distance(v_begin, v_end);
    std::vector<double> angles(Nv);
 
    //distribute times on a unit circle and compute the math center.
    for (int iv=0; iv<Nv; ++iv) {
-       angles[iv] = vertices[iv].time()*coeff;
+       //angles[iv] = vertices[iv].time()*coeff;
+       angles[iv] = (v_begin+iv)->time()*coeff;
        x += cos(angles[iv]);
        y += sin(angles[iv]);
    }

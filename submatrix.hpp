@@ -354,6 +354,10 @@ public:
       return invA_.size();
     };
 
+    int k_ins_max() const {
+      return k_ins_max_;
+    }
+
     //this should be called when there are no non-interacting vertices
     int pert_order() const {
 #ifndef NDEBUG

@@ -203,6 +203,8 @@ update_manager(parms, Uijkl, g0_intpl, node==0)
     load_config<typename TYPES::M_TYPE>(is, Uijkl, itime_vertices_init);
   }
 
+  update_manager.create_observables(measurements);
+
   if (min_U_scale<1.0 && num_U_scale==1) {
     throw std::runtime_error("Invalid min_U_scale and num_U_scale!");
   }
@@ -303,6 +305,8 @@ void InteractionExpansion<TYPES>::update()
       if(step % recalc_period ==0) {
         boost::timer::cpu_timer timer2;
         submatrix_update->recompute_matrix(true);
+
+        update_manager.global_updates(walkers[i_walker], Uijkl, g0_intpl, random);
         t_meas[2+3*U_index_walker] += timer2.elapsed().wall;
         t_meas_tot[2] += timer2.elapsed().wall;
       }
@@ -415,6 +419,7 @@ void InteractionExpansion<TYPES>::measure(){
   std::valarray<double> timings(2);
   measure_observables(timings);
   measurements["MeasurementTimeMsec"] << timings;
+  update_manager.measure_observables(measurements);
 }
 
 /**
@@ -576,6 +581,8 @@ void InteractionExpansion<TYPES>::prepare_for_measurement()
     }
   }
 
+  update_manager.prepare_for_measurement_steps();
+
   /*
   this->statistics_ins.reset();
   this->statistics_rem.reset();
@@ -588,7 +595,7 @@ void InteractionExpansion<TYPES>::prepare_for_measurement()
 }
 
 template<typename T, typename SPLINE_G0>
-std::pair<T,T>
+T
 compute_weight(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, const itime_vertex_container& itime_vertices) {
   T weight_U = 1.0, weight_det = 1.0;
 
@@ -627,5 +634,5 @@ compute_weight(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, con
     weight_det *= alps::numeric::determinant_no_copy(G0, work);
   }
 
-  return std::make_pair(weight_U, weight_det);
+  return weight_U*weight_det;
 }

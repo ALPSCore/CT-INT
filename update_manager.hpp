@@ -20,7 +20,7 @@
 //#include "update_statistics.h"
 
 template<typename T, typename SPLINE_G0>
-std::pair<T,T>
+T
 compute_weight(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, const itime_vertex_container& itime_vertices);
 
 class SymmExpDist {
@@ -47,15 +47,16 @@ public:
   VertexUpdateManager(const alps::params& parms, const general_U_matrix<T>& Uijkl, const G0_SPLINE& g0_spline, bool message);
 
   //Called once before Monte Carlo sampling
-  //template<typename M>
-  //void create_observables(M&);
+  template<typename M>
+  void create_observables(M&);
 
-  //Called at each Monte Carlo step once thermalization is reached
-  //template<typename M>
-  //void measure_observables(M&) const;
+  //Called at each Monte Carlo step
+  template<typename M>
+  void measure_observables(M&);
 
   //fix parameters
-  //void finish_learning();
+  void prepare_for_measurement_steps();
+
   template<typename R>
   T do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random, double U_scale);
 
@@ -65,7 +66,11 @@ public:
   template<typename R>
   T do_shift_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random, bool tune_step_size);
 
+  template< typename SPLINE_G0, typename R>
+  T global_updates(boost::shared_ptr<SubmatrixUpdate<T> > submatrix, general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, R& random01);
+
 private:
+
   template<typename R>
   T insertion_step(SubmatrixUpdate<T>& submatrix, R& random, int vertex_begin, int num_vertices_ins, double U_scale);
 
@@ -85,6 +90,8 @@ private:
 
   template<typename R>
    T spin_flip_step(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random, int pos_vertex);
+
+   //vertex
 
   const double beta;
   const int n_flavors;
@@ -114,17 +121,22 @@ private:
   //boost::random::exponential_distribution<> window_dist;
   SymmExpDist symm_exp_dist;
 
+  //for global updates
+  std::vector<std::vector<int> > global_update_list;
+
   //for shift update
   std::vector<bool> shift_update_valid;
   int num_shift_valid_vertex_types;
   double shift_step_size;
 
   //only acceptance rate
-  simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
-  int num_accepted_shift;
+  //simple_update_statistcs simple_statistics_rem, simple_statistics_ins;
+  //int num_accepted_shift;
 
   //Statistics about multi-vertex updates (imaginary time information)
-  scalar_histogram_flavors statistics_rem, statistics_ins, statistics_shift, statistics_dv_rem, statistics_dv_ins;
+  //scalar_histogram_flavors statistics_rem, statistics_ins, statistics_shift, statistics_dv_rem, statistics_dv_ins;
+  //scalar_histogram_flavors statistics_dv_rem, statistics_dv_ins;
+  scalar_histogram_flavors statistics_ins;
 
   boost::random::discrete_distribution<> Nv_m1_dist;
 };
@@ -144,13 +156,13 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
     shift_update_valid(num_vertex_type, false),
     num_shift_valid_vertex_types(0),
     shift_step_size(parms["VERTEX_SHIFT_STEP_SIZE"] | 0.1*beta),
-    simple_statistics_ins(n_multi_vertex_update),
-    simple_statistics_rem(n_multi_vertex_update),
-    statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
-    statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
-    statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, 1),
-    statistics_dv_rem(0, 0, 0),
-    statistics_dv_ins(0, 0, 0)
+    //simple_statistics_ins(n_multi_vertex_update),
+    //simple_statistics_rem(n_multi_vertex_update),
+    //statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
+    statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1)
+    //statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, 1),
+    //statistics_dv_rem(0, 0, 0),
+    //statistics_dv_ins(0, 0, 0)
 {
   const double almost_zero = 1E-10;
 
@@ -189,8 +201,8 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
 
     symm_exp_dist = SymmExpDist(parms["DOUBLE_VERTEX_UPDATE_A"], parms["DOUBLE_VERTEX_UPDATE_B"], beta);
 
-    statistics_dv_ins = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
-    statistics_dv_rem = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
+    //statistics_dv_ins = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
+    //statistics_dv_rem = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
   }
 
   if (n_shift>0) {
@@ -204,6 +216,32 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
     */
     std::fill(shift_update_valid.begin(), shift_update_valid.end(), true);
     num_shift_valid_vertex_types = std::accumulate(shift_update_valid.begin(),shift_update_valid.end(),0);
+  }
+
+  //Global updates
+  if (parms.defined("GLOBAL_UPDATES")) {
+    std::cout << "Reading " << parms["GLOBAL_UPDATES"].template cast<std::string>().c_str() << std::endl;
+    std::ifstream ss(parms["GLOBAL_UPDATES"].template cast<std::string>().c_str());
+    int num_updates;
+    ss >> num_updates;
+    int src, dst;
+    const int n_vtype = Uijkl.get_vertices().size();
+    global_update_list.resize(num_updates);
+    for (int iupdate=0; iupdate<num_updates; ++iupdate) {
+      global_update_list[iupdate].resize(n_vtype);
+      for (int iv=0; iv<n_vtype; ++iv) {
+        ss >> src >> dst;
+        if (src!=iv || dst<0 || dst>=n_vtype) {
+          throw std::runtime_error("Invalid input in GLOBAL_UPDTES!");
+        }
+        global_update_list[iupdate][iv] = dst;
+      }
+      for (int iv=0; iv<n_vtype; ++iv) {
+        if (iv!=global_update_list[iupdate][global_update_list[iupdate][iv]]) {
+          throw std::runtime_error("Invalid input in GLOBAL_UPDTES!");
+        }
+      }
+    }
   }
 
   //set up parameters for updates
@@ -257,6 +295,17 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
       }
     }
     std::cout << std::endl;
+  }
+
+  if (global_update_list.size()>0 && message) {
+    const int num_updates = global_update_list.size();
+    std::cout << std::endl << "Global updates" << std::endl;
+    for (int iupdate=0; iupdate<num_updates; ++iupdate) {
+      for (int iv=0; iv<global_update_list[iupdate].size(); ++iv) {
+        std::cout << "vertex type " << iv << " <=> " << global_update_list[iupdate][iv] << std::endl;
+      }
+      std::cout << std::endl;
+    }
   }
 }
 
@@ -313,6 +362,14 @@ T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const
         rtmp = 1.0;
       } else {
         rtmp = insertion_step(submatrix, random, pos_vertices_ins[i_ins], num_vertices_ins[i_ins], U_scale);
+        if (num_vertices_ins[i_ins]==2) {
+          itime_vertex_container::const_iterator it_begin = submatrix.itime_vertices().begin()+pos_vertices_ins[i_ins];
+          itime_vertex_container::const_iterator it_end = submatrix.itime_vertices().begin()+pos_vertices_ins[i_ins]+num_vertices_ins[i_ins];
+          const double pdist = compute_spread<itime_vertex_container>(it_begin, it_end, beta);
+          statistics_ins.add_sample(pdist,
+                                    rtmp==1.0 ? 0.0 : 1.0,
+                                    0);
+        }
       }
       ++i_ins;
     } else {
@@ -403,9 +460,13 @@ T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random,
   }
 }
 
-//template<typename T>
-//template<typename M>
-//void VertexUpdateManager<T>::create_observables(M& measurements) {
+template<typename T>
+template<typename M>
+void VertexUpdateManager<T>::create_observables(M& measurements) {
+  measurements << alps::ngs::SimpleRealVectorObservable("VertexInsertion_attempted");
+  measurements << alps::ngs::SimpleRealVectorObservable("VertexInsertion_accepted");
+  //measurements << alps::ngs::SimpleRealVectorObservable("VertexRemoval_attempted");
+  //measurements << alps::ngs::SimpleRealVectorObservable("VertexRemoval_accepted");
   //measurements << alps::ngs::SimpleRealObservable("AcceptanceRateShift");
   /*
   measurements << alps::ngs::SimpleRealObservable("AcceptanceRateShift");
@@ -425,11 +486,20 @@ T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random,
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_count");
   measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_sum");
   */
-//}
+}
 
-//template<typename T>
-//template<typename M>
-//void VertexUpdateManager<T>::measure_observables(M& measurements) {
+template<typename T>
+template<typename M>
+void VertexUpdateManager<T>::measure_observables(M& measurements) {
+  if (n_multi_vertex_update>1) {
+    measurements["VertexInsertion_attempted"] << statistics_ins.get_counter();
+    //measurements["VertexRemoval_attempted"] << statistics_dv_rem.get_counter();
+    measurements["VertexInsertion_accepted"] << statistics_ins.get_sumval();
+    //measurements["VertexRemoval_accepted"] << statistics_dv_rem.get_sumval();
+  }
+  statistics_ins.reset();
+  //statistics_rem.reset();
+
   /*
   if (n_multi_vertex_update>1) {
     measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
@@ -469,7 +539,15 @@ T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random,
   simple_statistics_ins.reset();
   simple_statistics_rem.reset();
   */
-//}
+}
+
+/*
+ * Prepare for measurement Monte Carlo steps
+ */
+template<typename T>
+void VertexUpdateManager<T>::prepare_for_measurement_steps() {
+  statistics_ins.reset();
+}
 
 template<typename T>
 template<typename R>
@@ -731,30 +809,51 @@ T global_update_impl(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G
 
   const T weight_new = compute_weight(Uijkl, spline_G0, itime_vertices_new);
   const T prob = weight_new/weight_old;
+  std::cout << "prob " << weight_new << " " << weight_old << std::endl;
   if (std::abs(prob)>random01()) {
     std::swap(itime_vertices_new, itime_vertices);
+    //std::cout << "acc" << std::endl;
     return weight_new;
   } else {
+    //std::cout << "rejected" << std::endl;
     return weight_old;
   }
 }
 
-/*
-struct GlobalOrbitalFlip {
-  GlobalOrbitalFlip(int orb1, int orb2) : orb1_(orb1), orb2_(orb2);
-
-  itime_vertex operator()(itime_vertex v) {
+struct DoTransform {
+  DoTransform(std::vector<int>* v_type_map) {
+    v_type_map_ = v_type_map;
   }
-  int orb1_, orb2_;
+
+  itime_vertex operator()(itime_vertex v) const {
+    itime_vertex v_new(v);
+    v_new.set_vertex_type(v_type_map_->operator[](v.vertex_type()));
+    return v_new;
+  }
+
+  std::vector<int>* v_type_map_;
 };
 
-template<typename T, typename SPLINE_G0, typename UnaryOperator, typename R>
-T global_updates(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, itime_vertex_container& itime_vertices, R& random01) {
-
+template<typename T>
+template<typename SPLINE_G0, typename R>
+T
+VertexUpdateManager<T>::global_updates(boost::shared_ptr<SubmatrixUpdate<T> > submatrix,
+                                    general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, R& random01) {
+  itime_vertex_container itime_vertices = submatrix->itime_vertices();
   T weight = compute_weight(Uijkl, spline_G0, itime_vertices);
 
-  weight = global_update_impl(Uijkl, spline_G0, itime_vertices, op, random01, weight);
+  for (int i_update=0; i_update<global_update_list.size(); ++i_update) {
+    DoTransform op(&global_update_list[i_update]);
+    weight = global_update_impl(Uijkl, spline_G0, itime_vertices, op, random01, weight);
+  }
+
+  boost::shared_ptr<SubmatrixUpdate<T> > walker_new(
+    new SubmatrixUpdate<T>(
+      submatrix->k_ins_max(), n_flavors,
+      spline_G0, &Uijkl, beta, itime_vertices)
+  );
+
+  submatrix.swap(walker_new);
 }
- */
 
 #endif //IMPSOLVER_UPDATE_MANAGER_HPP
