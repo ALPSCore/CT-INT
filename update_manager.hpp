@@ -67,7 +67,7 @@ public:
   T do_shift_update(SubmatrixUpdate<T>& submatrix, const general_U_matrix<T>& Uijkl, R& random, bool tune_step_size);
 
   template< typename SPLINE_G0, typename R>
-  T global_updates(boost::shared_ptr<SubmatrixUpdate<T> > submatrix, general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, R& random01);
+  void global_updates(boost::shared_ptr<SubmatrixUpdate<T> > submatrix, general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, R& random01);
 
 private:
 
@@ -78,7 +78,7 @@ private:
   T removal_step(SubmatrixUpdate<T>& submatrix, R& random, double U_scale);
 
   template<typename R>
-  std::pair<std::vector<itime_vertex>, double>
+  std::vector<itime_vertex>
   gen_itime_vertices_insertion(const general_U_matrix<T>& Uijkl, R& random01) const;
 
   template<typename R>
@@ -327,15 +327,12 @@ T VertexUpdateManager<T>::do_ins_rem_update(SubmatrixUpdate<T>& submatrix, const
 
   T weight_rat = 1.0;
 
-  std::vector<insertion_removal_info_type> ins_info(num_ins_try);
-
   //add non-interacting vertices
   const int Nv0 = submatrix.pert_order();
   int vertex_begin = Nv0;
   std::vector<itime_vertex> new_vertices_all;
   for (int i_ins=0; i_ins<num_ins_try; ++i_ins) {
-    std::vector<itime_vertex> new_vertices;
-    boost::tie(new_vertices,ins_info[i_ins]) = gen_itime_vertices_insertion(Uijkl, random);
+    std::vector<itime_vertex> new_vertices = gen_itime_vertices_insertion(Uijkl, random);
     const int Nv = new_vertices.size();
 
     for (int iv=0; iv<new_vertices.size(); ++iv) {
@@ -551,16 +548,15 @@ void VertexUpdateManager<T>::prepare_for_measurement_steps() {
 
 template<typename T>
 template<typename R>
-std::pair<std::vector<itime_vertex>, double>
+std::vector<itime_vertex>
 VertexUpdateManager<T>::gen_itime_vertices_insertion(const general_U_matrix<T>& Uijkl, R &random01) const {
   const int Nv = Nv_m1_dist(random01)+1;
 
   std::vector<itime_vertex> vertices;
-  double dist;
 
   if (Nv==1) {
     if (sv_update_vertices.size()==0) {
-      return std::make_pair(std::vector<itime_vertex>(), 0.0);
+      return std::vector<itime_vertex>();
     }
     vertices.resize(1);
     const double time = random01()*beta;
@@ -570,7 +566,7 @@ VertexUpdateManager<T>::gen_itime_vertices_insertion(const general_U_matrix<T>& 
     vertices[0] = itime_vertex(vdef.id(), af_state, time, vdef.rank(), vdef.is_density_type());
   } else if (Nv==2) {
     if (mv_update_valid_pair.size()==0) {
-      return std::make_pair(std::vector<itime_vertex>(), 0.0);
+      return std::vector<itime_vertex>();
     }
     std::pair<int,int> v_pair;
     v_pair = mv_update_valid_pair[mv_update_valid_pair.size()*random01()];
@@ -578,7 +574,7 @@ VertexUpdateManager<T>::gen_itime_vertices_insertion(const general_U_matrix<T>& 
   } else {
     throw std::runtime_error("Nv>2 not implemented");
   }
-  return std::make_pair(vertices, dist);
+  return vertices;
 }
 
 template<typename T>
@@ -836,7 +832,7 @@ struct DoTransform {
 
 template<typename T>
 template<typename SPLINE_G0, typename R>
-T
+void
 VertexUpdateManager<T>::global_updates(boost::shared_ptr<SubmatrixUpdate<T> > submatrix,
                                     general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, R& random01) {
   itime_vertex_container itime_vertices = submatrix->itime_vertices();
