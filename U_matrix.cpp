@@ -11,19 +11,6 @@ std::ostream &operator<<(std::ostream &os, const itime_vertex &v) {
   return os;
 }
 
-void print_vertices(std::ostream &os, const std::vector<itime_vertex> &v) {
-  os << std::endl;
-  for (int iv=0; iv<v.size(); ++iv) {
-    os << " iv = " << iv;
-    os << " type= " << v[iv].type();
-    os << " rank= " << v[iv].rank();
-    os << " af_state= " << v[iv].af_state();
-    os << " time= " << v[iv].time();
-    os << std::endl;
-  }
-}
-
-
 void dump(std::ostream &os, const itime_vertex_container &itime_vertices) {
   const int Nv = itime_vertices.size();
   std::cout << "Nv = " << Nv << std::endl;

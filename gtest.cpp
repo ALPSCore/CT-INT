@@ -438,7 +438,7 @@ TEST(UpdateStatistics, EstimateSpread) {
     std::vector<simple_vertex> vertices;
     vertices.push_back(simple_vertex(0.0));
     vertices.push_back(simple_vertex(0.3*beta));
-    ASSERT_TRUE(std::abs(compute_spread(vertices, beta)/beta-0.3)<1E-5);
+    ASSERT_TRUE(std::abs(compute_spread<std::vector<simple_vertex> >(vertices.begin(), vertices.end(), beta)/beta-0.3)<1E-5);
 
     //vertices are distributed on [0,beta] uniformly.
     for (int Nv=2; Nv<10; ++Nv) {
@@ -446,7 +446,7 @@ TEST(UpdateStatistics, EstimateSpread) {
         for (int iv=0; iv<Nv; ++iv) {
             vertices.push_back(simple_vertex((beta*iv)/Nv));
         }
-        ASSERT_TRUE(std::abs(compute_spread(vertices, beta)/beta-(1-1./Nv))<1E-5);
+        ASSERT_TRUE(std::abs(compute_spread<std::vector<simple_vertex> >(vertices.begin(), vertices.end(), beta)/beta-(1-1./Nv))<1E-5);
     }
 }
 

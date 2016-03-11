@@ -198,12 +198,16 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
 
     //for double vertex update
     find_valid_pair_multi_vertex_update(Uijkl.get_vertices(), quantum_number_vertices, mv_update_valid_pair, mv_update_valid_pair_flag);
+    const int N_vdef = Uijkl.get_vertices().size();
 
     if (parms.defined("DOUBLE_VERTEX_UPDATE_PAIRS")) {
       std::stringstream ss(parms["DOUBLE_VERTEX_UPDATE_PAIRS"].template cast<std::string>());
       int v1,v2;
       while (ss >> v1) {
         ss >> v2;
+        if (v1>=N_vdef || v2>=N_vdef || v1<0 || v2<0) {
+          throw std::runtime_error("Invalid entry in DOUBLE_VERTEX_UPDATE_PAIRS!");
+        }
         if (!mv_update_valid_pair_flag[v1][v2]) {
           mv_update_valid_pair.push_back(std::make_pair(v1,v2));
           mv_update_valid_pair_flag[v1][v2] = mv_update_valid_pair_flag[v2][v1] = true;
@@ -218,15 +222,13 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
   }
 
   if (n_shift>0) {
-    /*
-    const std::vector<vertex_definition<T> >& v_defs_tmp = Uijkl.get_vertices();
+    std::fill(shift_update_valid.begin(), shift_update_valid.end(), true);
+    //const std::vector<vertex_definition<T> >& v_defs_tmp = Uijkl.get_vertices();
     for (int iv=0; iv<sv_update_vertices_flag.size(); ++iv) {
-      if (!sv_update_vertices_flag[iv]) {
-        shift_update_valid[iv] = true;
+      if (sv_update_vertices_flag[iv]) {
+        shift_update_valid[iv] = false;
       }
     }
-    */
-    std::fill(shift_update_valid.begin(), shift_update_valid.end(), true);
     num_shift_valid_vertex_types = std::accumulate(shift_update_valid.begin(),shift_update_valid.end(),0);
   }
 
@@ -474,6 +476,8 @@ template<typename M>
 void VertexUpdateManager<T>::create_observables(M& measurements) {
   measurements << alps::ngs::SimpleRealVectorObservable("VertexInsertion_attempted");
   measurements << alps::ngs::SimpleRealVectorObservable("VertexInsertion_accepted");
+  //measurements << alps::ngs::SimpleRealObservable("AcceptanceRate_shift");
+  //measurements << alps::ngs::SimpleRealObservable("AcceptanceRate_global_update");
   //measurements << alps::ngs::SimpleRealVectorObservable("VertexRemoval_attempted");
   //measurements << alps::ngs::SimpleRealVectorObservable("VertexRemoval_accepted");
   //measurements << alps::ngs::SimpleRealObservable("AcceptanceRateShift");
@@ -770,7 +774,8 @@ T VertexUpdateManager<T>::do_shift_update(SubmatrixUpdate<T>& submatrix, const g
   submatrix.init_update(new_vertices_all);
 
   //perform actual updates
-  const double magic_number = std::pow(1.01, 1.0/num_shift);
+  const double magic_number = 1.0;
+  //const double magic_number = std::pow(1.01, 1.0/num_shift);
   std::vector<int> pos_vertices_tmp(2), new_spins_tmp(2);
   for (int i_update=0; i_update<num_shift; ++i_update) {
     T det_rat_A, f_rat, U_rat;

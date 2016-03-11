@@ -792,8 +792,19 @@ find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& ve
 };
 
 std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
+
 template<class V>
-void print_vertices(std::ostream &os, const V &v);
+void print_vertices(std::ostream &os, const V &v) {
+  os << std::endl;
+  for (int iv = 0; iv < v.size(); ++iv) {
+    os << " iv = " << iv;
+    os << " type= " << v[iv].type();
+    os << " rank= " << v[iv].rank();
+    os << " af_state= " << v[iv].af_state();
+    os << " time= " << v[iv].time();
+    os << std::endl;
+  }
+}
 
 void dump(std::ostream &os, const itime_vertex_container &itime_vertices);
 
