@@ -136,7 +136,7 @@ private:
   //Statistics about multi-vertex updates (imaginary time information)
   //scalar_histogram_flavors statistics_rem, statistics_ins, statistics_shift, statistics_dv_rem, statistics_dv_ins;
   //scalar_histogram_flavors statistics_dv_rem, statistics_dv_ins;
-  scalar_histogram_flavors statistics_ins;
+  scalar_histogram_flavors statistics_ins, statistics_shift;
 
   boost::random::discrete_distribution<> Nv_m1_dist;
 };
@@ -159,8 +159,8 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
     //simple_statistics_ins(n_multi_vertex_update),
     //simple_statistics_rem(n_multi_vertex_update),
     //statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
-    statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1)
-    //statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, 1),
+    statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 1000), beta, n_multi_vertex_update-1),
+    statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 1000), beta, num_vertex_type)
     //statistics_dv_rem(0, 0, 0),
     //statistics_dv_ins(0, 0, 0)
 {
@@ -476,6 +476,8 @@ template<typename M>
 void VertexUpdateManager<T>::create_observables(M& measurements) {
   measurements << alps::ngs::SimpleRealVectorObservable("VertexInsertion_attempted");
   measurements << alps::ngs::SimpleRealVectorObservable("VertexInsertion_accepted");
+  measurements << alps::ngs::SimpleRealVectorObservable("VertexShift_attempted");
+  measurements << alps::ngs::SimpleRealVectorObservable("VertexShift_accepted");
   //measurements << alps::ngs::SimpleRealObservable("AcceptanceRate_shift");
   //measurements << alps::ngs::SimpleRealObservable("AcceptanceRate_global_update");
   //measurements << alps::ngs::SimpleRealVectorObservable("VertexRemoval_attempted");
@@ -506,11 +508,15 @@ template<typename M>
 void VertexUpdateManager<T>::measure_observables(M& measurements) {
   if (n_multi_vertex_update>1) {
     measurements["VertexInsertion_attempted"] << statistics_ins.get_counter();
-    //measurements["VertexRemoval_attempted"] << statistics_dv_rem.get_counter();
     measurements["VertexInsertion_accepted"] << statistics_ins.get_sumval();
-    //measurements["VertexRemoval_accepted"] << statistics_dv_rem.get_sumval();
+  }
+  if (n_shift>0) {
+    measurements["VertexShift_attempted"] << statistics_shift.get_counter();
+    measurements["VertexShift_accepted"] << statistics_shift.get_sumval();
   }
   statistics_ins.reset();
+  statistics_shift.reset();
+
   //statistics_rem.reset();
 
   /*
@@ -560,6 +566,7 @@ void VertexUpdateManager<T>::measure_observables(M& measurements) {
 template<typename T>
 void VertexUpdateManager<T>::prepare_for_measurement_steps() {
   statistics_ins.reset();
+  statistics_shift.reset();
 }
 
 template<typename T>
@@ -787,6 +794,9 @@ T VertexUpdateManager<T>::do_shift_update(SubmatrixUpdate<T>& submatrix, const g
     );
     new_spins_tmp[0] = NON_INT_SPIN_STATE;
     new_spins_tmp[1] = submatrix.itime_vertices()[pos_vertices_tmp[0]].af_state();
+    const int vertex_type = submatrix.itime_vertices()[pos_vertices_tmp[0]].type();
+    const double dist = submatrix.itime_vertices()[pos_vertices_tmp[0]].time()-submatrix.itime_vertices()[pos_vertices_tmp[1]].time();
+    const double pdist = std::min(beta-dist,dist);
 
     boost::tie(det_rat_A,f_rat,U_rat) = submatrix.try_spin_flip(pos_vertices_tmp, new_spins_tmp);
     assert(std::abs(U_rat-1.0)<1E-8);
@@ -794,12 +804,14 @@ T VertexUpdateManager<T>::do_shift_update(SubmatrixUpdate<T>& submatrix, const g
 
     if (std::abs(prob)>random()) {
       submatrix.perform_spin_flip(pos_vertices_tmp, new_spins_tmp);
+      statistics_shift.add_sample(pdist, 1.0, vertex_type);
       if (tune_step_size) {
         shift_step_size = std::min(shift_step_size*magic_number, beta);
       }
       weight_rat *= prob;
     } else {
       submatrix.reject_spin_flip();
+      statistics_shift.add_sample(pdist, 0.0, vertex_type);
       if (tune_step_size) {
         shift_step_size = std::min(shift_step_size/magic_number, beta);
       }
