@@ -138,7 +138,6 @@ compute_inverse_matrix_up2(
         //compute H
         gemm(C, invA, C_invA);
         gemm(C_invA, B, C_invA_B);
-        gemm(C_invA, B, C_invA_B);
         H = safe_inverse(D - C_invA_B);
 
         //compute F
