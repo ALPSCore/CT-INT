@@ -238,22 +238,46 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
     std::ifstream ss(parms["GLOBAL_UPDATES"].template cast<std::string>().c_str());
     int num_updates;
     ss >> num_updates;
+    std::cout << "Number of global updates in the input file is " << num_updates << "." << std::endl;
+    std::cout << "Note reverse processes are automatically generated." << std::endl;
     int src, dst;
     const int n_vtype = Uijkl.get_vertices().size();
-    global_update_list.resize(num_updates);
+
+    std::set<std::vector<int> > global_update_set;
     for (int iupdate=0; iupdate<num_updates; ++iupdate) {
-      global_update_list[iupdate].resize(n_vtype);
+      std::vector<int> tmp_vec(n_vtype);
       for (int iv=0; iv<n_vtype; ++iv) {
         ss >> src >> dst;
+        if (src!=iv) {
+          std::cout << " 1st column is expected to be " << iv << " but actually is " << src << std::endl;
+        }
+        if (dst<0) {
+          std::cout << " 2nd column is negative! " << dst << std::endl;
+        }
+        if (dst>=n_vtype) {
+          std::cout << " 2nd column is too large! " << dst << std::endl;
+        }
         if (src!=iv || dst<0 || dst>=n_vtype) {
+          std::cout << " " << iv << " " << src << " " << dst << " " << n_vtype << std::endl;
           throw std::runtime_error("Invalid input in GLOBAL_UPDTES!");
         }
-        global_update_list[iupdate][iv] = dst;
+        tmp_vec[iv] = dst;
       }
+      global_update_set.insert(tmp_vec);
+
+      //generating reverse process
+      std::vector<int> tmp_vec_rev(n_vtype);
       for (int iv=0; iv<n_vtype; ++iv) {
-        if (iv!=global_update_list[iupdate][global_update_list[iupdate][iv]]) {
-          throw std::runtime_error("Invalid input in GLOBAL_UPDTES!");
-        }
+        tmp_vec_rev[tmp_vec[iv]] = iv;
+      }
+      global_update_set.insert(tmp_vec_rev);
+    }
+    global_update_list = std::vector<std::vector<int> >(global_update_set.begin(), global_update_set.end());
+    std::cout << "The following global updates will be perfomed." << std::endl;
+    for (int iupdate=0; iupdate<global_update_list.size(); ++iupdate) {
+      std::cout << "Update #" << iupdate << std::endl;
+      for (int iv=0; iv<n_vtype; ++iv) {
+        std::cout << " vertex " << iv << " to vertex " << global_update_list[iupdate][iv] << std::endl;
       }
     }
   }

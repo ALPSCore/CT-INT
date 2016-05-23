@@ -82,7 +82,7 @@ public:
     z_ = z;
     t_ = t;
   }
-  ~c_or_cdagger() {}
+  virtual ~c_or_cdagger() {}
 
   inline const spin_t &flavor() const {return z_;}
   inline spin_t &flavor() {return z_;}
