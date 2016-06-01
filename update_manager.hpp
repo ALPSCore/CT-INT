@@ -858,7 +858,7 @@ T global_update_impl(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G
 
   const T weight_new = compute_weight(Uijkl, spline_G0, itime_vertices_new);
   const T prob = weight_new/weight_old;
-  std::cout << "prob " << weight_new << " " << weight_old << std::endl;
+  //std::cout << "prob " << weight_new << " " << weight_old << std::endl;
   if (std::abs(prob)>random01()) {
     std::swap(itime_vertices_new, itime_vertices);
     //std::cout << "acc" << std::endl;
