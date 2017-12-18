@@ -273,6 +273,7 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
       global_update_set.insert(tmp_vec_rev);
     }
     global_update_list = std::vector<std::vector<int> >(global_update_set.begin(), global_update_set.end());
+    /*
     std::cout << "The following global updates will be perfomed." << std::endl;
     for (int iupdate=0; iupdate<global_update_list.size(); ++iupdate) {
       std::cout << "Update #" << iupdate << std::endl;
@@ -280,6 +281,7 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
         std::cout << " vertex " << iv << " to vertex " << global_update_list[iupdate][iv] << std::endl;
       }
     }
+    */
   }
 
   //set up parameters for updates
@@ -337,10 +339,10 @@ VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const gen
 
   if (global_update_list.size()>0 && message) {
     const int num_updates = global_update_list.size();
-    std::cout << std::endl << "Global updates" << std::endl;
+    std::cout << std::endl << "The following global updates will be performed." << std::endl;
     for (int iupdate=0; iupdate<num_updates; ++iupdate) {
       for (int iv=0; iv<global_update_list[iupdate].size(); ++iv) {
-        std::cout << "vertex type " << iv << " <=> " << global_update_list[iupdate][iv] << std::endl;
+        std::cout << "vertex type " << iv << " => " << global_update_list[iupdate][iv] << std::endl;
       }
       std::cout << std::endl;
     }
