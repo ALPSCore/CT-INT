@@ -1,53 +1,65 @@
-cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-project(impsolver)
+cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_policy(SET CMP0022 NEW)
 
-#set(GOOGLE_PROFILER ON)
+if(NOT CMAKE_BUILD_TYPE)
+    message("Using default build type: Release")
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+endif()
 
-# find ALPS Library
-if(NOT ALPS_DIR AND ALPS_ROOT_DIR)
-  set(ALPS_DIR ${ALPS_ROOT_DIR}/share/alps)
-endif(NOT ALPS_DIR AND ALPS_ROOT_DIR)
-if(NOT ALPS_DIR AND DEFINED ENV{ALPS_ROOT})
-  set(ALPS_DIR $ENV{ALPS_ROOT}/share/alps)
-endif(NOT ALPS_DIR AND DEFINED ENV{ALPS_ROOT})
+project(ALPSCoreCTINT CXX)
 
-#set(ALPS_DMFT_INCLUDE_DIR "" ${ALPS_DMFT_INCLUDE_DIR})
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_SOURCE_DIR})
 
-set(PREVENT_ALPS_COMPILERS ON)
-find_package(ALPS REQUIRED NO_SYSTEM_ENVIRONMENT_PATH)
+#To include alps/fastupdate
+set(CMAKE_INCLUDE_CURRENT_DIR on)
 
-set(ALPS_LIBRARY_DIRS ${ALPS_LIBRARY_DIRS} CACHE STRINGS "ALPS library dirs")
-set(ALPS_INCLUDE_DIRS ${ALPS_INCLUDE_DIRS} CACHE STRINGS "ALPS include dirs")
-if(ALPS_HDF5_INCLUDE_DIR) # support for old ALPS revisions
-  set(HDF5_INCLUDE_DIR ${ALPS_HDF5_INCLUDE_DIR} CACHE STRINGS "")
-endif(ALPS_HDF5_INCLUDE_DIR)
-if(ALPS_HDF5_LIBRARIES) # support for old ALPS revisions
-  set(HDF5_LIBRARIES ${ALPS_HDF5_LIBRARIES} CACHE STRINGS "")
-endif(ALPS_HDF5_LIBRARIES)
+#SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-mark_as_advanced(ALPS_LIBRARY_DIRS ALPS_INCLUDE_DIRS HDF5_INCLUDE_DIR HDF5_LIBRARIES)
+# Disable in-source builds
+if (${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
+    message(FATAL_ERROR "In source builds are disabled. Please use a separate build directory")
+endif()
 
-if (ALPS_PYTHON_INTERPRETER)
-  set(ALPS_INCLUDE_DIRS ${ALPS_INCLUDE_DIRS} ${ALPS_PYTHON_INCLUDE_DIRS} ${ALPS_PYTHON_NUMPY_INCLUDE_DIR})
-  list(APPEND CHYB_LIBRARIES ${ALPS_PYTHON_LIBRARY})
-endif (ALPS_PYTHON_INTERPRETER)
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
-# enable C and C++ compilers
-enable_language(CXX)
+# RPATH fix
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(CMAKE_INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+else()
+    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
+
+#policy update CMP0042
+if(APPLE)
+    set(CMAKE_MACOSX_RPATH ON)
+endif()
+
+
+# The project relies on the ALPSCore package. If ALPSCore is not found
+# automatically, specify its location using:
+# export ALPSCore_DIR=/location/to/ALPSCORE/
+find_package(ALPSCore REQUIRED)
+
+#Find MPI
+include(EnableMPI)
+
+
+# Eigen is provided by ALPSCore
+if (NOT ALPSCore_HAS_EIGEN_VERSION)
+  find_package(Eigen3 3.2.8 REQUIRED)
+endif()
+
+#ALPSCore disable debug for gf library
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DBOOST_DISABLE_ASSERTS -DNDEBUG")
 
 #include directories
-set(CHYB_LIBRARY_INCLUDE_DIRS ${PROJECT_SOURCE_DIR} ${ALPS_INCLUDE_DIRS} $ENV{BLAS_LAPACK_INCLUDE_DIRS})
-message(CHYB_LIBRARY_INCLUDE_DIRS "${CHYB_LIBRARY_INCLUDE_DIRS}")
-include_directories(${CHYB_LIBRARY_INCLUDE_DIRS})
+set(CTINT_LIBRARY_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR} ${MPI_CXX_INCLUDE_PATH} ${MPI_C_INCLUDE_PATH} ${CMAKE_SOURCE_DIR}/include) #rest taken care of by libraries dependencies
+include_directories(${CTINT_LIBRARY_INCLUDE_DIRS})
 
-#library directories
-set(CHYB_LIBRARY_DIRS ${ALPS_LIBRARY_DIRS} $ENV{BLAS_LAPACK_DIRS} CACHE STRINGS "CHYB library dirs")
-message(CHYB_LIBRARY_DIRS "${CHYB_LIBRARY_DIRS}")
-link_directories(${CHYB_LIBRARY_DIRS})
-
-#executable
-set(ALPS_ROOT ${ALPS_LIBRARY_DIRS} $ENV{BLAS_LAPACK_DIRS} CACHE STRINGS "CHYB library dirs")
-set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
+#source files
+set (LIB_FILES
         fouriertransform.C
         observables.ipp
         io.ipp
@@ -55,24 +67,25 @@ set (DMFT_QMC_INTERACTION_EXPANSION3_SOURCE
         util.cpp
         legendre.cpp legendre.h fastupdate_formula.h U_matrix.cpp update_statistics.h wang_landau.h measurements.hpp selfenergy.ipp operator.cpp)
 
-#add_executable(interaction_real main_real.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
-add_executable(interaction_real main_real.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
-add_executable(interaction_complex main_complex.cpp ${DMFT_QMC_INTERACTION_EXPANSION3_SOURCE})
+#static library
+add_library(alpscore_ctint ${LIB_FILES})
+#set_target_properties(alpscore_ctint PROPERTIES PUBLIC_HEADER src/solver.hpp)
 
+#Compiler dependent libraries
+set(EXTRA_LIBS "")
+
+#Set link libraries
+list(APPEND CTINT_LIBRARIES ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${EXTRA_LIBS})
+if(DEFINED GOOGLE_PROFILER)
+  list(APPEND CTINT_LIBRARIES profiler)
+endif(DEFINED GOOGLE_PROFILER)
+target_link_libraries(alpscore_ctint ${CTINT_LIBRARIES})
+
+#executable
+ADD_EXECUTABLE(interaction_real main_real.cpp)
+target_link_libraries(interaction_real alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+
+#Gtest
 set (GTEST_SOURCE legendre.cpp util.cpp operator.cpp U_matrix.cpp)
 add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTEST_SOURCE})
-
-#libraries
-list(APPEND CHYB_LIBRARIES alps boost $ENV{BLAS_LAPACK_LIBRARIES})
-if(DEFINED GOOGLE_PROFILER)
-  list(APPEND CHYB_LIBRARIES profiler)
-endif(DEFINED GOOGLE_PROFILER)
-
-message(CHYB_LIBRARIES "${CHYB_LIBRARIES}")
-target_link_libraries(interaction_real ${CHYB_LIBRARIES})
-target_link_libraries(interaction_complex ${CHYB_LIBRARIES})
-target_link_libraries(gtest ${CHYB_LIBRARIES})
-
-message("CXX, CC=")
-message(STATUS "${CMAKE_CXX_COMPILER}")
-message(STATUS "${CMAKE_C_COMPILER}")
+target_link_libraries(gtest ${CTINT_LIBRARIES})
