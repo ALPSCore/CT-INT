@@ -11,7 +11,7 @@ project(ALPSCoreCTINT CXX)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_SOURCE_DIR})
 
 #To include alps/fastupdate
-set(CMAKE_INCLUDE_CURRENT_DIR on)
+#set(CMAKE_INCLUDE_CURRENT_DIR on)
 
 #SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -60,12 +60,20 @@ include_directories(${CTINT_LIBRARY_INCLUDE_DIRS})
 
 #source files
 set (LIB_FILES
-        fouriertransform.C
-        observables.ipp
-        io.ipp
-        interaction_expansion.ipp
-        util.cpp
-        legendre.cpp legendre.h fastupdate_formula.h U_matrix.cpp update_statistics.h wang_landau.h measurements.hpp selfenergy.ipp operator.cpp)
+        src/fouriertransform.C
+        src/observables.ipp
+        src/io.ipp
+        src/interaction_expansion.ipp
+        src/util.cpp
+        src/legendre.cpp
+        src/legendre.h
+        src/fastupdate_formula.h
+        src/U_matrix.cpp
+        src/update_statistics.h
+        src/wang_landau.h
+        src/measurements.hpp
+        src/selfenergy.ipp
+        src/operator.cpp)
 
 #static library
 add_library(alpscore_ctint ${LIB_FILES})
@@ -82,10 +90,10 @@ endif(DEFINED GOOGLE_PROFILER)
 target_link_libraries(alpscore_ctint ${CTINT_LIBRARIES})
 
 #executable
-ADD_EXECUTABLE(interaction_real main_real.cpp)
+ADD_EXECUTABLE(interaction_real src/main_real.cpp)
 target_link_libraries(interaction_real alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 
 #Gtest
-set (GTEST_SOURCE legendre.cpp util.cpp operator.cpp U_matrix.cpp)
-add_executable(gtest gtest.cpp ./gtest/gtest-all.cc ./gtest/gtest_main.cc ${GTEST_SOURCE})
+set (GTEST_SOURCE src/legendre.cpp src/util.cpp src/operator.cpp src/U_matrix.cpp)
+add_executable(gtest ./test/gtest.cpp ./test/gtest-all.cc ./test/gtest_main.cc ${GTEST_SOURCE})
 target_link_libraries(gtest ${CTINT_LIBRARIES})
