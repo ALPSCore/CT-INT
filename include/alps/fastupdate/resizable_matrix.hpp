@@ -256,13 +256,21 @@ namespace alps {
         return *this;
       }
 
-      /*
-      template<typename Derived>
-      inline void operator=(const Eigen::MatrixBase<Derived>& mat) {
-        destructive_resize(mat.rows(),mat.cols());
-        block() = mat;
-      }
-      */
+        /*
+        template<typename S = Scalar, typename T>
+        const typename std::enable_if<std::is_scalar<T>::value, ResizableMatrix<S> >::type
+        & operator*=(T s) const {
+          assert(is_allocated());
+
+          values_.block(0, 0, size1_, size2_) *= s;
+          return *this;
+        }
+        template<typename Derived>
+        inline void operator=(const Eigen::MatrixBase<Derived>& mat) {
+          destructive_resize(mat.rows(),mat.cols());
+          block() = mat;
+        }
+        */
 
       inline Scalar max() const {
         assert(is_allocated());
@@ -366,8 +374,8 @@ namespace alps {
     ALPS_STRONG_INLINE
     void gemm(const alps::fastupdate::ResizableMatrix<Scalar> &a, const alps::fastupdate::ResizableMatrix<Scalar> &b,
               alps::fastupdate::ResizableMatrix<Scalar> &c) {
-#error resize and block operations
-      c = a * b;
+      c.destructive_resize(a.size1(), b.size2());
+      c.block() = a.block() * b.block();
     }
 
     template<typename Scalar>
