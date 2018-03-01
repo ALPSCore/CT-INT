@@ -353,8 +353,7 @@ double mymod(double x, double beta);
 
 template<class T> alps::numeric::matrix<T>
 mygemm(const alps::numeric::matrix<T>& A, const alps::numeric::matrix<T>& B) {
-    alps::numeric::matrix<T> AB(alps::numeric::num_rows(A), alps::numeric::num_cols(B), 0.0);
-    assert(A.num_cols()==B.num_rows());
+    alps::numeric::matrix<T> AB(A.size1(), B.size2(), 0.0);
     alps::fastupdate::gemm(A, B, AB);
     return AB;
 }

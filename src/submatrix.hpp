@@ -12,9 +12,6 @@
 #include <boost/lambda/lambda.hpp>
 #include <boost/function.hpp>
 
-#include <alps/fastupdate/determinant_matrix.hpp>
-
-
 #include "operator.hpp"
 #include "U_matrix.h"
 #include "fastupdate_formula.h"
@@ -147,9 +144,6 @@ public:
     void compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE& spline_G0) const;
 
     template<typename SPLINE_G0_TYPE, typename M>
-    T eval_Gij(const SPLINE_G0_TYPE& spline_G0, int row, int col) const;
-
-    template<typename SPLINE_G0_TYPE, typename M>
     void eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gij) const;
 
     template<typename SPLINE_G0_TYPE, typename M>
@@ -219,8 +213,7 @@ public:
     typename InvAMatrix<T>::value_type determinant() {
       typename InvAMatrix<T>::value_type det=1.0;
       for (spin_t flavor=0; flavor<size(); ++flavor) {
-        //det *= alps::numeric::safe_determinant(sub_matrices_[flavor].matrix());
-        det *= sub_matrices_[flavor].matrix().safe_determiant();
+        det *= sub_matrices_[flavor].matrix().determinant();
       }
       return det;
     }
@@ -256,7 +249,8 @@ class InvGammaMatrix {
 public:
     typedef T value_type;
     typedef boost::tuple<int,T,T> row_col_info_type;//position in A^{-1}, alpha0, alpha_current
-    InvGammaMatrix() : current_uid_rowcol(0){}
+
+    InvGammaMatrix() {}
 
     const alps::numeric::matrix<T>& matrix() const {return matrix_;}
 
@@ -307,25 +301,18 @@ public:
 
 
 private:
-    using GammaRow = int;
-    using GammaCol = int;
-    using GammaElementFunc = std::function<T(GammaRow,GammaCol)>();
-
-    int current_uid_rowcol;
-
     int noperators0;
-    using DeterminatMatrixType = alps::fastupdate::DeterminantMatrix<T,GammaElementFunc,GammaRow,GammaCol>;
-    DeterminatMatrixType det_mat_;//tracking inverse of Gamma matrix
-
-    //alps::numeric::matrix<T> matrix_;//inverse of gamma matrix
+    alps::numeric::matrix<T> matrix_;//inverse of gamma matrix
     std::vector<row_col_info_type> row_col_info_;//info about rows and cols in gamma matrix
+    std::vector<creator> creators_gamma_;
+    std::vector<annihilator> annihilators_gamma_;
 
     //workspace for addition of row and col
-    //alps::numeric::matrix<T> G_n_n, G_n_j, G_j_n;
+    alps::numeric::matrix<T> G_n_n, G_n_j, G_j_n;
 
     //workspace for removal of row and col
-    //std::vector<int> rows_cols_removed;
-    //alps::numeric::matrix<T> Mmat, inv_tSp;
+    std::vector<int> rows_cols_removed;
+    alps::numeric::matrix<T> Mmat, inv_tSp;
 
     //auxially functions for multi-vertex insertion and removal
     int find_row_col_gamma(int pos_A) const;

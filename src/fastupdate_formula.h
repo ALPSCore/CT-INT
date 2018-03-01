@@ -24,10 +24,10 @@ compute_det_ratio_up(
 
     assert(M>0);
 
-    assert(num_rows(invA)==num_cols(invA));
-    assert(num_rows(B)==N && num_cols(B)==M);
-    assert(num_rows(C)==M && num_cols(C)==N);
-    assert(num_rows(D)==M && num_cols(D)==M);
+    //assert(num_rows(invA)==num_cols(invA));
+    //assert(num_rows(B)==N && num_cols(B)==M);
+    //assert(num_rows(C)==M && num_cols(C)==N);
+    //assert(num_rows(D)==M && num_cols(D)==M);
 
     if (N==0) {
         return D.safe_determinant();
@@ -55,10 +55,10 @@ compute_inverse_matrix_up(
 
     assert(M>0);
 
-    assert(num_rows(invA)==num_cols(invA));
-    assert(num_rows(B)==N && num_cols(B)==M);
-    assert(num_rows(C)==M && num_cols(C)==N);
-    assert(num_rows(D)==M && num_cols(D)==M);
+    //assert(num_rows(invA)==num_cols(invA));
+    //assert(num_rows(B)==N && num_cols(B)==M);
+    //assert(num_rows(C)==M && num_cols(C)==N);
+    //assert(num_rows(D)==M && num_cols(D)==M);
 
     //compute H
     if (N==0) {
@@ -118,10 +118,10 @@ compute_inverse_matrix_up2(
 
     assert(M>0);
 
-    assert(num_rows(invA)==num_cols(invA));
-    assert(num_rows(B)==N && num_cols(B)==M);
-    assert(num_rows(C)==M && num_cols(C)==N);
-    assert(num_rows(D)==M && num_cols(D)==M);
+    //assert(num_rows(invA)==num_cols(invA));
+    //assert(num_rows(B)==N && num_cols(B)==M);
+    //assert(num_rows(C)==M && num_cols(C)==N);
+    //assert(num_rows(D)==M && num_cols(D)==M);
 
     if (N==0) {
         invBigMat = inverse(D);
@@ -177,7 +177,7 @@ compute_det_ratio_down(
 
     const I NpM = num_rows(invBigMat);
     const I M = num_rows_cols_removed;
-    assert(num_cols(invBigMat)==NpM);
+    assert(invBigMat.size2()==NpM);
     assert(rows_cols_removed.size()>=M);
     assert(M>0);
 
@@ -210,10 +210,10 @@ compute_inverse_matrix_down(
     const I NpM = num_rows(invBigMat);
     const I M = num_rows_cols_removed;
     const I N = NpM-M;
-    assert(num_cols(invBigMat)==NpM);
-    assert(rows_cols_removed.size()>=M);
-    assert(M>0);
-    assert(NpM>=M);
+    //assert(num_cols(invBigMat)==NpM);
+    //assert(rows_cols_removed.size()>=M);
+    //assert(M>0);
+    //assert(NpM>=M);
 
     if (NpM<M) {
         throw std::logic_error("N should not be negative!");
@@ -265,10 +265,8 @@ compute_inverse_matrix_down(
 template<class T>
 T
 compute_det_ratio_replace_row(const alps::numeric::matrix<T>& M, const alps::numeric::matrix<T> Dr, int m) {
-    assert(num_cols(M)==num_rows(M));
-    assert(num_rows(Dr)==1);
-    assert(num_cols(Dr)==num_rows(M));
-    const int N = num_cols(M);
+    assert(Dr.size1()==1);
+    const int N = M.size2();
 
     T lambda = 0;
     for (int i=0; i<N; ++i) {
@@ -281,10 +279,8 @@ compute_det_ratio_replace_row(const alps::numeric::matrix<T>& M, const alps::num
 template<class T>
 T
 compute_imverse_matrix_replace_row(alps::numeric::matrix<T>& M, const alps::numeric::matrix<T> Dr, int m) {
-    assert(num_cols(M) == num_rows(M));
-    assert(num_rows(Dr) == 1);
-    assert(num_cols(Dr) == num_rows(M));
-    const int N = num_cols(M);
+    assert(Dr.size1() == 1);
+    const int N = M.size2();
 
     T lambda = 0;
     for (int i=0; i<N; ++i) {
@@ -711,9 +707,9 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     const int M_old = num_cols(invBigMat)-N;
 
     if (N==0) {
-      ws1.destructive_resize(M,M);
-      ws2.destructive_resize(M_old,M_old);
-      return determinant_no_copy(S, ws1)*determinant_no_copy(invBigMat, ws2);
+      //ws1.destructive_resize(M,M);
+      //ws2.destructive_resize(M_old,M_old);
+      return S.determinant()*invBigMat.determinant();
     }
 
     assert(N>0);
@@ -729,25 +725,28 @@ compute_det_ratio_replace_rows_cols(const alps::numeric::matrix<T>& invBigMat,
     ws1.destructive_resize(M_old,M_old);
     ws2.destructive_resize(M,M);
 
-    submatrix_view<T> tQ_view(invBigMat, 0, N, N, M_old);
-    submatrix_view<T> tR_view(invBigMat, N, 0, M_old, N);
-    submatrix_view<T> tS_view(invBigMat, N, N, M_old, M_old);
+    auto tQ_view = invBigMat.block( 0, N, N, M_old);
+    auto tR_view = invBigMat.block( N, 0, M_old, N);
+    auto tS_view = invBigMat.block( N, N, M_old, M_old);
 
     //compute inv_tS
     copy_block(invBigMat, N, N, inv_tS, 0, 0, M_old, M_old);
-    inverse_in_place(inv_tS);
+    inv_tS.invert();
 
-    gemm(inv_tS, tR_view, invtS_tR);
+    //gemm(inv_tS, tR_view, invtS_tR);
+    invtS_tR.block() = inv_tS.block() * tR_view;
 
     Mmat.destructive_resize(N,N);
     copy_block(invBigMat, 0, 0, Mmat, 0, 0, N, N);
-    mygemm((T)-1.0, tQ_view, invtS_tR, (T) 1.0, Mmat);
+    //mygemm((T)-1.0, tQ_view, invtS_tR, (T) 1.0, Mmat);
+    Mmat.block() -= tQ_view * invtS_tR.block();
 
     inv_tSp.destructive_resize(M,M);
     gemm(Mmat, Q, MQ);
     copy_block(S, 0, 0, inv_tSp, 0, 0, M, M);
-    mygemm((T) -1.0, R, MQ, (T) 1.0, inv_tSp);
-    return determinant_no_copy(tS_view, ws1)*determinant_no_copy(inv_tSp, ws2);
+    //mygemm((T) -1.0, R, MQ, (T) 1.0, inv_tSp);
+    inv_tSp.block() -= R.block() * MQ.block();
+    return alps::fastupdate::detail::safe_determinant(tS_view)*inv_tSp.determinant();
 }
 
 //Implementing Ye-Hua Lie and Lei Wang (2015): Eqs. (17)-(26) before taking the limit of tS->0
@@ -773,8 +772,9 @@ compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
 
     if (N==0) {
         invBigMat.destructive_resize(M, M);
-        my_copy_block(S, 0, 0, invBigMat, 0, 0, M, M);
-        inverse_in_place(invBigMat);
+        //my_copy_block(S, 0, 0, invBigMat, 0, 0, M, M);
+        invBigMat.block(0, 0, M, M) = S.block(0, 0, M, M);
+        invBigMat.invert();
         return;
     }
 
@@ -782,27 +782,35 @@ compute_inverse_matrix_replace_rows_cols(alps::numeric::matrix<T>& invBigMat,
     tmp_NM.destructive_resize(N,M);
     tmp_MN.destructive_resize(M,N);
     invBigMat.destructive_resize(N+M, N+M);
-    submatrix_view<T> tPp_view(invBigMat,0,0,N,N);
-    submatrix_view<T> tQp_view(invBigMat,0,N,N,M);
-    submatrix_view<T> tRp_view(invBigMat,N,0,M,N);
-    submatrix_view<T> tSp_view(invBigMat,N,N,M,M);
+    auto tPp_view = invBigMat.block(0,0,N,N);
+    auto tQp_view = invBigMat.block(0,N,N,M);
+    auto tRp_view = invBigMat.block(N,0,M,N);
+    auto tSp_view = invBigMat.block(N,N,M,M);
 
     //tSp
-    my_copy_block(inv_tSp, 0, 0, tSp_view, 0, 0, M, M);
-    inverse_in_place(tSp_view);
+    //my_copy_block(inv_tSp, 0, 0, tSp_view, 0, 0, M, M);
+    {
+        alps::fastupdate::ResizableMatrix<T> tmp(M,M);
+        tmp.block() = inv_tSp.block(0, 0, M, M);
+        tmp.invert();
+        tSp_view = tmp.block();
+    }
 
     //tQp
-    gemm(Q,tSp_view,tmp_NM);
-    mygemm((T)-1.0, Mmat, tmp_NM, (T) 0.0, tQp_view);
+    //gemm(Q,tSp_view,tmp_NM);
+    //mygemm((T)-1.0, Mmat, tmp_NM, (T) 0.0, tQp_view);
+    tQp_view = - Mmat.block() * (Q.block() * tSp_view);
 
     //tRp
-    gemm(tSp_view,R,tmp_MN);
-    mygemm((T)-1.0, tmp_MN, Mmat, (T) 0.0, tRp_view);
+    //gemm(tSp_view,R,tmp_MN);
+    //mygemm((T)-1.0, tmp_MN, Mmat, (T) 0.0, tRp_view);
+    tRp_view = - (tSp_view * R.block()) * Mmat.block();
 
     //tPp
-    gemm(Mmat, Q, tmp_NM);
-    my_copy_block(Mmat, 0, 0, tPp_view, 0, 0, N, N);
-    mygemm((T)-1.0, tmp_NM, tRp_view, (T) 1.0, tPp_view);
+    //gemm(Mmat, Q, tmp_NM);
+    //my_copy_block(Mmat, 0, 0, tPp_view, 0, 0, N, N);
+    //mygemm((T)-1.0, tmp_NM, tRp_view, (T) 1.0, tPp_view);
+    tRp_view = Mmat.block() - (Mmat.block() * Q.block()) * tRp_view;
 }
 
 template<class T>
@@ -849,19 +857,17 @@ T
 compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat, int num_elem_updated, const std::vector<int>& pos, const std::vector<T>& elems_diff, bool compute_only_det_rat) {
     using namespace alps::numeric;
 
-    assert(invBigMat.num_cols()==invBigMat.num_rows());
-
     //work space (static!)
     static matrix<T> x, invC_plus_x, invC_plus_x_times_zx, yx;
     static std::vector<std::pair<int,int> > swap_list;
 
-    const int N = invBigMat.num_cols();
+    const int N = invBigMat.size2();
 
     x.destructive_resize(num_elem_updated, num_elem_updated);
     for (int j=0; j<num_elem_updated; ++j) {
         for (int i=0; i<num_elem_updated; ++i) {
-            assert(pos[i]>=0 && pos[i]<invBigMat.num_cols());
-            assert(pos[j]>=0 && pos[j]<invBigMat.num_cols());
+            assert(pos[i]>=0 && pos[i]<invBigMat.size2());
+            assert(pos[j]>=0 && pos[j]<invBigMat.size2());
             x(i,j) = invBigMat(pos[i],pos[j])*elems_diff[j];
         }
         x(j,j) += (T) 1;
@@ -882,7 +888,8 @@ compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat,
     yx.destructive_resize(N, num_elem_updated);
     copy_block(invBigMat, 0, N-num_elem_updated, yx, 0, 0, N, num_elem_updated);
 
-    submatrix_view<T> zx_view(invBigMat, N-num_elem_updated, 0,     num_elem_updated, N);
+    //submatrix_view<T> zx_view(invBigMat, N-num_elem_updated, 0,     num_elem_updated, N);
+    auto zx_view = invBigMat.block(N-num_elem_updated, 0,     num_elem_updated, N);
     invC_plus_x.destructive_resize(num_elem_updated, num_elem_updated);
     invC_plus_x_times_zx.destructive_resize(num_elem_updated, N);
 
@@ -890,9 +897,11 @@ compute_det_ratio_replace_diaognal_elements(alps::numeric::matrix<T>& invBigMat,
     for (int i=0; i<num_elem_updated; ++i) {
         invC_plus_x(i,i) += 1.0/elems_diff[i];
     }
-    inverse_in_place(invC_plus_x);
-    mygemm((T) 1.0, invC_plus_x, zx_view, (T) 0.0, invC_plus_x_times_zx);
-    mygemm((T) -1.0, yx, invC_plus_x_times_zx, (T) 1.0, invBigMat);
+    invC_plus_x.invert();
+    //mygemm((T) 1.0, invC_plus_x, zx_view, (T) 0.0, invC_plus_x_times_zx);
+    invC_plus_x_times_zx.block() = invC_plus_x.block() * zx_view;
+    //mygemm((T) -1.0, yx, invC_plus_x_times_zx, (T) 1.0, invBigMat);
+    invBigMat.block() -= yx.block() * invC_plus_x_times_zx.block();
 
     for(std::vector<std::pair<int,int> >::reverse_iterator it=swap_list.rbegin(); it!=swap_list.rend(); ++it) {
         invBigMat.swap_col(it->first, it->second);

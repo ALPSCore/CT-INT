@@ -238,6 +238,16 @@ namespace alps {
         }
       }
 
+      inline ResizableMatrix operator+(const ResizableMatrix<Scalar> &M2) const {
+        assert(is_allocated());
+        assert(size1_ == M2.size1_);
+        assert(size2_ == M2.size2_);
+
+        ResizableMatrix Msum(*this);
+        Msum.values_.block(0, 0, size1_, size2_) += M2.values_.block(0, 0, size1_, size2_);
+        return Msum;
+      }
+
       inline ResizableMatrix operator-(const ResizableMatrix<Scalar> &M2) const {
         assert(is_allocated());
         assert(size1_ == M2.size1_);
@@ -340,6 +350,21 @@ namespace alps {
         assert(is_allocated());
         return values_.block(0, 0, size1_, size2_);
       }
+
+      inline
+      Eigen::Block<Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> >
+      row(int i) {
+        assert(is_allocated());
+        return values_.block(i, 0, 1, size2_);
+      };
+
+      inline
+      const Eigen::Block<const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> >
+      row(int i) const {
+        assert(is_allocated());
+        return values_.block(i, 0, 1, size2_);
+      };
+
 
       /*
       inline

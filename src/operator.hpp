@@ -30,7 +30,6 @@
 #ifndef DMFT_QMC_WEAK_COUPLING_OPERATOR_H
 #define DMFT_QMC_WEAK_COUPLING_OPERATOR_H
 
-#include <alps/params.hpp>
 #include "types.h"
 
 /*

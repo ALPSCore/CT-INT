@@ -35,21 +35,27 @@ InvAMatrix<T>::push_back_op(const creator& cdag_op, const annihilator& c_op, T a
 template<typename T>
 template<typename SPLINE_G0_TYPE>
 void InvAMatrix<T>::extend(const SPLINE_G0_TYPE& spline_G0) {
-  const int noperators = matrix_.num_cols();//num of operators corresponding to interacting vertices
+  const int noperators = matrix_.size2();//num of operators corresponding to interacting vertices
   const int nops_add = creators_.size()-noperators;//num of operators corresponding to non-interacting vertices
   if (nops_add==0) {
     return;
   }
 
-  //extend tilde A
-  matrix_.resize(noperators + nops_add, noperators + nops_add, (T)0.0);
+  //extend tilde A and set new elements to zero
+  matrix_.conservative_resize(noperators + nops_add, noperators + nops_add);
+  for (int j=noperators; j < noperators + nops_add; ++j) {
+    for (int i=0; i < noperators + nops_add; ++i) {
+      matrix_(i,j) = 0.0;
+      matrix_(j,i) = 0.0;
+    }
+  }
   for (int i = 0; i < nops_add; ++i) {
     matrix_(i + noperators, i + noperators) = (T)1.0;
   }
 
   //initialize cache
-  G0_cache.resize_values_not_retained(matrix_.num_rows(), 100);
-  index_G0_cache.resize(matrix_.num_rows());
+  G0_cache.destructive_resize(matrix_.size1(), 100);
+  index_G0_cache.resize(matrix_.size1());
   std::fill(index_G0_cache.begin(), index_G0_cache.end(), -1);
   num_entry_G0_cache = 0;
 
@@ -59,7 +65,7 @@ void InvAMatrix<T>::extend(const SPLINE_G0_TYPE& spline_G0) {
 
   //compute entries of B
   static alps::numeric::matrix<T> B;
-  B.resize_values_not_retained(nops_add, noperators);
+  B.destructive_resize(nops_add, noperators);
   for (int j = 0; j < noperators; ++j) {
     for (int i = 0; i < nops_add; ++i) {
       B(i, j) = -spline_G0(annihilators_[i + noperators], creators_[j]) * (eval_f(alpha_[j]) - 1.0);
@@ -67,10 +73,11 @@ void InvAMatrix<T>::extend(const SPLINE_G0_TYPE& spline_G0) {
   }
 
   //compute entries in the right lower block of A^{-1}
-  alps::numeric::submatrix_view<T> invA_view(matrix_, 0, 0, noperators, noperators);
-  alps::numeric::submatrix_view<T> B_invB_view(matrix_, noperators, 0, nops_add, noperators);
-  mygemm(-1.0, B, invA_view, (T) 0.0, B_invB_view);
+  //alps::numeric::submatrix_view<T> invA_view(matrix_, 0, 0, noperators, noperators);
+  //alps::numeric::submatrix_view<T> B_invB_view(matrix_, noperators, 0, nops_add, noperators);
+  //mygemm(-1.0, B, invA_view, (T) 0.0, B_invB_view);
 
+  matrix_.block(noperators, 0, nops_add, noperators) = - B.block() * matrix_.block(0, 0, noperators, noperators);
 
   sanity_check(spline_G0);
 }
@@ -80,14 +87,14 @@ template<typename SPLINE_G0_TYPE>
 bool InvAMatrix<T>::sanity_check(const SPLINE_G0_TYPE& spline_G0) const {
   bool result = true;
 #ifndef NDEBUG
-  assert(num_rows(matrix_)==num_cols(matrix_));
-  assert(num_rows(matrix_)==creators_.size());
+  assert(matrix_.size1()==matrix_.size2());
+  assert(matrix_.size1()==creators_.size());
   assert(creators_.size()==annihilators_.size());
   assert(creators_.size()==alpha_.size());
   assert(creators_.size()==vertex_info_.size());
 
-  result = result && (num_rows(matrix_)==num_cols(matrix_));
-  result = result && (num_rows(matrix_)==creators_.size());
+  result = result && (matrix_.size1()==matrix_.size2());
+  result = result && (matrix_.size1()==creators_.size());
   result = result && (creators_.size()==annihilators_.size());
   result = result && (creators_.size()==alpha_.size());
   result = result && (creators_.size()==vertex_info_.size());
@@ -109,8 +116,6 @@ std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, 
 
   if (check_error) {
     matrix_bak = matrix_;
-    assert(matrix_.num_cols()==Nv);
-    assert(matrix_.num_rows()==Nv);
   }
 
   T sign_f_prod = 1.0;
@@ -124,16 +129,14 @@ std::pair<T,T> InvAMatrix<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, 
     sign_f_prod *= (1.0-F[i])/std::abs(1.0-F[i]);
     //std::cout << "debug sign_f_prod " << i << " " << sign_f_prod << " " << F[i] << " " << alpha_at(i) << std::endl;
   }
-  matrix_.resize(Nv, Nv);
+  matrix_.conservative_resize(Nv, Nv);
   for (int j=0; j<Nv; ++j) {
     for (int i=0; i<Nv; ++i) {
       matrix_(i,j) = -spline_G0(annihilators_[i], creators_[j])*(F[j]-1.0);
-      //std::cout << "i,j " << i << " " << j << " " << matrix_(i,j) << std::endl;
     }
     matrix_(j,j) += F[j];
   }
   const T sign_det = alps::fastupdate::phase_of_determinant(matrix_);
-  //std::cout << "debug sign_det " << sign_det << " " << sign_bak << std::endl;
   matrix_.invert();
 
   if (check_error) {
@@ -235,7 +238,7 @@ InvAMatrixFlavors<T>::init(general_U_matrix<T>* p_Uijkl,
 
 template<typename T>
 void InvAMatrix<T>::remove_rows_cols(const std::vector<int>& rows_cols) {
-  const int Nv = matrix_.num_rows();
+  const int Nv = matrix_.size1();
   const int n_rows = rows_cols.size();
   assert(n_rows<=Nv);
   for (int i=0; i<rows_cols.size(); ++i) {
@@ -245,7 +248,7 @@ void InvAMatrix<T>::remove_rows_cols(const std::vector<int>& rows_cols) {
   annihilators_.resize(Nv-n_rows);
   alpha_.resize(Nv-n_rows);
   vertex_info_.resize(Nv-n_rows);
-  matrix_.resize(Nv-n_rows, Nv-n_rows);
+  matrix_.conservative_resize(Nv-n_rows, Nv-n_rows);
 }
 
 template<typename T>
@@ -267,16 +270,16 @@ template<typename SPLINE_G0_TYPE>
 void
 InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0_TYPE& spline_G0) {
 
-  const int nop = inv_gamma.matrix().num_rows();
-  const int N = matrix_.num_cols();
+  const int nop = inv_gamma.matrix().size1();
+  const int N = matrix_.size2();
 
   sanity_check(spline_G0);
 
   if (nop==0) return;
 
-  invA0.resize_values_not_retained(nop, N);
-  G0_left.resize_values_not_retained(N, nop);
-  G0_inv_gamma.resize_values_not_retained(N, nop);
+  invA0.destructive_resize(nop, N);
+  G0_left.destructive_resize(N, nop);
+  G0_inv_gamma.destructive_resize(N, nop);
 
   pl.resize(nop);
   for (int l=0; l<nop; ++l) {
@@ -284,16 +287,17 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
   }
   for (int l=0; l<nop; ++l) {
     //boost::numeric::bindings::blas::detail::copy(N, &matrix_(pl[l],0), matrix_.stride2(), &invA0(l,0), invA0.stride2());
-    invA0.block(l,0,1,N) = matrix_.block(pl[l],0,1,N);
+    invA0.row(l) = matrix_.row(pl[l]);
   }
   for (int l=0; l<nop; ++l) {
-    //alps::numeric::submatrix_view<T> view(G0_left, 0, l, N, 1);
-    //eval_Gij_col(spline_G0, pl[l], view);
-    eval_Gij_col(spline_G0, pl[l], G0_left.block(0,l,N,1));
+    auto view = G0_left.block(0, l, N, 1);
+    eval_Gij_col(spline_G0, pl[l], view);
   }
 
-  mygemm(-1.0, G0_left, inv_gamma.matrix(), 0.0, G0_inv_gamma);
-  mygemm(1.0, G0_inv_gamma, invA0, 1.0, matrix_);
+  //mygemm(-1.0, G0_left, inv_gamma.matrix(), 0.0, G0_inv_gamma);
+  G0_inv_gamma.block() = - G0_left.block() * inv_gamma.matrix().block();
+  //mygemm(1.0, G0_inv_gamma, invA0, 1.0, matrix_);
+  matrix_.block() = G0_inv_gamma.block() * invA0.block();
 
   for (int l=0; l < nop; ++l) {
     assert(inv_gamma.alpha(l)!=inv_gamma.alpha0(l));
@@ -332,8 +336,8 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
 template<typename T>
 template<typename SPLINE_G0_TYPE>
 void InvAMatrix<T>::compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE& spline_G0) const {
-  const int N = matrix_.num_cols();
-  M.resize_values_not_retained(N, N);
+  const int N = matrix_.size2();
+  M.destructive_resize(N, N);
 
   if (N==0) return;
 
@@ -356,7 +360,8 @@ void InvAMatrix<T>::compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE&
     }
     G0(j,j) -= alpha_at(j);
   }
-  mygemm((T) 1.0, G0, M, (T) 0.0, G0_M);
+  //mygemm((T) 1.0, G0, M, (T) 0.0, G0_M);
+  G0_M.block() = G0.block() * M.block();
   for (int j=0; j<N; ++j) {
     for (int i = 0; i < N; ++i) {
       if (i==j) {
@@ -373,38 +378,14 @@ void InvAMatrix<T>::compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE&
 // cols specifies {j}
 template<typename T>
 template<typename SPLINE_G0_TYPE, typename M>
-T InvAMatrix<T>::eval_Gij(const SPLINE_G0_TYPE& spline_G0, int row, int col) const {
-  assert (col>=0);
-
-  const int Nv = matrix_.num_rows();
-  const T alpha_col = alpha_at(col);
-  if (alpha_col!=ALPHA_NON_INT) {
-    // (A3) in Nomura et al. (2014)
-    const T fj = eval_f(alpha_col);
-    if (row == col) {
-      return (fj*matrix_(col,col)-1.0)/(fj-1.0);
-    } else {
-      return (fj*matrix_(row,col))/(fj-1.0);
-    }
-  } else {
-    // (A4) in Nomura et al. (2014)
-    auto G0_view = compute_G0_col(spline_G0, col);
-    return static_cast<T>(matrix_.block(row, 0, 1, matrix_.size2()) * G0_view);
-  }
-}
-
-// G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
-// cols specifies {j}
-template<typename T>
-template<typename SPLINE_G0_TYPE, typename M>
 void InvAMatrix<T>::eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gij) const {
   //static alps::numeric::matrix<T> G0;
  assert (col>=0);
 
-  const int Nv = matrix_.num_rows();
+  const int Nv = matrix_.size1();
   const T alpha_col = alpha_at(col);
-  assert(Gij.num_rows()==Nv);
-  assert(Gij.num_cols()==1);
+  //assert(Gij.size1()==Nv);
+  //assert(Gij.size2()==1);
   if (alpha_col!=ALPHA_NON_INT) {
     const T fj = eval_f(alpha_col);
     for (int iv=0; iv<Nv; ++iv) {
@@ -412,8 +393,9 @@ void InvAMatrix<T>::eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gi
     }
     Gij(col,0) = (fj*matrix_(col,col)-1.0)/(fj-1.0);
   } else {
-    alps::numeric::submatrix_view<T> G0_view = compute_G0_col(spline_G0, col);
-    mygemm((T) 1.0, matrix_, G0_view, (T) 0.0, Gij);
+    auto G0_view = compute_G0_col(spline_G0, col);
+    //mygemm((T) 1.0, matrix_, G0_view, (T) 0.0, Gij);
+    Gij = matrix_.block() * G0_view;
   }
 }
 
@@ -425,12 +407,12 @@ void InvAMatrix<T>::eval_Gij_col_part(const SPLINE_G0_TYPE& spline_G0, const std
   static alps::numeric::matrix<T> invA_tmp;
   assert (col>=0);
 
-  const int Nv = matrix_.num_rows();
+  const int Nv = matrix_.size1();
   const T alpha_col = alpha_at(col);
   const int n_rows = rows.size();
 
-  assert(Gij.num_rows()==n_rows);
-  assert(Gij.num_cols()==1);
+  assert(Gij.rows()==n_rows);
+  assert(Gij.cols()==1);
 
   if (alpha_col!=ALPHA_NON_INT) {
     const T fj = eval_f(alpha_col);
@@ -445,8 +427,10 @@ void InvAMatrix<T>::eval_Gij_col_part(const SPLINE_G0_TYPE& spline_G0, const std
     alps::numeric::submatrix_view<T> G0_view = compute_G0_col(spline_G0, col);
     alps::numeric::matrix<T> G_tmp(1,1);
     for (int iv=0; iv<n_rows; ++iv) {
-      alps::numeric::submatrix_view<T> invA_view(matrix_, rows[iv], 0, 1, Nv);
-      mygemm((T) 1.0, invA_view, G0_view, (T) 0.0, G_tmp);
+      //alps::numeric::submatrix_view<T> invA_view(matrix_, rows[iv], 0, 1, Nv);
+      //auto invA_view = matrix_.block(rows[iv], 0, 1, Nv);
+      //mygemm((T) 1.0, invA_view, G0_view, (T) 0.0, G_tmp);
+      G_tmp.block() = matrix_.block(rows[iv], 0, 1, Nv) * G0_view;
       Gij(iv,0) = G_tmp(0,0);
     }
 
@@ -458,22 +442,22 @@ template<typename SPLINE_G0_TYPE>
 alps::numeric::submatrix_view<T> InvAMatrix<T>::compute_G0_col(const SPLINE_G0_TYPE& spline_G0, int col) const {
   assert(col>=0);
   //look up cache
-  const int Nv = matrix_.num_rows();
+  const int Nv = matrix_.size1();
   assert(col<index_G0_cache.size());
   if (index_G0_cache[col]>=0) {
-    assert(index_G0_cache[col]<G0_cache.num_cols());
-    return alps::numeric::submatrix_view<T>(G0_cache, 0, index_G0_cache[col], Nv, 1);
+    assert(index_G0_cache[col]<G0_cache.size2());
+    return G0_cache.block(0, index_G0_cache[col], Nv, 1);
   } else {
     const int index = num_entry_G0_cache;
     index_G0_cache[col] = num_entry_G0_cache;
-    if (G0_cache.num_cols()<=num_entry_G0_cache) {
-      G0_cache.resize(Nv, static_cast<int>(1.5*num_entry_G0_cache)+1);
+    if (G0_cache.size2()<=num_entry_G0_cache) {
+      G0_cache.conservative_resize(Nv, static_cast<int>(1.5*num_entry_G0_cache)+1);
     }
     for (int iv=0; iv<Nv; ++iv) {
       G0_cache(iv,index) = spline_G0(annihilators_[iv], creators_[col]);
     }
     ++num_entry_G0_cache;
-    return alps::numeric::submatrix_view<T>(G0_cache, 0, index, Nv, 1);
+    return G0_cache.block(0, index, Nv, 1);
   }
 };
 

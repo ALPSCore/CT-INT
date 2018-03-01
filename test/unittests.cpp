@@ -1,8 +1,7 @@
 #include <algorithm>
+#include "unittests.hpp"
+
 #include "gtest.h"
-
-
-#include "gtest.hpp"
 
 TEST(LegendreMeasurement, Tnl)
 {

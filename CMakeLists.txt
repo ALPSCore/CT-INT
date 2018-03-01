@@ -77,7 +77,6 @@ set (LIB_FILES
 
 #static library
 add_library(alpscore_ctint ${LIB_FILES})
-#set_target_properties(alpscore_ctint PROPERTIES PUBLIC_HEADER src/solver.hpp)
 
 #Compiler dependent libraries
 set(EXTRA_LIBS "")
@@ -93,7 +92,38 @@ target_link_libraries(alpscore_ctint ${CTINT_LIBRARIES})
 ADD_EXECUTABLE(interaction_real src/main_real.cpp)
 target_link_libraries(interaction_real alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 
-#Gtest
-set (GTEST_SOURCE src/legendre.cpp src/util.cpp src/operator.cpp src/U_matrix.cpp)
-add_executable(gtest ./test/gtest.cpp ./test/gtest-all.cc ./test/gtest_main.cc ${GTEST_SOURCE})
-target_link_libraries(gtest ${CTINT_LIBRARIES})
+#testing setup
+option(Testing "Enable testing" ON)
+#include(EnableGtests) #defined in ./cmake
+include_directories("test")
+
+function(add_gtest test link_lib)
+    if (TestXMLOutput)
+        set (test_xml_output --gtest_output=xml:${test}.xml)
+    endif(TestXMLOutput)
+
+    set(source "${ARGV1}/${test}.cpp")
+    set(gtest_src "${ARGV1}/gtest_main.cc;${ARGV1}/gtest-all.cc")
+
+    add_executable(${test} ${source} ${gtest_src})
+        message("DEBUG " ${ARGV2})
+    target_link_libraries(${test} ${ARGV2})
+    add_test(NAME ${test} COMMAND ${test} ${test_xml_output})
+endfunction(add_gtest)
+
+#set (GTEST_SOURCE src/legendre.cpp src/util.cpp src/operator.cpp src/U_matrix.cpp)
+#add_executable(gtest ./test/gtest.cpp ./test/gtest-all.cc ./test/gtest_main.cc ${GTEST_SOURCE})
+#target_link_libraries(gtest ${CTINT_LIBRARIES})
+
+list(APPEND LINK_ALL alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+list(APPEND LINK_REST ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+#set(unittest_src unittests)
+enable_testing(test)
+
+add_gtest(fastupdate test ${LINK_REST})
+
+#foreach(test ${unittest_src})
+    #add_gtest(${test} test)
+#endforeach(test)
+
+

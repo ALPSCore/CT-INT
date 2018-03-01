@@ -63,15 +63,16 @@ T eval_Gij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_A
                         : (fj*invA.matrix()(row_A,col_A))/(fj-1.0);
   } else {
     //use Eq. (A4)
-    const int Nv = invA.matrix().num_rows();
+    const int Nv = invA.matrix().size1();
     assert (invA.creators().size()==Nv);
     assert (invA.annihilators().size()==Nv);
-    G0.resize_values_not_retained(Nv, 1);
+    G0.destructive_resize(Nv, 1);
     for (int iv=0; iv<Nv; ++iv) {
       G0(iv,0) = spline_G0(invA.annihilators()[iv], invA.creators()[col_A]);
     }
-    alps::numeric::submatrix_view<T> invA_view(invA.matrix(), row_A, 0, 1, Nv);
-    mygemm((T) 1.0, invA_view, G0, (T) 0.0, invA_G0);
+    //alps::numeric::submatrix_view<T> invA_view(invA.matrix(), row_A, 0, 1, Nv);
+    //mygemm((T) 1.0, invA_view, G0, (T) 0.0, invA_G0);
+    invA_G0.block() = invA.matrix().block(row_A, 0, 1, Nv) * G0.block();
     return invA_G0(0,0);
   }
 }
@@ -395,8 +396,8 @@ std::pair<T,T> SubmatrixUpdate<T>::compute_M_from_scratch(std::vector<alps::nume
   T weight = 1.0;
   M.resize(n_flavors());
   for (int flavor=0; flavor<n_flavors(); ++flavor) {
-    const int Nv = invA_[flavor].matrix().num_cols();
-    M[flavor].resize(Nv, Nv);
+    const int Nv = invA_[flavor].matrix().size2();
+    M[flavor].conservative_resize(Nv, Nv);
     if (Nv>0) {
       for (int j=0; j<Nv; ++j) {
         for (int i=0; i<Nv; ++i) {
