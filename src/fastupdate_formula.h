@@ -113,8 +113,8 @@ compute_inverse_matrix_up2(
     using namespace alps::numeric;
     typedef matrix<T> matrix_t;
 
-    const size_t N = num_rows(invA);
-    const size_t M = num_rows(D);
+    auto N = invA.size1();
+    auto M = D.size2();
 
     assert(M>0);
 
@@ -127,12 +127,15 @@ compute_inverse_matrix_up2(
         invBigMat = inverse(D);
         return D.safe_determinant();
     } else {
-        static matrix_t H, C_invA, C_invA_B, invA_B, F;
+        static matrix_t H, C_invA, C_invA_B, invA_B, F, invA_copy;
         H.destructive_resize(M, M);
         C_invA.destructive_resize(M, N);
         C_invA_B.destructive_resize(M, M);
         invA_B.destructive_resize(N, M);
+        invA_copy.destructive_resize(N,N);
         F.destructive_resize(N,M);
+
+        invA_copy = invA;
 
         //compute H
         gemm(C, invA, C_invA);
@@ -142,21 +145,15 @@ compute_inverse_matrix_up2(
         //compute F
         gemm(invA, B, invA_B);
         F.block() = - invA_B.block() * H.block();
-        //mygemm((T)-1.0, invA_B, H, (T)0.0, F);
 
         //submatrix views to invBigMat
         invBigMat.destructive_resize(N + M, N + M);//this may destroy the contents of invA as well
-        //auto E_view = invBigMat.block(0, 0, N, N);
-        auto G_view = invBigMat.block(N, 0, M, N);
 
         //compute G
-        //mygemm((T)-1.0, H, C_invA, (T)0.0, G_view);
         invBigMat.block(N, 0, M, N) = - H.block() * C_invA.block();
 
         //compute E
-        //my_copy_block(invA,0,0,E_view,0,0,N,N);
-        //mygemm(static_cast<T>(-1.0), invA_B, G_view, static_cast<T>(1.0), E_view);
-        invBigMat.block(0, 0, N, N) = invA.block(0, 0, N, N) - invA_B.block() * G_view;
+        invBigMat.block(0, 0, N, N) = invA_copy.block() - invA_B.block() * invBigMat.block(N, 0, M, N);
 
         copy_block(H, 0, 0, invBigMat, N, N, M, M);
         copy_block(F, 0, 0, invBigMat, 0, N, N, M);

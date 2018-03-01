@@ -101,7 +101,6 @@ void InvGammaMatrix<T>::resize(size_t new_size) {
 template<typename T>
 template<typename SPLINE_G0_TYPE>
 T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, const std::vector<OperatorToBeUpdated<T> >& ops_ins) {
-  assert(matrix_.size1()==matrix_.size2());
   const int nop = matrix_.size2();
   const int nop_add = ops_ins.size();
 
@@ -147,6 +146,7 @@ template<typename T>
 void InvGammaMatrix<T>::perform_add() {
   //note: matrix_ is resized and then updated.
   compute_inverse_matrix_up2(G_j_n, G_n_j, G_n_n, matrix_, matrix_);
+  assert(matrix_.size1()==matrix_.size2());
 }
 
 template<typename T>

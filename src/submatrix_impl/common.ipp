@@ -227,7 +227,6 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
   }
   std::vector<bool> visited(itime_vertices_.size(), false);
   for (int i=0; i<n_pos; ++i) {
-    //std::cout << "i_pos " << i << " " << pos[i] << std::endl;
     assert(visited[pos[i]]==false);
     visited[pos[i]] = true;
   }
@@ -306,7 +305,6 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
       det_rat_A *= gamma_matrices_[flavor].try_add_remove(invA_[flavor], spline_G0_, ops_ins[flavor], ops_rem[flavor]);
     } else if (ops_rem[flavor].size()==0 && ops_ins[flavor].size()==0 && ops_replace[flavor].size()>0) {
       throw std::runtime_error("Not implemented: try_replace");
-      //det_rat_A *= gamma_matrices_[flavor].try_replace(p_Uijkl_, invA_[flavor], ops_ins[flavor]);
     } else {
       std::cout << "debug info " << ops_rem[flavor].size() << " " << ops_ins[flavor].size() << " " << ops_replace[flavor].size() << std::endl;
       throw std::runtime_error("Not implemented: try_***");

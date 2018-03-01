@@ -71,13 +71,11 @@ namespace alps {
 
       //ResizableMatrix size
       inline int size1() const {
-        assert(is_allocated());
-        return size1_;
+          return is_allocated() ? size1_ : 0;
       }
 
       inline int size2() const {
-        assert(is_allocated());
-        return size2_;
+        return is_allocated() ? size2_ : 0;
       }
 
       inline int memory_size1() const {
