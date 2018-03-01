@@ -33,11 +33,11 @@
 #define U_MATRIX_H
 
 #include <algorithm>
+#include <fstream>
 #include "boost/multi_array.hpp"
 #include <boost/random.hpp>
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/discrete_distribution.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/cstdint.hpp>
 
 #include "types.h"
@@ -142,10 +142,10 @@ class general_U_matrix {
         throw std::runtime_error("Error: GENERAL_U_MATRIX_FILE is not defined!");
       }
       std::string ufilename(parms["GENERAL_U_MATRIX_FILE"].template as<std::string>());
-      if (!boost::filesystem::exists(boost::filesystem::path(ufilename))) {
+      std::ifstream ifs(ufilename.c_str());
+      if (!ifs.is_open()) {
         throw std::runtime_error(ufilename+" does not exist!");
       }
-      std::ifstream ifs(ufilename.c_str());
       size_t num_non_zero_;
       ifs >> num_nonzero_;
 
@@ -791,8 +791,6 @@ find_valid_pair_multi_vertex_update(const std::vector<vertex_definition<T> >& ve
   }
 };
 
-std::ostream &operator<<(std::ostream &os, const itime_vertex &v);
-
 template<class V>
 void print_vertices(std::ostream &os, const V &v) {
   os << std::endl;
@@ -805,8 +803,6 @@ void print_vertices(std::ostream &os, const V &v) {
     os << std::endl;
   }
 }
-
-void dump(std::ostream &os, const itime_vertex_container &itime_vertices);
 
 template<typename T>
 void load_config(std::ifstream &is, const general_U_matrix<T>& Uijkl, itime_vertex_container &itime_vertices) {
@@ -825,6 +821,28 @@ void load_config(std::ifstream &is, const general_U_matrix<T>& Uijkl, itime_vert
     itime_vertices.push_back(itime_vertex(type, af_state, time, vdef.rank(), vdef.is_density_type()));
   }
 }
+
+inline
+std::ostream &operator<<(std::ostream &os, const itime_vertex &v) {
+  os << " type= " << v.type();
+  os << " rank= " << v.rank();
+  os << " af_state= " << v.af_state();
+  os << " time= " << v.time();
+  return os;
+}
+
+inline
+void dump(std::ostream &os, const itime_vertex_container &itime_vertices) {
+  const int Nv = itime_vertices.size();
+  std::cout << "Nv = " << Nv << std::endl;
+  os << Nv << std::endl;
+  int iv = 0;
+  for (itime_vertex_container::const_iterator it=itime_vertices.begin(); it!=itime_vertices.end(); ++it) {
+    os << iv << " " << it->type() << " " << it->af_state() << " " << it->time() << std::endl;
+    ++iv;
+  }
+}
+
 
 //U_MATRIX_H
 #endif 

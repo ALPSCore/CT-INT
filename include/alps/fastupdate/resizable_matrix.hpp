@@ -386,13 +386,13 @@ namespace alps {
     template<typename Scalar>
     ALPS_STRONG_INLINE
     int num_cols(const alps::fastupdate::ResizableMatrix<Scalar> &m) {
-      return m.size1();
+      return m.size2();
     }
 
     template<typename Scalar>
     ALPS_STRONG_INLINE
     int num_rows(const alps::fastupdate::ResizableMatrix<Scalar> &m) {
-      return m.size2();
+      return m.size1();
     }
 
     template<typename Scalar>
