@@ -3,7 +3,94 @@
 #include "gtest.h"
 #include "common.hpp"
 
+#include <alps/params.hpp>
+
 #include "../src/submatrix.hpp"
+#include "../src/operator.hpp"
+#include "../src/update_manager.hpp"
+#include "../src/program_params.hpp"
+
+class simple_vertex {
+public:
+    simple_vertex(double time) : time_(time) {}
+    double time() const {return time_;}
+
+private:
+    double time_;
+};
+
+
+//Interpolation of G0
+template<typename T>
+struct DiagonalG0 {
+    DiagonalG0 (double beta) : beta_(beta) {}
+
+    int nsite() const {return 1;}
+    int nflavor() const {return 2;}
+    bool is_zero(int site1, int site2, int flavor, double eps) const {return site1!=site2;}
+
+    T operator() (double dt) const {
+      //const double dt = c_op.t().time()-cdagg_op.t().time();
+      if (dt>=0 && dt<beta_) {
+        return -(1.0 / (beta_ * beta_)) * (dt - 0.5 * beta_) * (dt - 0.5 * beta_) - 0.25;
+      } else if (dt>=beta_ && dt<2*beta_) {
+        double dt2 = dt-beta_;
+        return -(-(1.0 / (beta_ * beta_)) * (dt2 - 0.5 * beta_) * (dt2 - 0.5 * beta_) - 0.25);
+      } else if (dt>=-beta_ && dt<0) {
+        double dt2 = dt+beta_;
+        return -(-(1.0 / (beta_ * beta_)) * (dt2 - 0.5 * beta_) * (dt2 - 0.5 * beta_) - 0.25);
+      }  else {
+        throw std::runtime_error("Digonaal G0: Not implemented!");
+      }
+    }
+
+    T operator() (const annihilator& c_op, const creator& cdagg_op) {
+      if (c_op.s()!=cdagg_op.s())
+        return 0.0;
+      if (c_op.flavor()!=cdagg_op.flavor())
+        return 0.0;
+
+      //std::cout << "--- " <<  " ---- " << std::endl;
+      double dt = c_op.t().time()-cdagg_op.t().time();
+      if (std::abs(dt)<1E-10) {
+        dt += c_op.t().small_index() > cdagg_op.t().small_index() ? 1E-8 : -1E-8;
+      }
+      return operator()(dt);
+    }
+
+    double beta_;
+};
+
+//Interpolation of G0
+template<typename T>
+struct OffDiagonalG0 {
+    OffDiagonalG0 (double beta, int n_site, const std::vector<double>& E, const boost::multi_array<T,2>& phase) : beta_(beta), n_site_(n_site), E_(E), phase_(phase) {}
+
+    int nsite() const {return n_site_;}
+    int nflavor() const {return 2;}
+    bool is_zero(int site1, int site2, int flavor, double eps) const {return false;}
+
+    T operator() (const annihilator& c_op, const creator& cdagg_op) {
+      const double dt = c_op.t().time()-cdagg_op.t().time();
+      double dt_tmp = dt;
+      if (dt_tmp > beta_) dt_tmp -= beta_;
+      if (dt_tmp < 0) dt_tmp += beta_;
+
+      if (c_op.s()==cdagg_op.s()) {
+        //return -(1.0 / (beta_ * beta_)) * (dt_tmp - 0.5 * beta_) * (dt_tmp - 0.5 * beta_) - 0.25 + (-dt+0.5*beta_)/(10*beta_);
+        const double E_tmp = E_[c_op.s()];
+        return  -std::exp((beta_-dt_tmp)*E_tmp)/(1.0+std::exp(beta_*E_tmp));
+      } else {
+        //std::cout << myconj(phase_[c_op.s()]) << " " << phase_[cdagg_op.s()] << myconj(phase_[c_op.s()])*phase_[cdagg_op.s()] << std::endl;
+        return (-dt+0.5*beta_)/(2*beta_)*phase_[c_op.s()][cdagg_op.s()];
+      }
+    }
+
+    double beta_;
+    int n_site_;
+    std::vector<double> E_;
+    boost::multi_array<T,2> phase_;
+};
 
 TEST(FastUpdate, BlockMatrixReplaceRowsColsSingular) {
     typedef alps::numeric::matrix<double> matrix_t;
@@ -76,3 +163,94 @@ TEST(FastUpdate, ReplaceDiagonalElements) {
     ASSERT_TRUE(std::abs(alps::fastupdate::norm_square(invA_new-invA_new_fast))<1E-5);
 }
 
+TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
+{
+  typedef std::complex<double> T;
+  const int n_sites = 3;
+  const double U = 2.0;
+  const double alpha = 1E-2;
+  const double beta = 200.0;
+  const int Nv_max = 2;
+  const int n_flavors = 2;
+  const int k_ins_max = 32;
+  const int n_update = 5;
+  const int seed = 100;
+
+  std::vector<double> E(n_sites);
+  boost::multi_array<T,2> phase(boost::extents[n_sites][n_sites]);
+
+  for (int i=0; i<n_sites; ++i) {
+    E[i] = (double) i;
+    //std::cout << phase[i] << std::endl;
+  }
+  for (int i=0; i<n_sites; ++i) {
+    for (int j=i; j<n_sites; ++j) {
+      phase[i][j] = std::exp(std::complex<double>(0.0, 1.*i*(2*j+1.0)));
+      phase[j][i] = myconj(phase[i][j]);
+    }
+  }
+
+  general_U_matrix<T> Uijkl(n_sites, U, alpha);
+
+  itime_vertex_container itime_vertices_init;
+  itime_vertices_init.push_back(itime_vertex(0, 0, 0.5*beta, 2, true));
+
+  /* initialize submatrix_update */
+  //SubmatrixUpdate<T> submatrix_update(k_ins_max, n_flavors, DiagonalG0<T>(beta), &Uijkl, beta, itime_vertices_init);
+  SubmatrixUpdate<T> submatrix_update(k_ins_max, n_flavors, OffDiagonalG0<T>(beta, n_sites, E, phase), &Uijkl, beta, itime_vertices_init);
+
+  submatrix_update.sanity_check();
+
+  /* init udpate_manager */
+  alps::params params;
+  define_parameters(params);
+  params["BETA"] = beta;
+  params["FLAVORS"] = n_flavors;
+  params["N_MULTI_VERTEX_UPDATE"] = Nv_max;
+  params["DOUBLE_VERTEX_UPDATE_A"] = 1.0/beta;
+  params["DOUBLE_VERTEX_UPDATE_B"] = 1.0e-2;
+  params["VERTEX_SHIFT_STEP_SIZE"] = 0.1*beta;
+  VertexUpdateManager<T> manager(params, Uijkl, OffDiagonalG0<T>(beta, n_sites, E, phase), false);
+
+  /* initialize RND generator */
+  //std::vector<double> probs(Nv_max, 1.0);
+  boost::random::uniform_smallint<> dist(1,Nv_max);
+  boost::random::uniform_01<> dist01;
+  boost::random::mt19937 gen(seed);
+  boost::random::variate_generator<boost::random::mt19937&, boost::random::uniform_smallint<> > Nv_prob(gen, dist);
+  boost::random::variate_generator<boost::random::mt19937&, boost::random::uniform_01<> > random01(gen, dist01);
+
+  std::vector<alps::numeric::matrix<T> > M(n_flavors), M_scratch(n_flavors);
+
+  for (int i_update=0; i_update<n_update; ++i_update) {
+    T sign_from_M0, weight_from_M0;
+    boost::tie(sign_from_M0,weight_from_M0) = submatrix_update.compute_M_from_scratch(M_scratch);
+
+    const T weight_rat = manager.do_ins_rem_update(submatrix_update, Uijkl, random01, 1.0);
+    const T sign_bak = submatrix_update.sign();
+
+    ASSERT_TRUE(submatrix_update.sanity_check());
+    submatrix_update.recompute_matrix(true);
+    submatrix_update.compute_M(M);
+    T sign_from_M, weight_from_M;
+    boost::tie(sign_from_M,weight_from_M) = submatrix_update.compute_M_from_scratch(M_scratch);
+
+    ASSERT_TRUE(my_equal(weight_from_M/weight_from_M0, weight_rat, 1E-5));
+
+    ASSERT_TRUE(std::abs(sign_bak-submatrix_update.sign())<1.0e-5);
+    ASSERT_TRUE(std::abs(sign_from_M-submatrix_update.sign())<1.0e-5);
+    for (int flavor=0; flavor<n_flavors; ++flavor) {
+      if (M[flavor].size2()>0) {
+        ASSERT_TRUE(alps::fastupdate::norm_square(M[flavor]-M_scratch[flavor])/alps::fastupdate::norm_square(M[flavor])<1E-8);
+      }
+    }
+
+    const T weight_rat2 = manager.do_spin_flip_update(submatrix_update, Uijkl, random01);
+
+    T sign_from_M2, weight_from_M2;
+    boost::tie(sign_from_M2,weight_from_M2) = submatrix_update.compute_M_from_scratch(M_scratch);
+    ASSERT_TRUE(my_equal(weight_from_M2/weight_from_M, weight_rat2, 1E-5));
+
+    const T weight_rat3 = manager.do_shift_update(submatrix_update, Uijkl, random01, false);
+  }
+}

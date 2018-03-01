@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <alps/accumulators.hpp>
+#include <alps/params.hpp>
 
 #include <boost/random.hpp>
 #include <boost/random/uniform_01.hpp>
@@ -16,7 +17,11 @@
 #include "submatrix.hpp"
 #include "green_function.h"
 #include "U_matrix.h"
-//#include "update_statistics.h"
+#include "update_statistics.h"
+
+//class scalar_histogram_flavors;
+//template<class V>
+//double compute_spread(typename V::const_iterator v_begin, typename V::const_iterator v_end, double beta);
 
 using SimpleRealVectorObservable = alps::accumulators::NoBinningAccumulator<std::vector<double> >;
 

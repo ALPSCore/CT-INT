@@ -32,8 +32,6 @@
 #include <boost/lexical_cast.hpp>
 #include "boost/tuple/tuple.hpp"
 
-#include "alps/ngs/make_deprecated_parameters.hpp"
-
 #include "interaction_expansion.hpp"
 
 template<typename  T>

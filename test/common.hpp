@@ -1,4 +1,5 @@
 #include <boost/random.hpp>
+#include <boost/multi_array.hpp>
 
 #include "../src/matrix.hpp"
 
@@ -14,3 +15,6 @@ void randomize_matrix(alps::numeric::matrix<T>& mat, size_t seed=100) {
         }
     }
 }
+
+
+

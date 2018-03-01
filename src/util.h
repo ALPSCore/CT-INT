@@ -16,7 +16,29 @@
 #include "matrix.hpp"
 
 template<typename T> T mycast(std::complex<double> val);
+
+template<>
+double mycast(std::complex<double> val) {
+    return val.real();
+}
+
+template<>
+std::complex<double> mycast(std::complex<double> val) {
+    return val;
+}
+
 template<typename T> T myconj(T val);
+
+template<>
+double myconj(double val) {
+    return val;
+}
+
+template<>
+std::complex<double> myconj(std::complex<double> val) {
+    return std::conj(val);
+}
+
 template<typename T> T mysign(T x);
 
 
@@ -436,6 +458,15 @@ bool my_equal(T x, T y, double eps=1E-8) {
 template<typename T>
 bool my_rdiff(T x, T y) {
     return std::abs(x-y)/std::max(std::abs(x),std::abs(y));
+}
+
+inline
+double mymod(double x, double beta) {
+    if (x>=0) {
+        return x-beta*static_cast<int>(x/beta);
+    } else {
+        return x+beta*(static_cast<int>(-x/beta)+1);
+    }
 }
 
 

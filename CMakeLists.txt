@@ -68,12 +68,11 @@ set (LIB_FILES
         src/legendre.cpp
         src/legendre.h
         src/fastupdate_formula.h
-        src/U_matrix.cpp
         src/update_statistics.h
         src/wang_landau.h
         src/measurements.hpp
         src/selfenergy.ipp
-        src/operator.cpp)
+        )
 
 #static library
 add_library(alpscore_ctint ${LIB_FILES})
@@ -102,12 +101,11 @@ function(add_gtest test link_lib)
         set (test_xml_output --gtest_output=xml:${test}.xml)
     endif(TestXMLOutput)
 
-    set(source "${ARGV1}/${test}.cpp")
-    set(gtest_src "${ARGV1}/gtest_main.cc;${ARGV1}/gtest-all.cc")
+    set(source "test/${test}.cpp")
+    set(gtest_src "test/gtest_main.cc;test/gtest-all.cc")
 
     add_executable(${test} ${source} ${gtest_src})
-        message("DEBUG " ${ARGV2})
-    target_link_libraries(${test} ${ARGV2})
+    target_link_libraries(${test} ${link_lib})
     add_test(NAME ${test} COMMAND ${test} ${test_xml_output})
 endfunction(add_gtest)
 
@@ -115,12 +113,11 @@ endfunction(add_gtest)
 #add_executable(gtest ./test/gtest.cpp ./test/gtest-all.cc ./test/gtest_main.cc ${GTEST_SOURCE})
 #target_link_libraries(gtest ${CTINT_LIBRARIES})
 
-list(APPEND LINK_ALL alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
-list(APPEND LINK_REST ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
-#set(unittest_src unittests)
+set(LINK_ALL alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+set(LINK_REST ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 enable_testing(test)
 
-add_gtest(fastupdate test ${LINK_REST})
+add_gtest(fastupdate "${LINK_REST}")
 
 #foreach(test ${unittest_src})
     #add_gtest(${test} test)
