@@ -463,7 +463,9 @@ namespace alps {
     std::ostream &operator<<(std::ostream &os, const ResizableMatrix<Scalar> &m) {
       os << "memory size1: " << m.size1() << std::endl;
       os << "memory size2: " << m.size2() << std::endl;
-      os << m.block() << std::endl;
+      if (m.size1() > 0 && m.size2() > 0) {
+          os << m.block() << std::endl;
+      }
       return os;
     }
   }

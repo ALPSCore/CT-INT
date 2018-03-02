@@ -286,7 +286,6 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
     pl[l] = inv_gamma.pos_in_invA(l);
   }
   for (int l=0; l<nop; ++l) {
-    //boost::numeric::bindings::blas::detail::copy(N, &matrix_(pl[l],0), matrix_.stride2(), &invA0(l,0), invA0.stride2());
     invA0.row(l) = matrix_.row(pl[l]);
   }
   for (int l=0; l<nop; ++l) {
@@ -294,10 +293,8 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
     eval_Gij_col(spline_G0, pl[l], view);
   }
 
-  //mygemm(-1.0, G0_left, inv_gamma.matrix(), 0.0, G0_inv_gamma);
   G0_inv_gamma.block() = - G0_left.block() * inv_gamma.matrix().block();
-  //mygemm(1.0, G0_inv_gamma, invA0, 1.0, matrix_);
-  matrix_.block() = G0_inv_gamma.block() * invA0.block();
+  matrix_.block() += G0_inv_gamma.block() * invA0.block();
 
   for (int l=0; l < nop; ++l) {
     assert(inv_gamma.alpha(l)!=inv_gamma.alpha0(l));
@@ -469,6 +466,7 @@ template<typename SPLINE_G0_TYPE>
 void
 InvAMatrixFlavors<T>::update_matrix(const std::vector<InvGammaMatrix<T> >& inv_gamma_flavors, const SPLINE_G0_TYPE& spline_G0) {
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
+    std::cout << "call update matrix " << flavor << std::endl;
     sub_matrices_[flavor].update_matrix(inv_gamma_flavors[flavor], spline_G0);
   }
 }
@@ -539,6 +537,7 @@ template<typename SPLINE_G0_TYPE>
 std::pair<T,T> InvAMatrixFlavors<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
   T sign_detA = 1.0, f_sign = 1.0;
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
+    std::cout << "Recomputing A " << flavor << std::endl;
     T sign_detA_tmp, f_sign_tmp;
     boost::tie(sign_detA_tmp,f_sign_tmp) = sub_matrices_[flavor].recompute_matrix(spline_G0, check_error);
     sign_detA *= sign_detA_tmp;
