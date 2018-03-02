@@ -466,7 +466,6 @@ template<typename SPLINE_G0_TYPE>
 void
 InvAMatrixFlavors<T>::update_matrix(const std::vector<InvGammaMatrix<T> >& inv_gamma_flavors, const SPLINE_G0_TYPE& spline_G0) {
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    std::cout << "call update matrix " << flavor << std::endl;
     sub_matrices_[flavor].update_matrix(inv_gamma_flavors[flavor], spline_G0);
   }
 }
@@ -537,7 +536,6 @@ template<typename SPLINE_G0_TYPE>
 std::pair<T,T> InvAMatrixFlavors<T>::recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error) {
   T sign_detA = 1.0, f_sign = 1.0;
   for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
-    std::cout << "Recomputing A " << flavor << std::endl;
     T sign_detA_tmp, f_sign_tmp;
     boost::tie(sign_detA_tmp,f_sign_tmp) = sub_matrices_[flavor].recompute_matrix(spline_G0, check_error);
     sign_detA *= sign_detA_tmp;

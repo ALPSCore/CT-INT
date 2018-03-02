@@ -450,14 +450,10 @@ T VertexUpdateManager<T>::insertion_step(SubmatrixUpdate<T>& submatrix, R& rando
 
   T prob = det_rat_A*f_rat*U_rat*acc_corr*std::pow(U_scale, 1.0*num_vertices_ins);
 
-  std::cout << "prob ins " << prob << std::endl;
-
   if (std::abs(prob)>random()) {
-    std::cout << "insertion accepted " << std::endl;
     submatrix.perform_spin_flip(pos_vertices_work, new_spins_work);
     return det_rat_A*f_rat*U_rat;
   } else {
-    std::cout << "insertion rejected " << std::endl;
     submatrix.reject_spin_flip();
     return 1.0;
   }
@@ -489,14 +485,10 @@ T VertexUpdateManager<T>::removal_step(SubmatrixUpdate<T>& submatrix, R& random,
 
   T prob = det_rat_A*f_rat*U_rat*acc_corr*std::pow(U_scale, -1.0*nv_rem);
 
-  std::cout << "prob rem " << prob << std::endl;
-
   if (std::abs(prob)>random()) {
-    std::cout << "removal accepted " << std::endl;
     submatrix.perform_spin_flip(pos_vertices_remove, new_spins_remove);
     return det_rat_A*f_rat*U_rat;
   } else {
-    std::cout << "removal rejected " << std::endl;
     submatrix.reject_spin_flip();
     return 1.0;
   }
