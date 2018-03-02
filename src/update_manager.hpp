@@ -7,23 +7,17 @@
 
 #include <vector>
 
-#include <alps/accumulators.hpp>
 #include <alps/params.hpp>
 
 #include <boost/random.hpp>
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/discrete_distribution.hpp>
 
+#include "accumulators.hpp"
 #include "submatrix.hpp"
 #include "green_function.h"
 #include "U_matrix.h"
 #include "update_statistics.h"
-
-//class scalar_histogram_flavors;
-//template<class V>
-//double compute_spread(typename V::const_iterator v_begin, typename V::const_iterator v_end, double beta);
-
-using SimpleRealVectorObservable = alps::accumulators::NoBinningAccumulator<std::vector<double> >;
 
 template<typename T, typename SPLINE_G0>
 T
@@ -516,48 +510,6 @@ void VertexUpdateManager<T>::measure_observables(M& measurements) {
   }
   statistics_ins.reset();
   statistics_shift.reset();
-
-  //statistics_rem.reset();
-
-  /*
-  if (n_multi_vertex_update>1) {
-    measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
-    measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
-    measurements["StatisticsDoubleVertexInsertion"] << statistics_dv_ins.get_mean();
-    measurements["StatisticsDoubleVertexRemoval"] << statistics_dv_rem.get_mean();
-
-    measurements["StatisticsVertexInsertion_count"] << statistics_ins.get_counter();
-    measurements["StatisticsVertexRemoval_count"] << statistics_rem.get_counter();
-    measurements["StatisticsDoubleVertexInsertion_count"] << statistics_dv_ins.get_counter();
-    measurements["StatisticsDoubleVertexRemoval_count"] << statistics_dv_rem.get_counter();
-
-    measurements["StatisticsVertexInsertion_sum"] << statistics_ins.get_sumval();
-    measurements["StatisticsVertexRemoval_sum"] << statistics_rem.get_sumval();
-    measurements["StatisticsDoubleVertexInsertion_sum"] << statistics_dv_ins.get_sumval();
-    measurements["StatisticsDoubleVertexRemoval_sum"] << statistics_dv_rem.get_sumval();
-  }
-
-  if (n_shift>0) {
-    measurements["AcceptanceRateShift"] << num_accepted_shift/((double) measurement_period * (double) n_shift);
-  }
-
-  measurements["StatisticsVertexShift"] << statistics_shift.get_mean();
-  measurements["StatisticsVertexShift_count"] << statistics_shift.get_counter();
-  measurements["StatisticsVertexShift_sum"] << statistics_shift.get_sumval();
-
-  statistics_ins.reset();
-  statistics_rem.reset();
-  statistics_shift.reset();
-  statistics_dv_ins.reset();
-  statistics_dv_rem.reset();
-
-  for (int iv=0; iv<n_multi_vertex_update; ++iv){
-    measurements["VertexInsertion_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_ins.get_result(iv);
-    measurements["VertexRemoval_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_rem.get_result(iv);
-  }
-  simple_statistics_ins.reset();
-  simple_statistics_rem.reset();
-  */
 }
 
 /*

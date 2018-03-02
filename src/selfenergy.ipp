@@ -30,7 +30,7 @@ void InteractionExpansion<TYPES>::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
   //Note: vectorized for the loops over operators (should be optimal at large beta and U)
   // if computing sin and cos is too expensive, consider using linear interpolation.
   for (size_t z=0; z<n_flavors; ++z) {
-    const size_t Nv = num_rows(M_flavors[z]);
+    const size_t Nv = M_flavors[z].size1();
 
     if (Nv==0) {
       continue;
@@ -40,10 +40,10 @@ void InteractionExpansion<TYPES>::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
     const std::vector<creator>& creators = submatrix_update->invA()[z].creators();
 
     for(unsigned int i_freq=0; i_freq <nfreq; ++i_freq) {
-      GR.resize(Nv, n_site);
-      MGR.resize(Nv, n_site);
-      GL.resize(n_site, Nv);
-      GLMGR.resize(n_site, n_site);
+      GR.destructive_resize(Nv, n_site);
+      MGR.destructive_resize(Nv, n_site);
+      GL.destructive_resize(n_site, Nv);
+      GLMGR.destructive_resize(n_site, n_site);
 
       //GR
       for(unsigned int p=0;p<Nv;++p) {
@@ -66,8 +66,10 @@ void InteractionExpansion<TYPES>::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       }
 
       //clear MGR, GLMGR
-      std::fill(MGR.get_values().begin(), MGR.get_values().end(), 0);
-      std::fill(GLMGR.get_values().begin(), GLMGR.get_values().end(), 0);
+      //std::fill(MGR.get_values().begin(), MGR.get_values().end(), 0);
+      MGR.block().setZero();
+      //std::fill(GLMGR.get_values().begin(), GLMGR.get_values().end(), 0);
+      GLMGR.block().setZero();
 
       gemm(M_flavors[z], GR, MGR);
       gemm(GL, MGR, GLMGR);
@@ -87,7 +89,7 @@ void InteractionExpansion<TYPES>::measure_Wk(Wk_t& Wk, const unsigned int nfreq)
       //++num_nd;
   //}
 
-  if (params.defined("PREFIX_OUTPUT_TIME_SERIES")) {
+  if (parms.defined("PREFIX_OUTPUT_TIME_SERIES")) {
     for (unsigned int flavor=0; flavor<n_flavors; ++flavor) {
       for (unsigned int site1 = 0; site1 < n_site; ++site1) {
         Wk_dynamics.push_back(Wk[flavor][site1][site1][0]*sign);
@@ -228,7 +230,7 @@ void InteractionExpansion<TYPES>::compute_Sl() {
       }//site2
     }//site1
 
-    if (params.defined("PREFIX_OUTPUT_TIME_SERIES")) {
+    if (parms.defined("PREFIX_OUTPUT_TIME_SERIES")) {
       for (unsigned int site1 = 0; site1 < n_site; ++site1) {
         Sl_dynamics.push_back(Sl[site1][site1][0]*sign/static_cast<double>(num_random_walk));
       }
@@ -255,21 +257,21 @@ void InteractionExpansion<TYPES>::measure_densities()
     const std::vector<annihilator>& annihilators = submatrix_update->invA()[z].annihilators();
     const std::vector<creator>& creators = submatrix_update->invA()[z].creators();
 
-    alps::numeric::vector<M_TYPE> g0_tauj(Nv);
-    alps::numeric::vector<M_TYPE> M_g0_tauj(Nv);
-    alps::numeric::vector<M_TYPE> g0_taui(Nv);
+    using eigen_vector_t = Eigen::Matrix<M_TYPE,Eigen::Dynamic,1>;
+    eigen_vector_t  g0_tauj(Nv), M_g0_tauj(Nv), g0_taui(Nv);
+
     for (unsigned int s=0;s<n_site;++s) {
       for (unsigned int j=0;j<Nv;++j)
         g0_tauj[j] = mycast<M_TYPE>(g0_intpl(annihilators[j].t().time()-tau, z, annihilators[j].s(), s));//CHECK THE TREATMENT OF EQUAL-TIME Green's function
       for (unsigned int i=0;i<Nv;++i)
         g0_taui[i] = mycast<M_TYPE>(g0_intpl(tau-creators[i].t().time(),z, s, creators[i].s()));
       if (M_flavors[z].num_cols()>0) {
-        gemv(M_flavors[z],g0_tauj,M_g0_tauj);
+        M_g0_tauj = M_flavors[z] * g0_tauj;
       }
-      //dens[z][s] += mycast<double>(green0_spline_new(-beta*1E-10,z,s,s));//tau=-0
       dens[z][s] += mycast<double>(g0_intpl(-beta*1E-10,z,s,s));//tau=-0
-      for (unsigned int j=0;j<Nv;++j)
+      for (unsigned int j=0;j<Nv;++j) {
         dens[z][s] -= mycast<double>(g0_taui[j]*M_g0_tauj[j]);
+      }
     }
   }
   std::valarray<double> densities(0., n_flavors);

@@ -8,6 +8,7 @@ inline void define_parameters(alps::params &parms) {
   parms.define<int>("FLAVORS", "Number of flavors per site");
   parms.define<int>("SITES", "Number of sites");
   parms.define<int>("NMATSUBARA", "Number of Matsubara frequencies");
+  parms.define<int>("NMATSUBARA_MEASUREMENTS", "??", 0);
   parms.define<int>("N_TAU", "Number of imaginary times");
   parms.define<int>("NSELF", "UNKNOWN?");
   parms.define<int>("N_LEGENDRE", 0, "Number of Legendre polynomials");

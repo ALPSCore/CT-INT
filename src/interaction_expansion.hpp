@@ -34,6 +34,8 @@
 #include <fstream>
 #include <cmath>
 
+#include <alps/mc/mcbase.hpp>
+
 #include <boost/multi_array.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -44,19 +46,13 @@
 #include <boost/multi_array.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include <alps/ngs.hpp>
-#include <alps/mcbase.hpp>
-#include <alps/alea.h>
-#include <alps/numeric/matrix.hpp>
-#include <alps/numeric/matrix/algorithms.hpp>
-
 #include "submatrix.hpp"
 #include "green_function.h"
 #include "types.h"
 #include "fouriertransform.h"
 #include "U_matrix.h"
 #include "operator.hpp"
-#include "green_matrix.hpp"
+//#include "green_matrix.hpp"
 #include "legendre.h"
 #include "update_statistics.h"
 #include "wang_landau.h"
@@ -239,6 +235,9 @@ protected:
   bool is_quantum_number_conserved(const itime_vertex_container& vertices);
 
   void prepare_for_measurement(); //called once after thermalization is done
+
+  //copy of input parameters
+  alps::params parms;
 
   /*private member variables, constant throughout the simulation*/
   const unsigned int node;

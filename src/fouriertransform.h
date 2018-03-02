@@ -32,7 +32,8 @@
 #include <complex>
 #include "types.h" // for the multiple_vector_type
 #include "green_function.h" // for the multiple_vector_type
-#include <alps/parameter.h>
+
+#include <alps/params.hpp>
 
 
 template<typename T>
@@ -100,12 +101,12 @@ public:
   virtual void append_tail(matsubara_green_function_t& G_omega, const matsubara_green_function_t& G0_omega,
                            const int nfreq_measured) const;
   
-  static void generate_transformer(const alps::Parameters &parms,
+  static void generate_transformer(const alps::params &parms,
                                    boost::shared_ptr<FourierTransformer> &fourier_ptr);
-  static void generate_transformer_U(const alps::Parameters &parms,
+  static void generate_transformer_U(const alps::params &parms,
                                      boost::shared_ptr<FourierTransformer> &fourier_ptr,
                                      const std::vector<double> &densities);
-  static void generate_transformer_lowest_order(const alps::Parameters &parms,
+  static void generate_transformer_lowest_order(const alps::params &parms,
                                      boost::shared_ptr<FourierTransformer> &fourier_ptr);
 
 protected:
@@ -142,6 +143,7 @@ public:
 };
 
 
+/*
 class GFourierTransformer : public FourierTransformer
 {
 public: 
@@ -166,9 +168,11 @@ public:
     }
   }
 };
+*/
 
 
 
+/*
 class FFunctionFourierTransformer:public FourierTransformer
 {
 public:
@@ -211,5 +215,6 @@ public:
 private:
   std::vector<double> epssq_;
 };
+ */
 
 #endif

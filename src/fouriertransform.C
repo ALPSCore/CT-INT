@@ -28,14 +28,14 @@
  *****************************************************************************/
 
 
-#include <alps/config.h> // needed to set up correct bindings
-#include <boost/numeric/bindings/ublas.hpp>
-#include <boost/numeric/bindings/lapack/driver/gesv.hpp>
+//#include <alps/config.h> // needed to set up correct bindings
+//#include <boost/numeric/bindings/ublas.hpp>
+//#include <boost/numeric/bindings/lapack/driver/gesv.hpp>
 
 #include "fouriertransform.h"
 #include <valarray>
 #include <boost/numeric/ublas/io.hpp>
-#include <alps/parameter.h>
+//#include <alps/parameter.h>
 
 #include <math.h>
 #include "util.h"
@@ -143,6 +143,7 @@ void FourierTransformer::backward_ft_fullG(itime_full_green_function_t &G_tau,
 */
 
 
+/*
 void generate_spline_matrix(dense_matrix & spline_matrix, double dt) {
   
   // spline_matrix has dimension (N+1)x(N+1)
@@ -180,7 +181,7 @@ void generate_spline_matrix(dense_matrix & spline_matrix, double dt) {
 
 
 
-void evaluate_second_derivatives(double dt/*, double BETA*/, dense_matrix & spline_matrix, std::vector<double> & g, std::vector<double> & second_derivatives, const double c1g, const double c2g, const double c3g) {
+void evaluate_second_derivatives(double dt, dense_matrix & spline_matrix, std::vector<double> & g, std::vector<double> & second_derivatives, const double c1g, const double c2g, const double c3g) {
   
   // g, rhs and second_derivatives have dimension N+1
   int Np1 = spline_matrix.size1();
@@ -212,50 +213,14 @@ void evaluate_second_derivatives(double dt/*, double BETA*/, dense_matrix & spli
     }
   }
 }
+*/
 
 
 
 void FourierTransformer::forward_ft(const itime_green_function_t & gtau, matsubara_green_function_t & gomega) const 
 {
   throw std::runtime_error("Complex version not implemented yet!");
-  /*
-  std::vector<GTAU_TYPE> v(gtau.ntime());
-  std::vector<std::complex<double> > v_omega(gomega.nfreq());
-  int Np1 = v.size();
-  int N = Np1-1;
-  int N_omega = v_omega.size();
-  double dt = beta_/N;
-  
-  for(unsigned f=0;f<gtau.nflavor();++f){
-    for(unsigned p=0;p<gtau.nsite();++p){
-      for(unsigned q=0;q<gtau.nsite();++q){
-        for(int tau=0;tau<Np1;++tau){
-          v[tau]=gtau(tau,p,q,f);
-        }
-        
-        dense_matrix spline_matrix(Np1, Np1);
-        generate_spline_matrix(spline_matrix, dt);
-        // matrix containing the second derivatives y'' of interpolated y=v[tau] at points tau_n 
-        std::vector<double> v2(Np1, 0); 
-        evaluate_second_derivatives(dt, spline_matrix, v, v2, c1_[f][p][q], c2_[f][p][q], c3_[f][p][q]);
-        v_omega.assign(N_omega, 0);
-        
-        for (int k=0; k<N_omega; k++) {
-          std::complex<double> iw(0, M_PI*(2*k+1)/beta_);
-          for (int n=1; n<N; n++) {
-            v_omega[k] += exp(iw*(n*dt))*(v2[n+1]-2*v2[n]+v2[n-1]); //partial integration, four times. Then approximate the fourth derivative by finite differences
-          }
-          v_omega[k] += (v2[1] - v2[0] + v2[N] - v2[N-1]); //that's the third derivative, on the boundary
-          v_omega[k] *= 1./(dt*iw*iw*iw*iw);
-          v_omega[k] += f_omega(iw, c1_[f][p][q], c2_[f][p][q], c3_[f][p][q]); //that's the boundary terms of the first, second, and third partial integration.
-          //std::cout<<"derivative at boundary: "<<-v2[1] + v2[0] + v2[N] - v2[N-1]<<" divisor: "<< 1./(dt*iw*iw*iw*iw)<<std::endl;
-          gomega(k,p,q,f)=v_omega[k]; //that's the proper convention for the self consistency loop here.
-        }
-      }
-    }
-  }
-  */
-} 
+}
 
 
 
@@ -278,13 +243,15 @@ void FourierTransformer::append_tail(matsubara_green_function_t& G_omega,
   }
 }
 
-void FourierTransformer::generate_transformer(const alps::Parameters &parms,
+/*
+void FourierTransformer::generate_transformer(const alps::params &parms,
                                               boost::shared_ptr<FourierTransformer> &fourier_ptr)
 {
-  int n_flavors = parms.value_or_default("FLAVORS", 2);
-  if (static_cast<int>(parms.value_or_default("SITES", 1))!=1)
+  int n_flavors = parms["FLAVORS"];
+  if (parms["SITES"].template as<int>() != 1) {
     throw std::logic_error("ERROR: FourierTransformer::generate_transformer : SITES!=1, for cluster fourier transforms please use the cluster version of this framework");
-  double h = static_cast<double>(parms.value_or_default("H",0.));
+  }
+  double h = static_cast<double>(parms["H"]);
   std::cout << "using general fourier transformer" << "\n";
   std::vector<double> eps(n_flavors);
   std::vector<double> epssq(n_flavors);
@@ -295,33 +262,14 @@ void FourierTransformer::generate_transformer(const alps::Parameters &parms,
   fourier_ptr.reset(new SimpleG0FourierTransformer((double)parms["BETA"], (double)parms["MU"], h,
                                                    n_flavors, eps, epssq));
 }
+ */
 
 
-void FourierTransformer::generate_transformer_lowest_order(const alps::Parameters &parms,
+void FourierTransformer::generate_transformer_lowest_order(const alps::params &parms,
                                               boost::shared_ptr<FourierTransformer> &fourier_ptr)
 {
-  int n_flavors = parms.value_or_default("FLAVORS", 2);
-  int n_site = parms.value_or_default("SITES", 1);
+  int n_flavors = parms["FLAVORS"];
+  int n_site = parms["SITES"];
   std::cout << "using general fourier transformer (up to lowest order)" << "\n";
   fourier_ptr.reset(new FourierTransformer((double)parms["BETA"], n_flavors, n_site));
-}
-
-
-void FourierTransformer::generate_transformer_U(const alps::Parameters &parms,
-                                                boost::shared_ptr<FourierTransformer> &fourier_ptr,
-                                                const std::vector<double> &densities)
-{
-  int n_flavors = parms.value_or_default("FLAVORS", 2); 
-  if (static_cast<int>(parms.value_or_default("SITES", 1))!=1)
-    throw std::logic_error("ERROR: FourierTransformer::generate_transformer_U : SITES!=1, for cluster fourier transforms please use the cluster version of this framework");
-  double U = parms["U"];
-  std::cout << "using general fourier transformer" << "\n";
-  std::vector<std::vector<double> > eps(n_flavors,std::vector<double>(1));
-  std::vector<std::vector<double> >epssq(n_flavors,std::vector<double>(1));
-  for (int f=0; f<n_flavors; ++f) {
-    eps[f][0] = parms.value_or_default("EPS_"+boost::lexical_cast<std::string>(f),0.0);
-    epssq[f][0] = parms.value_or_default("EPSSQ_"+boost::lexical_cast<std::string>(f),1.0);
-  }
-  fourier_ptr.reset(new GFourierTransformer((double)parms["BETA"], (double)parms["MU"]+U/2., U, 
-                                            n_flavors, 1, densities, eps, epssq));
 }

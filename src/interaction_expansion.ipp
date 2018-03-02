@@ -36,11 +36,11 @@
 
 template<typename  T>
 BareGreenInterpolate<T>::BareGreenInterpolate(const alps::params &p) :
-    beta_((double)p["BETA"]),
+    beta_(p["BETA"].template as<int>()),
     temp_(1.0/beta_),
-    ntau_((int)(p["N"]|p["N_TAU"])),
-    n_flavors_(p["FLAVORS"] | (p["N_ORBITALS"] | 2)),
-    n_sites_(p["SITES"] | 1),
+    ntau_(p["N_TAU"].template as<int>()),
+    n_flavors_(p["FLAVORS"].template as<int>()),
+    n_sites_(p["SITES"].template as<int>()),
     dbeta_(beta_/ntau_)
 {
   green_function<std::complex<double> > bare_green_matsubara(ntau_,  n_sites_, n_flavors_),
@@ -130,55 +130,45 @@ bool BareGreenInterpolate<T>::is_zero(int site1, int site2, int flavor, double e
 }
 
 template<class TYPES>
-InteractionExpansion<TYPES>::InteractionExpansion(const alps::params &parms, int node, const boost::mpi::communicator& communicator)
-: InteractionExpansionBase(parms,node,communicator),
+InteractionExpansion<TYPES>::InteractionExpansion(const alps::params &parameters, int node, const boost::mpi::communicator& communicator)
+: InteractionExpansionBase(parameters,node,communicator),
+parms(parameters),
 node(node),
-max_order(parms["MAX_ORDER"] | 2048),
+max_order(parms["MAX_ORDER"]),
 n_flavors(parms["FLAVORS"]),
 n_site(parms["SITES"]),
-n_matsubara((int)(parms["NMATSUBARA"]|parms["N_MATSUBARA"])),
-n_matsubara_measurements(parms["NMATSUBARA_MEASUREMENTS"] | (int)n_matsubara),
-n_tau((int)(parms["N"]|parms["N_TAU"])),
+n_matsubara(parms["N_MATSUBARA"]),
+n_matsubara_measurements(parms["NMATSUBARA_MEASUREMENTS"]),
+n_tau(parms["N_TAU"]),
 n_tau_inv(1./n_tau),
-n_self(parms["NSELF"] | (int)(10*n_tau)),
-n_legendre(parms["N_LEGENDRE"] | 0),
+n_self(parms["NSELF"]),
+n_legendre(parms["N_LEGENDRE"]),
 mc_steps((boost::uint64_t)parms["SWEEPS"]),
-therm_steps((unsigned int)parms["THERMALIZATION"]),
-max_time_in_seconds(parms["MAX_TIME"] | 86400),
-beta((double)parms["BETA"]),
+therm_steps(parms["THERMALIZATION"]),
+max_time_in_seconds(parms["MAX_TIME"]),
+beta(parms["BETA"]),
 temperature(1./beta),
-Uijkl(alps::make_deprecated_parameters(parms)),
-num_U_scale(parms["NUM_U_SCALE"] | 1),
-min_U_scale(parms["MIN_U_SCALE"] | 1.0),
+Uijkl(parms),
+num_U_scale(parms["NUM_U_SCALE"]),
+min_U_scale(parms["MIN_U_SCALE"]),
 U_scale_vals(num_U_scale),
 U_scale_index(num_U_scale),
 M_flavors(n_flavors),
-recalc_period(parms["RECALC_PERIOD"] | 5000),
-measurement_period(parms["MEASUREMENT_PERIOD"] | 500*n_flavors*n_site),
-convergence_check_period(parms["CONVERGENCE_CHECK_PERIOD"] | (int)recalc_period),
-almost_zero(parms["ALMOSTZERO"] | 1.e-16),
-seed(parms["SEED"]+node),
+recalc_period(parms["RECALC_PERIOD"]),
+measurement_period(parms.defined("MEASUREMENT_PERIOD") ? parms["MEASUREMENT_PERIOD"] : 500*n_flavors*n_site),
+convergence_check_period(recalc_period),
+almost_zero(1.e-16),
+seed(parms["SEED"].template as<int>()+node),
 bare_green_matsubara(n_matsubara,n_site, n_flavors),
 bare_green_itime(n_tau+1, n_site, n_flavors),
 pert_hist(max_order),
 legendre_transformer(n_matsubara,n_legendre),
-//n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"] | 1),
-//statistics_ins((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
-//statistics_rem((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, n_multi_vertex_update-1),
-//statistics_shift((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, 1),
-//statistics_dv_rem(0, 0, 0),
-//statistics_dv_ins(0, 0, 0),
-//simple_statistics_ins(n_multi_vertex_update),
-//simple_statistics_rem(n_multi_vertex_update),
 is_thermalized_in_previous_step_(false),
-//window_width(parms.defined("WINDOW_WIDTH") ? beta*static_cast<double>(parms["WINDOW_WIDTH"]) : 1000.0*beta),
-//window_dist(boost::random::exponential_distribution<>(1/window_width)),
-//shift_helper(n_flavors, parms.defined("SHIFT_WINDOW_WIDTH") ? beta*static_cast<double>(parms["SHIFT_WINDOW_WIDTH"]) : 1000.0*beta),
-n_ins_rem(parms["N_INS_REM_VERTEX"] | 1),
-n_shift(parms["N_VERTEX_SHIFT"] | 1),
-n_spin_flip(parms["N_SPIN_FLIP"] | 1),
-force_quantum_number_conservation(parms.defined("FORCE_QUANTUM_NUMBER_CONSERVATION") ? parms["FORCE_QUANTUM_NUMBER_CONSERVATION"] : false),
-single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
+n_ins_rem(parms["N_INS_REM_VERTEX"]),
+n_shift(parms["N_VERTEX_SHIFT"]),
+n_spin_flip(parms["N_SPIN_FLIP"]),
+force_quantum_number_conservation(false),
+single_vertex_update_non_density_type(false),
 pert_order_hist(max_order+1),
 comm(communicator),
 g0_intpl(parms),
@@ -195,8 +185,8 @@ update_manager(parms, Uijkl, g0_intpl, node==0)
 
   //submatrix update
   itime_vertex_container itime_vertices_init;
-  if (params.defined("PREFIX_LOAD_CONFIG")) {
-    std::ifstream is((params["PREFIX_LOAD_CONFIG"].template cast<std::string>()
+  if (parms.defined("PREFIX_LOAD_CONFIG")) {
+    std::ifstream is((parms["PREFIX_LOAD_CONFIG"].template as<std::string>()
                       +std::string("-config-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     load_config<typename TYPES::M_TYPE>(is, Uijkl, itime_vertices_init);
   }
@@ -217,7 +207,7 @@ update_manager(parms, Uijkl, g0_intpl, node==0)
     walkers.push_back(
       WALKER_P_TYPE(
         new SubmatrixUpdate<M_TYPE>(
-        (parms["K_INS_MAX"] | 32), n_flavors,
+        parms["K_INS_MAX"], n_flavors,
         g0_intpl, &Uijkl, beta, itime_vertices_init)
       )
     );
@@ -328,7 +318,7 @@ void InteractionExpansion<TYPES>::update()
   }//for (int i_walker=0;
 
   //Save pertubation order for walker with physical U
-  if (params.defined("PREFIX_OUTPUT_TIME_SERIES")) {
+  if (parms.defined("PREFIX_OUTPUT_TIME_SERIES")) {
     std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
     const itime_vertex_container& itime_vertices = walkers[U_scale_index[U_scale_index.size()-1]]->itime_vertices();
     assert(U_scale_vals[U_scale_index[U_scale_index.size()-1]]==1.0);
@@ -428,7 +418,7 @@ void InteractionExpansion<TYPES>::finalize()
 {
 
   if (pert_order_dynamics.size()>0) {
-    std::ofstream ofs((params["PREFIX_OUTPUT_TIME_SERIES"].template cast<std::string>()+std::string("-pert_order-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    std::ofstream ofs((parms["PREFIX_OUTPUT_TIME_SERIES"].template cast<std::string>()+std::string("-pert_order-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     unsigned int n_data = pert_order_dynamics.size()/Uijkl.n_vertex_type();
     unsigned int i=0;
     for (unsigned int i_data=0; i_data<n_data; ++i_data) {
@@ -442,7 +432,7 @@ void InteractionExpansion<TYPES>::finalize()
   }
 
   if (Wk_dynamics.size()>0) {
-    std::ofstream ofs((params["PREFIX_OUTPUT_TIME_SERIES"].template cast<std::string>()+std::string("-Wk-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    std::ofstream ofs((parms["PREFIX_OUTPUT_TIME_SERIES"].template as<std::string>()+std::string("-Wk-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     unsigned int n_data = Wk_dynamics.size()/(n_flavors*n_site);
     unsigned int i=0;
     for (unsigned int i_data=0; i_data<n_data; ++i_data) {
@@ -458,7 +448,7 @@ void InteractionExpansion<TYPES>::finalize()
   }
 
   if (Sl_dynamics.size()>0) {
-    std::ofstream ofs((params["PREFIX_OUTPUT_TIME_SERIES"].template cast<std::string>()+std::string("-Sl-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
+    std::ofstream ofs((parms["PREFIX_OUTPUT_TIME_SERIES"].template as<std::string>()+std::string("-Sl-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     unsigned int n_data = Sl_dynamics.size()/(n_flavors*n_site);
     unsigned int i=0;
     for (unsigned int i_data=0; i_data<n_data; ++i_data) {
@@ -473,8 +463,8 @@ void InteractionExpansion<TYPES>::finalize()
     }
   }
 
-  if (params.defined("PREFIX_DUMP_CONFIG")) {
-    std::ofstream os((params["PREFIX_DUMP_CONFIG"].template cast<std::string>()
+  if (parms.defined("PREFIX_DUMP_CONFIG")) {
+    std::ofstream os((parms["PREFIX_DUMP_CONFIG"].template as<std::string>()
                       +std::string("-config-node")+boost::lexical_cast<std::string>(node)+std::string(".txt")).c_str());
     dump(os, submatrix_update->itime_vertices());
   }
@@ -621,15 +611,15 @@ compute_weight(const general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, con
   alps::numeric::matrix<T> G0, work;
   for (int flavor=0; flavor<nflavors; ++flavor) {
     const int Nv = alpha[flavor].size();
-    G0.resize_values_not_retained(Nv, Nv);
-    work.resize_values_not_retained(Nv, Nv);
+    G0.destructive_resize(Nv, Nv);
+    work.destructive_resize(Nv, Nv);
     for (int j=0; j<Nv; ++j) {
       for (int i=0; i<Nv; ++i) {
         G0(i,j) = spline_G0(annihilators[flavor][i], creators[flavor][j]);
       }
       G0(j,j) -= alpha[flavor][j];
     }
-    weight_det *= alps::numeric::determinant_no_copy(G0, work);
+    weight_det *= G0.safe_determinant();
   }
 
   return weight_U*weight_det;

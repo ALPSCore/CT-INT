@@ -28,12 +28,9 @@
 *****************************************************************************/
 
 #include "interaction_expansion.hpp"
+
+#include "accumulators.hpp"
 #include <complex>
-#include <alps/alea.h>
-#include <alps/alea/simpleobseval.h>
-#include <alps/scheduler/montecarlo.h>
-#include <alps/osiris/dump.h>
-#include <alps/osiris/std/vector.h>
 
 ///this function is called at the start of the simulation for allocation of
 ///memory for the ALPS observables. It is also called at the start of every DMFT
@@ -44,8 +41,8 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
   if(measurements.has("Sign")){
     measurements.clear();
   }
-  measurements << alps::ngs::RealObservable("Sign");
-  measurements << alps::ngs::RealVectorObservable("PertOrder");
+  measurements << SimpleRealObservable("Sign");
+  measurements << SimpleRealVectorObservable("PertOrder");
   if(n_matsubara_measurements>0) {
     for(unsigned int flavor=0;flavor<n_flavors;++flavor){
       for (unsigned int k = 0; k < n_site; k++) {
@@ -53,8 +50,8 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
           std::stringstream obs_name_real, obs_name_imag;
           obs_name_real << "Wk_real_" << flavor << "_" << k << "_" << k2;
           obs_name_imag << "Wk_imag_" << flavor << "_" << k << "_" << k2;
-          measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
-          measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
+          measurements << SimpleRealVectorObservable(obs_name_real.str().c_str());
+          measurements << SimpleRealVectorObservable(obs_name_imag.str().c_str());
         }
       }
     }
@@ -67,25 +64,26 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
           std::stringstream obs_name_real, obs_name_imag;
           obs_name_real << "Sl_real_" << flavor << "_" << k << "_" << k2;
           obs_name_imag << "Sl_imag_" << flavor << "_" << k << "_" << k2;
-          measurements << alps::ngs::RealVectorObservable(obs_name_real.str().c_str());
-          measurements << alps::ngs::RealVectorObservable(obs_name_imag.str().c_str());
+          measurements << SimpleRealVectorObservable(obs_name_real.str().c_str());
+          measurements << SimpleRealVectorObservable(obs_name_imag.str().c_str());
         }
       }
     }
   }
 
-  measurements << alps::ngs::RealVectorObservable("densities");
-  for(unsigned int flavor=0;flavor<n_flavors;++flavor)
-    measurements << alps::ngs::RealVectorObservable("densities_"+boost::lexical_cast<std::string>(flavor));
-  measurements << alps::ngs::RealObservable("density_correlation");
-  measurements << alps::ngs::RealVectorObservable("n_i n_j");
+  measurements << SimpleRealVectorObservable("densities");
+  for(int flavor=0;flavor<n_flavors;++flavor) {
+    measurements << SimpleRealVectorObservable("densities_"+boost::lexical_cast<std::string>(flavor));
+  }
+  measurements << SimpleRealObservable("density_correlation");
+  measurements << SimpleRealVectorObservable("n_i n_j");
 
   for(unsigned int flavor=0;flavor<n_flavors;++flavor){
     for(unsigned int i=0;i<n_site;++i){
       std::stringstream density_name, sz_name;
       density_name<<"density_"<<flavor;
       if (n_site>1) density_name<<"_"<<i;
-      measurements << alps::ngs::RealObservable(density_name.str().c_str());
+      measurements << SimpleRealObservable(density_name.str().c_str());
     }
   }
   for(unsigned int i=0;i<n_site;++i){
@@ -96,45 +94,24 @@ void InteractionExpansion<TYPES>::initialize_observables(void)
   }
   /*
   for (int iv=0; iv<n_multi_vertex_update; ++iv)  {
-      measurements << alps::ngs::RealVectorObservable("VertexInsertion_"+boost::lexical_cast<std::string>(iv+1));
-      measurements << alps::ngs::RealVectorObservable("VertexRemoval_"+boost::lexical_cast<std::string>(iv+1));
+      measurements << SimpleRealVectorObservable("VertexInsertion_"+boost::lexical_cast<std::string>(iv+1));
+      measurements << SimpleRealVectorObservable("VertexRemoval_"+boost::lexical_cast<std::string>(iv+1));
   }
   */
-  measurements << alps::ngs::SimpleRealVectorObservable("MeasurementTimeMsec");
-  measurements << alps::ngs::SimpleRealVectorObservable("UpdateTimeMsec");
-  measurements << alps::ngs::SimpleRealVectorObservable("UpdateTimeMsecAllWalkers");
-  measurements << alps::ngs::RealObservable("RecomputeTime");
+  measurements << SimpleRealVectorObservable("MeasurementTimeMsec");
+  measurements << SimpleRealVectorObservable("UpdateTimeMsec");
+  measurements << SimpleRealVectorObservable("UpdateTimeMsecAllWalkers");
+  measurements << SimpleRealObservable("RecomputeTime");
   for(spin_t flavor=0;flavor<n_flavors;++flavor) {
       std::stringstream tmp;
       tmp<<"VertexHistogram_"<<flavor;
-      measurements << alps::ngs::SimpleRealVectorObservable(tmp.str().c_str());
+      measurements << SimpleRealVectorObservable(tmp.str().c_str());
   }
-  /*
-  measurements << alps::ngs::SimpleRealObservable("AcceptanceRateShift");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion_count");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval_count");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift_count");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexInsertion_sum");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexRemoval_sum");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsVertexShift_sum");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion_count");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexInsertion_sum");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_count");
-  measurements << alps::ngs::SimpleRealVectorObservable("StatisticsDoubleVertexRemoval_sum");
-  */
 
-  measurements << alps::ngs::RealVectorObservable("PerturbationOrderVertex");
-  //if (n_multi_vertex_update>1) {
-    //measurements << alps::ngs::SimpleRealObservable("QuantumNumberConserved");
-  //}
-  measurements << alps::ngs::SimpleRealVectorObservable("PertOrderHistogram");
-  measurements << alps::ngs::SimpleRealVectorObservable("ACCEPTANCE_RATE_EXCHANGE");
-  measurements.reset(true);
+  measurements << SimpleRealVectorObservable("PerturbationOrderVertex");
+  measurements << SimpleRealVectorObservable("PertOrderHistogram");
+  measurements << SimpleRealVectorObservable("ACCEPTANCE_RATE_EXCHANGE");
+  //measurements.reset(true);
 }
 
 ///this function is called whenever measurements should be performed. Depending
@@ -151,7 +128,7 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
   const M_TYPE sign = submatrix_update->sign();
 
   measurements["Sign"] << mycast<REAL_TYPE>(sign);
-  if (params.defined("OUTPUT_Sign") ? params["OUTPUT_Sign"] : false) {
+  if (parms.defined("OUTPUT_Sign") ? parms["OUTPUT_Sign"] : false) {
       std::cout << " node= " << node << " Sign= " << sign << " pert_order= " << submatrix_update->pert_order() << std::endl;
   }
 
@@ -172,7 +149,7 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
 
   std::valarray<double> pert_order(n_flavors);
   for(unsigned int i=0;i<n_flavors;++i) { 
-    pert_order[i]=num_rows(M_flavors[i]);
+    pert_order[i]=M_flavors[i].size1();
   }
   measurements["PertOrder"] << pert_order;
 
@@ -182,46 +159,6 @@ void InteractionExpansion<TYPES>::measure_observables(std::valarray<double>& tim
       measurements[tmp.str().c_str()] << vertex_histograms[flavor]->to_valarray();
       vertex_histograms[flavor]->clear();
   }
-
-  /*
-  if (n_multi_vertex_update>1) {
-      measurements["StatisticsVertexInsertion"] << statistics_ins.get_mean();
-      measurements["StatisticsVertexRemoval"] << statistics_rem.get_mean();
-      measurements["StatisticsDoubleVertexInsertion"] << statistics_dv_ins.get_mean();
-      measurements["StatisticsDoubleVertexRemoval"] << statistics_dv_rem.get_mean();
-
-      measurements["StatisticsVertexInsertion_count"] << statistics_ins.get_counter();
-      measurements["StatisticsVertexRemoval_count"] << statistics_rem.get_counter();
-      measurements["StatisticsDoubleVertexInsertion_count"] << statistics_dv_ins.get_counter();
-      measurements["StatisticsDoubleVertexRemoval_count"] << statistics_dv_rem.get_counter();
-
-      measurements["StatisticsVertexInsertion_sum"] << statistics_ins.get_sumval();
-      measurements["StatisticsVertexRemoval_sum"] << statistics_rem.get_sumval();
-      measurements["StatisticsDoubleVertexInsertion_sum"] << statistics_dv_ins.get_sumval();
-      measurements["StatisticsDoubleVertexRemoval_sum"] << statistics_dv_rem.get_sumval();
-  }
-
-  if (n_shift>0) {
-    measurements["AcceptanceRateShift"] << num_accepted_shift/((double) measurement_period * (double) n_shift);
-  }
-
-  measurements["StatisticsVertexShift"] << statistics_shift.get_mean();
-  measurements["StatisticsVertexShift_count"] << statistics_shift.get_counter();
-  measurements["StatisticsVertexShift_sum"] << statistics_shift.get_sumval();
-
-  statistics_ins.reset();
-  statistics_rem.reset();
-  statistics_shift.reset();
-  statistics_dv_ins.reset();
-  statistics_dv_rem.reset();
-
-  for (int iv=0; iv<n_multi_vertex_update; ++iv){
-    measurements["VertexInsertion_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_ins.get_result(iv);
-    measurements["VertexRemoval_"+boost::lexical_cast<std::string>(iv+1)] << simple_statistics_rem.get_result(iv);
-  }
-  simple_statistics_ins.reset();
-  simple_statistics_rem.reset();
-   */
 
   std::valarray<double> pert_vertex(Uijkl.n_vertex_type());
   const itime_vertex_container& itime_vertices = submatrix_update->itime_vertices();

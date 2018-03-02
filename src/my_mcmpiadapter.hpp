@@ -25,8 +25,6 @@
  *                                                                                 *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <alps/ngs/config.hpp>
-
 #if !defined(MY_MCMPIADAPTER_HPP) && defined(ALPS_HAVE_MPI)
 #define MY_MCMPIADAPTER_HPP
 
