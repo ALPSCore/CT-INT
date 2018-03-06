@@ -10,6 +10,8 @@
 #include "../src/update_manager.hpp"
 #include "../src/program_params.hpp"
 
+using namespace alps::ctint;
+
 class simple_vertex {
 public:
     simple_vertex(double time) : time_(time) {}
@@ -203,7 +205,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
 
   /* init udpate_manager */
   alps::params params;
-  define_parameters(params);
+  define_ctint_parameters(params);
   params["BETA"] = beta;
   params["FLAVORS"] = n_flavors;
   params["N_MULTI_VERTEX_UPDATE"] = Nv_max;

@@ -60,16 +60,13 @@ include_directories(${CTINT_LIBRARY_INCLUDE_DIRS})
 
 #source files
 set (LIB_FILES
-        src/fouriertransform.C
+        src/fouriertransform.cpp
         src/observables.ipp
-        src/io.ipp
         src/interaction_expansion.ipp
-        src/util.cpp
         src/legendre.cpp
         src/legendre.h
         src/fastupdate_formula.h
         src/update_statistics.h
-        src/wang_landau.h
         src/measurements.hpp
         src/selfenergy.ipp
         )
@@ -93,7 +90,6 @@ target_link_libraries(interaction_real alpscore_ctint ${ALPSCore_LIBRARIES} ${MP
 
 #testing setup
 option(Testing "Enable testing" ON)
-#include(EnableGtests) #defined in ./cmake
 include_directories("test")
 
 function(add_gtest test link_lib)
@@ -109,18 +105,8 @@ function(add_gtest test link_lib)
     add_test(NAME ${test} COMMAND ${test} ${test_xml_output})
 endfunction(add_gtest)
 
-#set (GTEST_SOURCE src/legendre.cpp src/util.cpp src/operator.cpp src/U_matrix.cpp)
-#add_executable(gtest ./test/gtest.cpp ./test/gtest-all.cc ./test/gtest_main.cc ${GTEST_SOURCE})
-#target_link_libraries(gtest ${CTINT_LIBRARIES})
-
 set(LINK_ALL alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 set(LINK_REST ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 enable_testing(test)
 
 add_gtest(fastupdate "${LINK_REST}")
-
-#foreach(test ${unittest_src})
-    #add_gtest(${test} test)
-#endforeach(test)
-
-
