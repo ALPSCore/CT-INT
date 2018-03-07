@@ -66,7 +66,7 @@ set (LIB_FILES
         src/legendre.h
         src/fastupdate_formula.h
         src/update_statistics.h
-        src/measurements.hpp
+        src/postprocess.hpp
         src/selfenergy.ipp
         )
 

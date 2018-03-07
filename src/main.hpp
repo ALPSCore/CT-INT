@@ -1,6 +1,6 @@
 #include "interaction_expansion.hpp"
 #include "fouriertransform.h"
-#include "measurements.hpp"
+#include "postprocess.hpp"
 
 #ifndef ALPS_HAVE_MPI
 #error ALPSCore/CT-INT requires MPI but ALPSCore was not built with MPI.
