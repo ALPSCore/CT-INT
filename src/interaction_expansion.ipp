@@ -1,110 +1,11 @@
-#include <ctime>
-#include <boost/lexical_cast.hpp>
-#include "boost/tuple/tuple.hpp"
+//#include <ctime>
+//#include <boost/lexical_cast.hpp>
+//#include "boost/tuple/tuple.hpp"
 
 #include "interaction_expansion.hpp"
 
 namespace alps {
     namespace ctint {
-
-        /*
-        template<typename T>
-        BareGreenInterpolate<T>::BareGreenInterpolate(const alps::params &p) :
-          beta_(p["BETA"].template as<int>()),
-          temp_(1.0 / beta_),
-          ntau_(p["N_TAU"].template as<int>()),
-          n_flavors_(p["FLAVORS"].template as<int>()),
-          n_sites_(p["SITES"].template as<int>()),
-          dbeta_(beta_ / ntau_) {
-          green_function<std::complex<double> > bare_green_matsubara(ntau_, n_sites_, n_flavors_),
-            bare_green_itime(ntau_ + 1, n_sites_, n_flavors_);
-
-          boost::tie(bare_green_matsubara, bare_green_itime) =
-            read_bare_green_functions<std::complex<double> >(p);
-
-          assert(ntau_ == bare_green_itime.ntime() - 1);
-          AB_.resize(boost::extents[n_flavors_][n_sites_][n_sites_][ntau_ + 1]);
-
-          for (int flavor = 0; flavor < n_flavors_; ++flavor) {
-            for (int site1 = 0; site1 < n_sites_; ++site1) {
-              for (int site2 = 0; site2 < n_sites_; ++site2) {
-                for (int tau = 0; tau < ntau_; ++tau) {
-                  const T a =
-                    mycast<T>(
-                      (bare_green_itime(tau + 1, site1, site2, flavor) - bare_green_itime(tau, site1, site2, flavor)) /
-                      dbeta_
-                    );
-                  const T b = mycast<T>(bare_green_itime(tau, site1, site2, flavor));
-
-                  AB_[flavor][site1][site2][tau] = std::make_pair(a, b);
-                }
-                AB_[flavor][site1][site2][ntau_] = std::make_pair(0.0, mycast<T>(
-                  bare_green_itime(ntau_, site1, site2, flavor)));
-              }
-            }
-          }
-        }
-
-        template<typename T>
-        T BareGreenInterpolate<T>::operator()(const annihilator &c, const creator &cdagger) const {
-          assert(c.flavor() == cdagger.flavor());
-
-          const int flavor = c.flavor();
-
-          const int site1 = c.s(), site2 = cdagger.s();
-          double dt = c.t().time() - cdagger.t().time();
-          if (dt == 0.0) {
-            if (c.t().small_index() > cdagger.t().small_index()) { //G(+delta)
-              return AB_[flavor][site1][site2][0].second;
-            } else { //G(-delta)
-              return -AB_[flavor][site1][site2][ntau_].second;
-            }
-          } else {
-            T coeff = 1.0;
-            while (dt >= beta_) {
-              dt -= beta_;
-              coeff *= -1.0;
-            }
-            while (dt < 0.0) {
-              dt += beta_;
-              coeff *= -1.0;
-            }
-
-            assert(dt >= 0 && dt <= beta_);
-            const int time_index_1 = (int) (dt * ntau_ * temp_);
-            return coeff * (AB_[flavor][site1][site2][time_index_1].first * (dt - time_index_1 * dbeta_) +
-                            AB_[flavor][site1][site2][time_index_1].second);
-          }
-        }
-
-//if delta_t==0, we assume delta_t = +0
-        template<typename T>
-        T BareGreenInterpolate<T>::operator()(double delta_t, int flavor, int site1, int site2) const {
-          double dt = delta_t;
-          T coeff = 1.0;
-          while (dt >= beta_) {
-            dt -= beta_;
-            coeff *= -1.0;
-          }
-          while (dt < 0.0) {
-            dt += beta_;
-            coeff *= -1.0;
-          }
-
-          if (dt == 0.0) dt += 1E-8;
-
-          const int time_index_1 = (int) (dt * ntau_ * temp_);
-          return coeff * (AB_[flavor][site1][site2][time_index_1].first * (dt - time_index_1 * dbeta_) +
-                          AB_[flavor][site1][site2][time_index_1].second);
-        }
-
-        template<typename T>
-        bool BareGreenInterpolate<T>::is_zero(int site1, int site2, int flavor, double eps) const {
-          return std::abs(operator()(beta_ * 1E-5, flavor, site1, site2)) < eps &&
-                 std::abs(operator()(beta_ * (1 - 1E-5), flavor, site1, site2)) < eps;
-        }
-        */
-
         template<class TYPES>
         InteractionExpansion<TYPES>::InteractionExpansion(parameters_type const &params, std::size_t seed_offset)
           : InteractionExpansionBase(params, seed_offset),
@@ -112,26 +13,17 @@ namespace alps {
             max_order(parms["update.max_order"]),
             n_flavors(parms["model.flavors"]),
             n_site(parms["model.sites"]),
-            //n_matsubara_measurements(parms["G1.NMATSUBARA_MEASUREMENTS"]),
-            n_tau(parms["N_TAU"]),
-            //n_tau_inv(1. / n_tau),
-            //n_self(parms["NSELF"]),
-            n_legendre(parms["G1.n_legendre"]),
             mc_steps((boost::uint64_t) parms["total_steps"]),
             therm_steps(parms["thermalization_steps"]),
-            //max_time_in_seconds(parms["MAX_TIME"]),
             beta(parms["model.beta"]),
-            temperature(1. / beta),
+            //temperature(1. / beta),
             Uijkl(parms),
             M_flavors(n_flavors),
             recalc_period(parms["update.recalc_period"]),
             measurement_period(parms["G1.measurement_period"].template as<int>() > 0 ? parms["G1.measurement_period"] : 500 * n_flavors * n_site),
             convergence_check_period(recalc_period),
             almost_zero(1.e-16),
-            //bare_green_matsubara(n_matsubara, n_site, n_flavors),
-            //bare_green_itime(n_tau + 1, n_site, n_flavors),
-            pert_hist(max_order),
-            legendre_transformer(params["G1.n_matsubara"], n_legendre),
+            legendre_transformer(params["G1.n_matsubara"], params["G1.n_legendre"]),
             is_thermalized_in_previous_step_(false),
             n_ins_rem(parms["update.n_ins_rem_vertex"]),
             n_shift(parms["update.n_vertex_shift"]),
@@ -142,7 +34,6 @@ namespace alps {
             comm(),
             g0_intpl(),
             update_manager(parms, Uijkl, g0_intpl, comm.rank() == 0) {
-
           //other parameters
           step = 0;
           start_time = time(NULL);
@@ -169,7 +60,6 @@ namespace alps {
           }
 
           update_manager.create_observables(measurements);
-
 
           submatrix_update = WALKER_P_TYPE(
               new SubmatrixUpdate<M_TYPE>(
@@ -226,11 +116,11 @@ namespace alps {
               update_manager.global_updates(submatrix_update, Uijkl, g0_intpl, random);
             }
 
-            if (submatrix_update->pert_order() < max_order) {
-              pert_hist[submatrix_update->pert_order()]++;
-            }
-            assert(submatrix_update->pert_order() < pert_order_hist.size());
-            ++pert_order_hist[submatrix_update->pert_order()];
+            //if (submatrix_update->pert_order() < max_order) {
+              //pert_hist[submatrix_update->pert_order()]++;
+            //}
+            //assert(submatrix_update->pert_order() < pert_order_hist.size());
+            //++pert_order_hist[submatrix_update->pert_order()];
 
             for (spin_t flavor = 0; flavor < n_flavors; ++flavor) {
               vertex_histograms[flavor]->count(submatrix_update->invA()[flavor].creators().size());
@@ -254,6 +144,7 @@ namespace alps {
 
           std::string node_str = boost::lexical_cast<std::string>(comm.rank());
 
+          /*
           if (pert_order_dynamics.size() > 0) {
             std::ofstream ofs(
               (parms["PREFIX_OUTPUT_TIME_SERIES"].template as<std::string>() + std::string("-pert_order-node") +
@@ -305,6 +196,7 @@ namespace alps {
               ofs << std::endl;
             }
           }
+           */
 
           if (parms.defined("PREFIX_DUMP_CONFIG")) {
             std::ofstream os((parms["PREFIX_DUMP_CONFIG"].template as<std::string>()
@@ -328,7 +220,7 @@ namespace alps {
 ///do all the setup that has to be done before running the simulation.
         template<class TYPES>
         void InteractionExpansion<TYPES>::initialize_simulation(const alps::params &parms) {
-          pert_hist.clear();
+          //pert_hist.clear();
           initialize_observables();
         }
 

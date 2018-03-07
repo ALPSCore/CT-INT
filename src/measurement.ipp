@@ -3,126 +3,113 @@
 namespace alps {
     namespace ctint {
 
+/// Allocation of memory for the ALPS observables.
         template<class TYPES>
-        void InteractionExpansion<TYPES>::compute_W_matsubara() {
-          //Wk_t Wk(boost::extents[n_flavors][n_site][n_site][n_matsubara]);
-          //measure_Wk(Wk, n_matsubara_measurements);
-          measure_densities();
-        }
-
-        /*
-        template<class TYPES>
-        void InteractionExpansion<TYPES>::measure_Wk(Wk_t &Wk, const unsigned int nfreq) {
-          const M_TYPE sign = submatrix_update->sign();
-          int n_matsubara = parms["G1.n_matsubara"];
-
-          //clear contents of Wk
-          std::fill(Wk.origin(), Wk.origin() + Wk.num_elements(), 0);
-
-          //allocate memory for work
-          int max_mat_size = 0;
-          for (unsigned int z = 0; z < n_flavors; ++z) {
-            max_mat_size = std::max(max_mat_size, M_flavors[z].size2());
-          }
-          alps::numeric::matrix<std::complex<double> > GR(max_mat_size, n_site),
-            GL(n_site, max_mat_size), MGR(max_mat_size, n_site), GLMGR(max_mat_size, max_mat_size);
-
-          //Note: vectorized for the loops over operators (should be optimal at large beta and U)
-          // if computing sin and cos is too expensive, consider using linear interpolation.
-          for (size_t z = 0; z < n_flavors; ++z) {
-            const size_t Nv = M_flavors[z].size1();
-
-            if (Nv == 0) {
-              continue;
-            }
-
-            const std::vector<annihilator> &annihilators = submatrix_update->invA()[z].annihilators();
-            const std::vector<creator> &creators = submatrix_update->invA()[z].creators();
-
-            for (unsigned int i_freq = 0; i_freq < nfreq; ++i_freq) {
-              GR.destructive_resize(Nv, n_site);
-              MGR.destructive_resize(Nv, n_site);
-              GL.destructive_resize(n_site, Nv);
-              GLMGR.destructive_resize(n_site, n_site);
-
-              //GR
-              for (unsigned int p = 0; p < Nv; ++p) {
-                const size_t site_p = annihilators[p].s();
-                const double phase = annihilators[p].t().time() * (2 * i_freq + 1) * M_PI / beta;
-                const std::complex<double> exp = std::complex<double>(std::cos(phase), -std::sin(phase));
-                for (size_t site = 0; site < n_site; ++site) {
-                  GR(p, site) = bare_green_matsubara(i_freq, site_p, site, z) * exp;
-                }
-              }
-
-              //GL
-              for (unsigned int q = 0; q < Nv; ++q) {
-                const size_t site_q = creators[q].s();
-                const double phase = creators[q].t().time() * (2 * i_freq + 1) * M_PI / beta;
-                const std::complex<double> exp = std::complex<double>(std::cos(phase), std::sin(phase));
-                for (size_t site = 0; site < n_site; ++site) {
-                  GL(site, q) = bare_green_matsubara(i_freq, site, site_q, z) * exp;
-                }
-              }
-
-              //clear MGR, GLMGR
-              //std::fill(MGR.get_values().begin(), MGR.get_values().end(), 0);
-              //MGR.block().setZero();
-              //std::fill(GLMGR.get_values().begin(), GLMGR.get_values().end(), 0);
-              //GLMGR.block().setZero();
-
-              //gemm(M_flavors[z], GR, MGR);
-              //gemm(GL, MGR, GLMGR);
-
-              MGR.block() = M_flavors[z].block() * GR.block();
-              GLMGR.block() = GL.block() * MGR.block();
-
-              for (unsigned int site1 = 0; site1 < n_site; ++site1) {
-                for (unsigned int site2 = 0; site2 < n_site; ++site2) {
-                  Wk[z][site1][site2][i_freq] += GLMGR(site1, site2);
-                }
-              }
-
-            }//i_freq
-          }//z
-
-          //int num_nd = 0;
-          //for (int iv=0; iv<itime_vertices.size(); ++iv) {
-          //if (!itime_vertices[iv].is_density_type())
-          //++num_nd;
-          //}
-
-          if (parms.defined("PREFIX_OUTPUT_TIME_SERIES")) {
-            for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
-              for (unsigned int site1 = 0; site1 < n_site; ++site1) {
-                Wk_dynamics.push_back(Wk[flavor][site1][site1][0] * sign);
-              }
-            }
-          }
+        void InteractionExpansion<TYPES>::initialize_observables(void) {
+          measurements << SimpleRealObservable("Sign");
+          measurements << SimpleRealVectorObservable("PertOrder");
 
           for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
-            for (unsigned int site1 = 0; site1 < n_site; ++site1) {
-              for (unsigned int site2 = 0; site2 < n_site; ++site2) {
-                std::stringstream Wk_real_name, Wk_imag_name;
-                Wk_real_name << "Wk_real_" << flavor << "_" << site1 << "_" << site2;
-                Wk_imag_name << "Wk_imag_" << flavor << "_" << site1 << "_" << site2;
-                std::valarray<double> Wk_real(nfreq);
-                std::valarray<double> Wk_imag(nfreq);
-                for (unsigned int w = 0; w < nfreq; ++w) {
-                  std::complex<double> ztmp = Wk[flavor][site1][site2][w] * sign;
-                  Wk_real[w] = ztmp.real();
-                  Wk_imag[w] = ztmp.imag();
-                }
-                measurements[Wk_real_name.str().c_str()] << Wk_real;
-                measurements[Wk_imag_name.str().c_str()] << Wk_imag;
+            for (unsigned int k = 0; k < n_site; k++) {
+              for (unsigned int k2 = 0; k2 < n_site; k2++) {
+                std::stringstream obs_name_real, obs_name_imag;
+                obs_name_real << "Sl_real_" << flavor << "_" << k << "_" << k2;
+                obs_name_imag << "Sl_imag_" << flavor << "_" << k << "_" << k2;
+                measurements << SimpleRealVectorObservable(obs_name_real.str().c_str());
+                measurements << SimpleRealVectorObservable(obs_name_imag.str().c_str());
               }
             }
           }
+
+          measurements << SimpleRealVectorObservable("densities");
+          for (int flavor = 0; flavor < n_flavors; ++flavor) {
+            measurements << SimpleRealVectorObservable("densities_" + boost::lexical_cast<std::string>(flavor));
+          }
+          //measurements << SimpleRealObservable("density_correlation");
+          measurements << SimpleRealVectorObservable("n_i n_j");
+
+          for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
+            for (unsigned int i = 0; i < n_site; ++i) {
+              std::stringstream density_name, sz_name;
+              density_name << "density_" << flavor;
+              if (n_site > 1) density_name << "_" << i;
+              measurements << SimpleRealObservable(density_name.str().c_str());
+            }
+          }
+          /*
+          for (unsigned int i = 0; i < n_site; ++i) {
+            std::stringstream sz_name, sz2_name, sz0_szj_name;
+            sz_name << "Sz_" << i;
+            sz2_name << "Sz2_" << i;
+            sz0_szj_name << "Sz0_Sz" << i;
+          }
+          */
+          //measurements << SimpleRealVectorObservable("MeasurementTimeMsec");
+          //measurements << SimpleRealVectorObservable("UpdateTimeMsec");
+          //measurements << SimpleRealVectorObservable("UpdateTimeMsecAllWalkers");
+          //measurements << SimpleRealObservable("RecomputeTime");
+          /*
+          for (spin_t flavor = 0; flavor < n_flavors; ++flavor) {
+            std::stringstream tmp;
+            tmp << "VertexHistogram_" << flavor;
+            measurements << SimpleRealVectorObservable(tmp.str().c_str());
+          }
+          */
+
+          measurements << SimpleRealVectorObservable("PerturbationOrderVertex");
+          //measurements << SimpleRealVectorObservable("PertOrderHistogram");
         }
-         */
+
+///this function is called whenever measurements should be performed. Depending
+///on the value of  measurement_method it will choose one particular
+///measurement function.
+        template<class TYPES>
+        void InteractionExpansion<TYPES>::measure_observables() {
+          //compute M from A
+          submatrix_update->compute_M(M_flavors);
+          const M_TYPE sign = submatrix_update->sign();
+
+          measurements["Sign"] << alps::numeric::real(sign);
+          /*
+          if (parms.defined("OUTPUT_Sign") ? parms["OUTPUT_Sign"] : false) {
+            std::cout << " node= " << comm.rank() << " Sign= " << sign << " pert_order= "
+                      << submatrix_update->pert_order() << std::endl;
+          }
+          */
+
+          compute_Sl();
+          measure_densities();
+
+          //pert_order_hist /= pert_order_hist.sum();
+          //measurements["PertOrderHistogram"] << pert_order_hist;
+
+          std::valarray<double> pert_order(n_flavors);
+          for (unsigned int i = 0; i < n_flavors; ++i) {
+            pert_order[i] = M_flavors[i].size1();
+          }
+          measurements["PertOrder"] << pert_order;
+
+          /*
+          for (spin_t flavor = 0; flavor < n_flavors; ++flavor) {
+            std::stringstream tmp;
+            tmp << "VertexHistogram_" << flavor;
+            measurements[tmp.str().c_str()] << vertex_histograms[flavor]->to_valarray();
+            vertex_histograms[flavor]->clear();
+          }
+          */
+
+          std::valarray<double> pert_vertex(0.0, Uijkl.n_vertex_type());
+          const itime_vertex_container &itime_vertices = submatrix_update->itime_vertices();
+          for (itime_vertex_container::const_iterator it = itime_vertices.begin(); it != itime_vertices.end(); ++it) {
+            assert(it->type() >= 0 && it->type() < Uijkl.n_vertex_type());
+            ++pert_vertex[it->type()];
+          }
+          measurements["PerturbationOrderVertex"] << pert_vertex;
+        }
 
         template<class TYPES>
         void InteractionExpansion<TYPES>::compute_Sl() {
+          int n_legendre = legendre_transformer.Nl();
           static boost::multi_array<std::complex<double>, 3> Sl(boost::extents[n_site][n_site][n_legendre]);
           const size_t num_random_walk = 10;
 
@@ -216,13 +203,6 @@ namespace alps {
                 measurements[Sl_imag_name.str().c_str()] << Sl_imag;
               }//site2
             }//site1
-
-            if (parms.defined("PREFIX_OUTPUT_TIME_SERIES")) {
-              for (unsigned int site1 = 0; site1 < n_site; ++site1) {
-                Sl_dynamics.push_back(Sl[site1][site1][0] * sign / static_cast<double>(num_random_walk));
-              }
-            }
-
           }//z
         }
 
@@ -275,6 +255,7 @@ namespace alps {
           }
           measurements["densities"] << static_cast<std::valarray<double> > (densities * sign_real);
 
+          /*
           if (n_flavors == 2) {
             double density_correlation = 0.;
             for (unsigned int i = 0; i < n_site; ++i) {
@@ -283,6 +264,7 @@ namespace alps {
             density_correlation /= n_site;
             measurements["density_correlation"] << (density_correlation * sign_real);
           }
+          */
 
           {
             std::valarray<double> ninj(n_site * n_site * n_flavors * n_flavors);

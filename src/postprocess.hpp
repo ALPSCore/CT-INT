@@ -6,7 +6,8 @@
 
 #include <complex>
 
-//#include "interaction_expansion.hpp"
+#include <alps/accumulators.hpp>
+
 #include "legendre.h"
 
 namespace alps {
@@ -14,10 +15,6 @@ namespace alps {
 
         template<class SOLVER_TYPE>
         void evaluate_selfenergy_measurement_legendre(const typename alps::accumulators::result_set &results,
-                                                      //typename SOLVER_TYPE::matsubara_green_function_t &green_matsubara_measured,
-                                                      //typename SOLVER_TYPE::matsubara_green_function_t &sigma_green_matsubara_measured,
-                                                      //typename SOLVER_TYPE::itime_green_function_t &green_itime_measured,
-                                                      //const typename SOLVER_TYPE::matsubara_green_function_t &bare_green_matsubara,
                                                       const double &beta,
                                                       int n_site,
                                                       int n_flavors,

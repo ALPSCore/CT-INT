@@ -8,7 +8,7 @@
 #include "../src/submatrix.hpp"
 #include "../src/operator.hpp"
 #include "../src/update_manager.hpp"
-#include "../src/program_params.hpp"
+#include "../src/program_options.hpp"
 
 using namespace alps::ctint;
 
@@ -205,7 +205,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
 
   /* init udpate_manager */
   alps::params params;
-  define_ctint_parameters(params);
+  define_ctint_options(params);
   params["model.beta"] = beta;
   params["model.flavors"] = n_flavors;
   params["update.n_multi_vertex_update"] = Nv_max;

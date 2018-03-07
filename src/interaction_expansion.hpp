@@ -20,16 +20,14 @@
 #include <boost/multi_array.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include "program_params.hpp"
+#include "program_options.hpp"
 #include "submatrix.hpp"
 #include "green_function.h"
 #include "types.h"
-#include "fouriertransform.h"
 #include "U_matrix.h"
 #include "operator.hpp"
 #include "legendre.h"
 #include "update_statistics.h"
-//#include "wang_landau.h"
 #include "update_manager.hpp"
 
 namespace alps {
@@ -207,7 +205,7 @@ namespace alps {
 
             static parameters_type &define_parameters(parameters_type &parameters) {
               InteractionExpansionBase::define_parameters(parameters);
-              return define_ctint_parameters(parameters);
+              return define_ctint_options(parameters);
             }
 
         protected:
@@ -226,12 +224,7 @@ namespace alps {
 
             void initialize_observables(void);
 
-            // in file selfenergy.ipp
-            void compute_W_matsubara();
-
             void compute_Sl();
-
-            //void measure_Wk(Wk_t &Wk, const unsigned int nfreq);
 
             void measure_densities();
 
@@ -249,34 +242,23 @@ namespace alps {
             const unsigned int max_order;
             const spin_t n_flavors;                                //number of flavors (called 'flavors') in InteractionExpansion
             const site_t n_site;                                //number of sites
-            //const frequency_t n_matsubara;        //number of matsubara freq
-            //const frequency_t n_matsubara_measurements;        //number of measured matsubara freq
-            const itime_index_t n_tau;                        //number of imag time slices
-            //const itime_t n_tau_inv;                        //the inverse of n_tau
-            //const frequency_t n_self;                        //number of self energy (W) binning points
-            const std::size_t n_legendre;
+            //const itime_index_t n_tau;                        //number of imag time slices
+            //const std::size_t n_legendre;
             const boost::uint64_t mc_steps;
             const boost::uint64_t therm_steps;
-            //const double max_time_in_seconds;
-            //const size_t n_multi_vertex_update;
             const int n_ins_rem;
             const int n_shift;
             const int n_spin_flip;
             const bool force_quantum_number_conservation;
             const bool single_vertex_update_non_density_type;
             const double beta;
-            const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible
+            //const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible
 
             general_U_matrix<M_TYPE> Uijkl; //for any general two-body interaction
 
             /*heart of submatrix update*/
-            //const int num_U_scale;
-            //const double min_U_scale;
             typedef boost::shared_ptr<SubmatrixUpdate<M_TYPE> > WALKER_P_TYPE;
             WALKER_P_TYPE submatrix_update;
-            //std::vector<double> U_scale_vals;//index: index of walkers, key: values of U
-            //std::vector<double> U_scale_index;//index: index of U scales, key: index of walkers
-            //WALKER_P_TYPE submatrix_update;//pointer to walker with the physical U_SCALE=1
 
             //for measurement of Green's function
             //M is computed from A in measure_observables.
@@ -304,15 +286,13 @@ namespace alps {
 
             /*InteractionExpansion's roundoff threshold*/
             const double almost_zero;
-            /*PRNG seed*/
-            //const int seed;
+
             bool is_thermalized_in_previous_step_;
 
-            //matsubara_green_function_t bare_green_matsubara;
+            // Non-interacting GF
             itime_green_function_t bare_green_itime;
-            boost::shared_ptr<FourierTransformer> fourier_ptr;
 
-            simple_hist pert_hist;
+            //simple_hist pert_hist;
             unsigned int hist_max_index;
             simple_hist **vertex_histograms;
             unsigned int vertex_histogram_size;
@@ -329,9 +309,9 @@ namespace alps {
             alps::mpi::communicator comm;
 
             //only for test
-            std::vector<typename TYPES::COMPLEX_TYPE> Wk_dynamics;
-            std::vector<typename TYPES::COMPLEX_TYPE> Sl_dynamics;
-            std::vector<double> pert_order_dynamics;
+            //std::vector<typename TYPES::COMPLEX_TYPE> Wk_dynamics;
+            //std::vector<typename TYPES::COMPLEX_TYPE> Sl_dynamics;
+            //std::vector<double> pert_order_dynamics;
 
             green_function<M_TYPE> g0_intpl;
 
@@ -350,6 +330,5 @@ namespace alps {
 
 
 #include "interaction_expansion.ipp"
-#include "selfenergy.ipp"
-#include "observables.ipp"
+#include "measurement.ipp"
 

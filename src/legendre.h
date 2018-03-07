@@ -48,6 +48,10 @@ namespace alps {
               return Tnl_;
             }
 
+            int Nl() const {
+              return n_legendre_;
+            }
+
             void
             compute_legendre(double x, std::vector<double> &val) const {
               assert(val.size() >= n_legendre_);

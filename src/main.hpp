@@ -1,5 +1,4 @@
 #include "interaction_expansion.hpp"
-#include "fouriertransform.h"
 #include "postprocess.hpp"
 
 #ifndef ALPS_HAVE_MPI

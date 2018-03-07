@@ -60,32 +60,21 @@ include_directories(${CTINT_LIBRARY_INCLUDE_DIRS})
 
 #source files
 set (LIB_FILES
-        src/fouriertransform.cpp
-        src/observables.ipp
+        src/measurement.ipp
         src/interaction_expansion.ipp
         src/legendre.h
         src/fastupdate_formula.h
         src/update_statistics.h
         src/postprocess.hpp
-        src/selfenergy.ipp
+        src/measurement.ipp
         )
 
-#static library
-add_library(alpscore_ctint ${LIB_FILES})
-
-#Compiler dependent libraries
-set(EXTRA_LIBS "")
-
-#Set link libraries
-list(APPEND CTINT_LIBRARIES ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${EXTRA_LIBS})
-if(DEFINED GOOGLE_PROFILER)
-  list(APPEND CTINT_LIBRARIES profiler)
-endif(DEFINED GOOGLE_PROFILER)
-target_link_libraries(alpscore_ctint ${CTINT_LIBRARIES})
-
 #executable
-ADD_EXECUTABLE(interaction_real src/main_real.cpp)
+add_executable(interaction_real src/main_real.cpp ${LIB_FILES})
 target_link_libraries(interaction_real alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+
+add_executable(interaction_complex src/main_complex.cpp ${LIB_FILES})
+target_link_libraries(interaction_complex alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 
 #testing setup
 option(Testing "Enable testing" ON)
