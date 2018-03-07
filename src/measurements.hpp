@@ -187,29 +187,29 @@ namespace alps {
           typename SOLVER_TYPE::itime_green_function_t bare_green_itime(n_tau + 1, n_site,
                                                                         n_flavors);//this is not used. just dummy
           std::vector<double> densities(n_flavors);
-          boost::tie(bare_green_matsubara, bare_green_itime) =
-            read_bare_green_functions<typename SOLVER_TYPE::COMPLEX_TYPE>(parms);
+          //boost::tie(bare_green_matsubara, bare_green_itime) =
+            //read_bare_green_functions<typename SOLVER_TYPE::COMPLEX_TYPE>(parms);
 
           //Matsubara freq. measurement
-          if (n_matsubara_measurements > 0) {
-            /*
-            evaluate_selfenergy_measurement_matsubara<SOLVER_TYPE>(results, green_matsubara_measured,
-                                                                   bare_green_matsubara, densities,
-                                                                   beta, n_site, n_flavors, n_matsubara,
-                                                                   n_matsubara_measurements);
+          /*
+        if (n_matsubara_measurements > 0) {
+          evaluate_selfenergy_measurement_matsubara<SOLVER_TYPE>(results, green_matsubara_measured,
+                                                                 bare_green_matsubara, densities,
+                                                                 beta, n_site, n_flavors, n_matsubara,
+                                                                 n_matsubara_measurements);
 
-            //Fourier transformations
-            FourierTransformer::generate_transformer_lowest_order(parms, fourier_ptr);
-            fourier_ptr->append_tail(green_matsubara_measured, bare_green_matsubara, n_matsubara_measurements);
-            fourier_ptr->backward_ft(green_itime_measured, green_matsubara_measured);
+          //Fourier transformations
+          FourierTransformer::generate_transformer_lowest_order(parms, fourier_ptr);
+          fourier_ptr->append_tail(green_matsubara_measured, bare_green_matsubara, n_matsubara_measurements);
+          fourier_ptr->backward_ft(green_itime_measured, green_matsubara_measured);
 
-            alps::hdf5::archive ar(output_file, "w");
-            green_matsubara_measured.write_hdf5(ar, "/G_omega");
-            green_itime_measured.write_hdf5(ar, "/G_tau");
-            bare_green_matsubara.write_hdf5(ar, "/G0_omega");
-            bare_green_itime.write_hdf5(ar, "/G0_tau");
-            */
+          alps::hdf5::archive ar(output_file, "w");
+          green_matsubara_measured.write_hdf5(ar, "/G_omega");
+          green_itime_measured.write_hdf5(ar, "/G_tau");
+          bare_green_matsubara.write_hdf5(ar, "/G0_omega");
+          bare_green_itime.write_hdf5(ar, "/G0_tau");
           }
+          */
 
           //Legendre measurement
           if (n_legendre > 0) {

@@ -130,6 +130,7 @@ namespace alps {
             typedef std::complex<double> COMPLEX_TYPE;
         } complex_number_solver;
 
+        /*
         template<typename T>
         class BareGreenInterpolate {
         public:
@@ -151,6 +152,7 @@ namespace alps {
             boost::multi_array<std::pair<T, T>, 4> AB_;
             double dbeta_;//beta/ntau
         };
+        */
 
         template<typename T>
         std::pair<T, T> compute_weight(const general_U_matrix<T> &Uijkl, const itime_vertex_container &itime_vertices);
@@ -331,7 +333,7 @@ namespace alps {
             std::vector<typename TYPES::COMPLEX_TYPE> Sl_dynamics;
             std::vector<double> pert_order_dynamics;
 
-            BareGreenInterpolate<M_TYPE> g0_intpl;
+            green_function<M_TYPE> g0_intpl;
 
             VertexUpdateManager<M_TYPE> update_manager;
 

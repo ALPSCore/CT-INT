@@ -7,6 +7,7 @@
 namespace alps {
     namespace ctint {
 
+        /*
         template<typename T>
         BareGreenInterpolate<T>::BareGreenInterpolate(const alps::params &p) :
           beta_(p["BETA"].template as<int>()),
@@ -44,9 +45,6 @@ namespace alps {
           }
         }
 
-/*
- * -beta <= d tau < beta
- */
         template<typename T>
         T BareGreenInterpolate<T>::operator()(const annihilator &c, const creator &cdagger) const {
           assert(c.flavor() == cdagger.flavor());
@@ -105,6 +103,7 @@ namespace alps {
           return std::abs(operator()(beta_ * 1E-5, flavor, site1, site2)) < eps &&
                  std::abs(operator()(beta_ * (1 - 1E-5), flavor, site1, site2)) < eps;
         }
+        */
 
         template<class TYPES>
         InteractionExpansion<TYPES>::InteractionExpansion(parameters_type const &params, std::size_t seed_offset)
@@ -130,7 +129,7 @@ namespace alps {
             convergence_check_period(recalc_period),
             almost_zero(1.e-16),
             //bare_green_matsubara(n_matsubara, n_site, n_flavors),
-            bare_green_itime(n_tau + 1, n_site, n_flavors),
+            //bare_green_itime(n_tau + 1, n_site, n_flavors),
             pert_hist(max_order),
             legendre_transformer(params["G1.n_matsubara"], n_legendre),
             is_thermalized_in_previous_step_(false),
@@ -141,7 +140,7 @@ namespace alps {
             single_vertex_update_non_density_type(false),
             pert_order_hist(max_order + 1),
             comm(),
-            g0_intpl(parms),
+            g0_intpl(),
             update_manager(parms, Uijkl, g0_intpl, comm.rank() == 0) {
 
           //other parameters
@@ -149,6 +148,13 @@ namespace alps {
           start_time = time(NULL);
           measurement_time = 0;
           update_time = 0;
+
+
+          // Read non-interacting G(tau)
+          if (params["model.G0_tau_file"] == "") {
+            throw std::runtime_error("Set model.G0_tau_file!");
+          }
+          g0_intpl.read_itime_data(params["model.G0_tau_file"], beta);
 
           //initialize the simulation variables
           initialize_simulation(parms);

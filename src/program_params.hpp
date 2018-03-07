@@ -10,7 +10,8 @@ namespace alps {
           //model
           parms.define<int>("model.sites", "Number of sites");
           parms.define<int>("model.flavors", "Number of flavors per site");
-          parms.define<int>("model.n_tau", "Number of imaginary time points for non-interacting Green's function");
+          //parms.define<int>("model.n_tau", "Number of imaginary time points for non-interacting Green's function");
+          parms.define<std::string>("model.G0_tau_file", "", "Name of text file containing non-interacting Green's function");
           parms.define<double>("model.beta", "Inverse temperature");
 
           //update

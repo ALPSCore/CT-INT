@@ -10,6 +10,7 @@ namespace alps {
 
         void FourierTransformer::backward_ft(itime_green_function_t &G_tau,
                                              const matsubara_green_function_t &G_omega) const {
+          /*
           assert(G_tau.nflavor()==G_omega.nflavor() && G_tau.nsite()==G_omega.nsite());
           unsigned int N_tau = G_tau.ntime()-1;
           unsigned int N_omega = G_omega.nfreq();
@@ -45,6 +46,7 @@ namespace alps {
               }
             }
           }
+           */
         }
 
         void FourierTransformer::forward_ft(const itime_green_function_t & gtau, matsubara_green_function_t & gomega) const
@@ -56,6 +58,7 @@ namespace alps {
                                              const matsubara_green_function_t& G0_omega,
                                              const int nfreq_measured) const
         {
+          /*
           for (spin_t flavor=0; flavor<G0_omega.nflavor(); ++flavor) {
             for (site_t k=0; k<G0_omega.nsite(); ++k) {
               std::cout << "append tail to self-energy with coefficients: "
@@ -69,15 +72,18 @@ namespace alps {
               }
             }
           }
+           */
         }
 
         void FourierTransformer::generate_transformer_lowest_order(const alps::params &parms,
                                                                    boost::shared_ptr<FourierTransformer> &fourier_ptr)
         {
+          /*
           int n_flavors = parms["FLAVORS"];
           int n_site = parms["SITES"];
           std::cout << "using general fourier transformer (up to lowest order)" << "\n";
           fourier_ptr.reset(new FourierTransformer((double)parms["BETA"], n_flavors, n_site));
+           */
         }
     }
 }

@@ -7,348 +7,223 @@
 #include <algorithm>
 
 #include <boost/format.hpp>
+#include <boost/multi_array.hpp>
 
 #include "util.h"
 #include "U_matrix.h"
+#include "operator.hpp"
+
+#include "spline.h"
 
 
 namespace alps {
     namespace ctint {
 
-//types
         typedef std::valarray<int> quantum_number_t;
 
-        template <typename T> class green_function{
-
+        template <typename T> class green_function {
         public:
-            //construction and destruction, assignement and copy constructor
-            ///constructor: how many time slices, how many sites, how many flavors
-            green_function(unsigned int ntime, unsigned int nsite, unsigned int nflavor):nt_(ntime), ns_(nsite), nf_(nflavor),
-                                                                                         ntnsns_(ntime*nsite*nsite), ntns_(ntime*nsite){
-              val_=new T[nt_*ns_*ns_*nf_];
-              err_=new T[nt_*ns_*ns_*nf_];
-            }
-            ///specialization: constructor for problems with only one site
-            green_function(unsigned int ntime, unsigned int nflavor):nt_(ntime), ns_(1), nf_(nflavor),
-                                                                     ntnsns_(ntime), ntns_(ntime){
-              val_=new T[nt_*nf_];
-              err_=new T[nt_*nf_];
-            }
-            ///destructor
-            ~green_function(){
-              delete [] val_;
-              delete [] err_;
-            }
-            ///copy constructor
-            green_function(const green_function &g):nt_(g.nt_), ns_(g.ns_), nf_(g.nf_), ntnsns_(g.ntnsns_), ntns_(g.ntns_){
-              val_=new T[nt_*ns_*ns_*nf_];
-              err_=new T[nt_*ns_*ns_*nf_];
-              operator=(g);
-            }
-            ///operator= (assignement operator)
-            const green_function &operator=(const green_function &g){
-              memcpy(val_, g(), sizeof(T)*nt_*ns_*ns_*nf_);
-              memcpy(err_, g.error(), sizeof(T)*nt_*ns_*ns_*nf_);
-              return *this;
-            }
-            void clear(){ memset(val_, 0, ns_*ns_*nt_*nf_*sizeof(T)); }
-            //access of vectors and elements
-            ///specialization for only one site: access element with given time and flavor
-            inline T &operator()(unsigned int t, unsigned int flavor){return val_[t+nt_*flavor];}
-            ///specialization for only one site: return const reference to element with given time and flavor
-            inline const T &operator()(unsigned int t, unsigned int flavor)const{return val_[t+nt_*flavor];}
+            green_function() : data_(), tau_(), beta_(0.0) {}
 
-            ///return an entire vector of times for a given flavor
-            inline T *operator()(unsigned int flavor){return val_+ntnsns_*flavor;}
+            void read_itime_data(const std::string& input_file, double beta) {
+              beta_ = beta;
 
-            //error access
-            inline T &error(unsigned int t, unsigned int flavor){return err_[t+nt_*flavor];}
-            inline const T &error(unsigned int t, unsigned int flavor)const{return err_[t+nt_*flavor];}
-            inline T *errors(unsigned int flavor){return err_+nt_*flavor;}
-            ///access element with given time, site 1, site 2, and flavor
-            inline T &operator()(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor){return val_[t+nt_*site1+ntns_*site2+ntnsns_*flavor];}
-            ///access element with given time, site 1, site 2, and flavor (const reference)
-            inline const T &operator()(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor)const{return val_[t+nt_*site1+ntns_*site2+ntnsns_*flavor];}
-            ///return an entire vector of imaginary time values for a given site 1, site2, flavor
-            inline T *operator()(unsigned int site1, unsigned int site2, unsigned int flavor){return val_+nt_*site1+ntns_*site2+ntnsns_*flavor;}
+              std::ifstream ifs(input_file);
+              if (!ifs.is_open()) {
+                throw std::runtime_error(input_file+" does not exist!");
+              }
+              int n_flavor, n_site, n_tau;
+              ifs >> n_flavor >> n_site >> n_tau;
 
-            inline T &error(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor){return err_[t+nt_*site1+ntns_*site2+ntnsns_*flavor];}
-            inline const T &error(unsigned int t, unsigned int site1, unsigned int site2, unsigned int flavor)const{return err_[t+nt_*site1+ntns_*site2+ntnsns_*flavor];}
-            inline T *errors(unsigned int site1, unsigned int site2, unsigned int flavor){return err_+nt_*site1+ntns_*site2+ntnsns_*flavor;}
+              tau_.resize(n_tau);
+              data_.resize(boost::extents[n_flavor][n_site][n_site][n_tau]);
+              splines_re_.resize(boost::extents[n_flavor][n_site][n_site]);
+              splines_im_.resize(boost::extents[n_flavor][n_site][n_site]);
 
-            ///get all values at once
-            inline const T *operator()() const {return val_;}
-            ///get all errors at once
-            inline const T *error() const {return err_;}
-
-            //size information
-            ///how many flavors do we have? (flavors are usually spins, GF of different flavors are zero)
-            unsigned int nflavor()const{return nf_;}
-            ///return # of sites
-            unsigned int nsite()const{return ns_;}
-            ///return # of imaginary time values
-            unsigned int ntime()const{return nt_;}
-            ///return # of matsubara frequencies. Exactly equivalent to ntime().
-            ///In the case of a Matsubara GF 'ntime' sounds odd -> define 'nfreq' instead.
-            unsigned int nfreq()const{return nt_;} //nfreq is an alias to ntime - more intuitive use for Matsubara GF
-            void read(const char *filename);
-            void write(const char *filename) const;
-            void write_hdf5(alps::hdf5::archive &ar, const std::string &path) const{
-              ar<<alps::make_pvp(path+"/nt",nt_);
-              ar<<alps::make_pvp(path+"/ns",ns_);
-              ar<<alps::make_pvp(path+"/nf",nf_);
-              std::stringstream subpath; subpath<<path<<"/values/mean";
-              ar<<alps::make_pvp(subpath.str(), val_, nt_*ns_*ns_*nf_); // the nondiagonal components are needed for realspace representation of multisite problems
-            }
-            void read_hdf5(alps::hdf5::archive &ar, const std::string &path) {
-              unsigned int nt, ns, nf;
-              clear();
-              ar>>alps::make_pvp(path+"/nt",nt);
-              ar>>alps::make_pvp(path+"/ns",ns);
-              ar>>alps::make_pvp(path+"/nf",nf);
-              if(nt!=nt_ || ns!=ns_ || nf!=nf_){ std::cerr<<path<<" nt: "<<nt_<<" new: "<<nt<<" ns: "<<ns_<<" "<<ns<<" nf: "<<nf_<<" "<<nf<<" dimensions do not match."<<std::endl; throw std::runtime_error("Green's function read in: dimensions do not match."); }
-              /*
-              if (ns==1) {
-                for(unsigned int i=0;i<nf_;++i){
-                  std::stringstream subpath; subpath<<path<<"/"<<i<<"/mean/value";
-                  ar>>alps::make_pvp(subpath.str(), val_+i*nt_, nt_);
-                  //currently we're not writing the error.
-                  //std::stringstream subpath_e; subpath_e<<path<<"/"<<i<<"/mean/error";
-                  //ar<<alps::make_pvp(subpath_e.str(), err_+i*nt_, nt_);
-                }
-              } else {*/
-              std::stringstream subpath; subpath<<path<<"/values/mean";
-              ar>>alps::make_pvp(subpath.str(), val_, nt_*ns_*ns_*nf_);
-              //}
-//    std::cerr << "3";
-            }
-
-            //returns if G(site1, site2) is zero.
-            bool is_zero(size_t site1, size_t site2, spin_t flavor, double eps) const {
-              assert(site1<nsite() && site2<nsite());
-              bool flag = true;
-              for (size_t i=0; i<nfreq(); ++i) {
-                if (std::abs(operator()(i,site1,site2,flavor))>eps) {
-                  flag = false;
-                  break;
+              // Read list of tau
+              for (int t=0; t < n_tau; ++t) {
+                int t_in;
+                ifs >> t_in >> tau_[t];
+                if (t_in != t) {
+                  throw std::runtime_error("Error while reading a list of tau");
                 }
               }
-              return flag;
+              for (int t=0; t < n_tau-1; ++t) {
+                if (tau_[t] >= tau_[t+1]) {
+                  throw std::runtime_error("A list of tau is not given in ascending order!");
+                }
+              }
+
+              if (tau_[0] != 0.0) {
+                throw std::runtime_error("tau[0] should be 0!");
+              }
+
+              if (tau_[n_tau-1] != beta_) {
+                throw std::runtime_error("The last element in tau should be beta!");
+              }
+
+
+              // Read data
+              int flavor_tmp, itmp, itmp2, itmp3;
+              std::vector<double> y_re(n_tau), y_im(n_tau);
+              double re, im;
+              int line = 0;
+              for (spin_t flavor=0; flavor<n_flavor; ++flavor) {
+                for (std::size_t site1=0; site1<n_site; ++site1) {
+                  for (std::size_t site2=0; site2<n_site; ++site2) {
+                    for (std::size_t itau = 0; itau < n_tau+1; itau++) {
+                      ifs >> flavor_tmp >> itmp >> itmp2 >> itmp3 >> re >> im;
+
+                      if (flavor_tmp != flavor) {
+                        throw std::runtime_error(
+                          (boost::format("Bad format in G0_TAU: We expect %1% at the first column of the line %2%") % flavor %
+                           line).str().c_str());
+                      }
+                      if (itmp != site1) {
+                        throw std::runtime_error(
+                          (boost::format("Bad format in G0_TAU: We expect %1% at the second column of the line %2%") % site1 %
+                           line).str().c_str());
+                      }
+                      if (itmp2 != site2) {
+                        throw std::runtime_error(
+                          (boost::format("Bad format in G0_TAU: We expect %1% at the third column of the line %2%") %
+                           site2 % line).str().c_str());
+                      }
+                      if (itmp3 != itau) {
+                        throw std::runtime_error(
+                          (boost::format("Bad format in G0_TAU: We expect %1% at the fourth column of the line %2%") % itau %
+                           line).str().c_str());
+                      }
+                      data_[flavor][site1][site2][itau] = mycast<T>(std::complex<double>(re, im));
+                      y_re[itau] = std::real(data_[flavor][site1][site2][itau]);
+                      y_im[itau] = std::imag(data_[flavor][site1][site2][itau]);
+                      ++line;
+                    }
+
+                    // cublic spline
+                    splines_re_[flavor][site1][site2].set_points(tau_, y_re);
+                    splines_im_[flavor][site1][site2].set_points(tau_, y_im);
+                  }
+                }
+              }
             }
 
-            std::pair<std::vector<T>,std::vector<T> > to_multiple_vector() const;
-            void from_multiple_vector(const std::pair<std::vector<T>,std::vector<T> > &mv);
-#ifdef USE_MPI
-            void broadcast(){
-    MPI_Bcast( val_, ntnsns_*nf_*sizeof(T)/sizeof(double), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast( err_, ntnsns_*nf_*sizeof(T)/sizeof(double), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  }
-#endif
+            /*
+             * Intepolate G(tau) as <T c c^dagger>
+             */
+            T operator()(const annihilator &c, const creator &cdagger) const {
+              assert(c.flavor() == cdagger.flavor());
+
+              const int flavor = c.flavor();
+
+              const int site1 = c.s(), site2 = cdagger.s();
+              double dt = c.t().time() - cdagger.t().time();
+
+              if (dt == 0.0) {
+                if (c.t().small_index() > cdagger.t().small_index()) { //G(+delta)
+                  return interpolate(flavor, site1, site2, 0.0);
+                } else { //G(-delta)
+                  return -interpolate(flavor, site1, site2, beta_);
+                }
+              } else {
+                double sign = 1.0;
+
+                while (dt >= beta_) {
+                  dt -= beta_;
+                  sign *= -1.0;
+                }
+                while (dt < 0.0) {
+                  dt += beta_;
+                  sign *= -1.0;
+                }
+
+                assert(dt >= 0 && dt <= beta_);
+
+                return sign * interpolate(flavor, site1, site2, dt);
+              }
+            }
+
+            int num_flavors() const {
+              return data_.shape()[0];
+            }
+
+            int num_sites() const {
+              return data_.shape()[1];
+            }
+
+            int nsite() const {
+              return num_sites();
+            }
+
+            int nflavor() const {
+              return num_flavors();
+            }
+
+            int num_tau_points() const {
+              return data_.shape()[3];
+            }
+
+            double tau(int itau) const {
+              return tau_[itau];
+            }
+
+            // Interpolate G(tau) for 0 <= tau <= beta. We assume G(tau) is continous in this interval.
+            T interpolate(int flavor, int site, int site2, double tau) const {
+              assert(tau >= 0 && tau <= beta_);
+
+              /*
+              int sign = 1;
+              double tau_tmp = tau;
+
+              while (tau_tmp > beta_) {
+                tau_tmp -= beta_;
+                sign *= -1;
+              }
+              while (tau_tmp < 0) {
+                tau_tmp += beta_;
+                sign *= -1;
+              }
+              return sign * mycast<T>(
+                std::complex<double>(splines_re_[flavor][site][site2](tau_tmp), splines_im_[flavor][site][site2](tau_tmp))
+              );
+               */
+              return mycast<T>(
+                std::complex<double>(splines_re_[flavor][site][site2](tau), splines_im_[flavor][site][site2](tau))
+              );
+            }
+
+            /*
+             * if delta_t = n beta (n = 0, +/- 1, ...), it assume delta_t = +0
+             */
+            T operator()(double delta_t, int flavor, int site1, int site2) const {
+              double dt = delta_t;
+              T coeff = 1.0;
+              while (dt >= beta_) {
+                dt -= beta_;
+                coeff *= -1.0;
+              }
+              while (dt < 0.0) {
+                dt += beta_;
+                coeff *= -1.0;
+              }
+
+              if (dt == 0.0) dt += 1E-8;
+
+              return interpolate(flavor, site1, site2, dt);
+            }
+
+            bool is_zero(int flavor, int site1, int site2, double eps) const {
+              return std::abs(interpolate(flavor, site1, site2, beta_* 1E-5)) < eps &&
+                     std::abs(interpolate(flavor, site1, site2, beta_ * (1 - 1E-5))) < eps;
+            }
 
         private:
-            //const values
-            const unsigned int nt_; ///imag time points
-            const unsigned int ns_; ///number of sites
-            const unsigned int nf_; ///number of flavors
-            const unsigned int ntnsns_; ///nt*ns*ns
-            const unsigned int ntns_; ///nt*ns
-            // the actual values and errors.
-            T *val_;
-            T *err_;
+            // flavor, site, site, tau
+            boost::multi_array<T,4> data_;
+            std::vector<double> tau_;
+            boost::multi_array<tk::spline,3> splines_re_, splines_im_;
+            double beta_;
         };
-
-//diagonal in flavor space
-//typedef green_function<std::complex<double> > matsubara_green_function_t;
-//typedef green_function<double> itime_green_function_t;
-
-//has off-diagonal elements in flavor space
-//typedef full_green_function<std::complex<double> > matsubara_full_green_function_t;
-//typedef full_green_function<double> itime_full_green_function_t;
-
-///write out imag time Green function
-        std::ostream &operator<<(std::ostream &os, const green_function<double> &v);
-///read in imag time Green function
-        std::istream &operator>>(std::istream &is, green_function<double> &v);
-///write out Matsubara Green function
-        std::ostream &operator<<(std::ostream &os, const green_function<std::complex<double> > &v);
-///read in Matsubara Green function
-        std::istream &operator>>(std::istream &is, green_function<std::complex<double> > &v);
-
-///compute kinetic energy
-//double kinetic_energy(const multiple_vector_type &G_tau, const double &beta, const double &t);
-
-        template<typename T> void green_function<T>::read(const char *filename){
-          std::ifstream in_file(filename);
-          assert(in_file.is_open()); //this is not good enough when people use -DNDEBUG.
-          if(!in_file.is_open()){ throw(std::invalid_argument("input file could not be opened!")); }
-          double ignored=0;
-          for(unsigned int i=0;i<nt_;++i){
-            in_file>>ignored; //read first entry, which could be # matsubara frequencies, or tau-point, or N/beta*tau, or...
-            for(unsigned int s0=0; s0<ns_; ++s0) {
-              for(unsigned int s1=0; s1<ns_; ++s1){
-                for(unsigned int f=0; f<nf_; ++f) {
-                  in_file>>operator()(i, s0, s1, f)>>std::ws; //read the actual value
-                }
-              }
-            }
-          }
-        }
-
-        template<typename T> void green_function<T>::write(const char *filename) const{
-          std::ofstream out_file(filename);
-          assert(out_file.is_open()); //this is not good enough when people use -DNDEBUG.
-          if(!out_file.is_open()){ std::cerr<<"output file "<<filename<<" could not be opened!"<<std::endl; exit(1);}
-          for(unsigned int i=0;i<nt_;++i){
-            out_file << i << " ";
-            for(unsigned int s0=0; s0<ns_; ++s0) {
-              for(unsigned int s1=0; s1<ns_; ++s1){
-                for(unsigned int f=0; f<nf_; ++f) {
-                  out_file<<operator()(i, s0, s1, f) << " ";
-                }
-              }
-            }
-            out_file << std::endl;
-          }
-        }
-
-///for the transition period from multiple vectors to this data structure only.
-        template<typename T> std::pair<std::vector<T>,std::vector<T> > green_function<T>::to_multiple_vector() const{
-          assert(ns_==1 && nf_<=2);
-          std::pair<std::vector<T>,std::vector<T> > mv;
-          mv.first.resize(nt_);
-          mv.second.resize(nt_);
-          for(unsigned int i=0;i<nt_;++i){
-            mv.first[i]=operator()(i,0,0,0);
-            mv.second[i]=nf_==1?operator()(i,0,0,0):operator()(i,0,0,1);
-          }
-          return mv;
-        }
-        template<typename T> void green_function<T>::from_multiple_vector(const std::pair<std::vector<T>,std::vector<T> >&mv){
-          assert(ns_==1 && nf_<=2);
-          for(unsigned int i=0;i<nt_;++i){
-            operator()(i,0,0,0)=mv.first[i];
-            if(nf_==2)
-              operator()(i,0,0,1)=mv.second[i];
-          }
-        }
-
-
-        enum shape_t {diagonal, blockdiagonal, nondiagonal};
-
-
-/*
-void print_all_green_functions(std::string const &basename, const int iteration_ctr, const matsubara_green_function_t &G0_omega,
-                               const matsubara_green_function_t &G_omega, const itime_green_function_t &G0_tau,
-                               const itime_green_function_t &G_tau, const double beta, const shape_t shape=diagonal,
-                               const std::string suffix="");
-void print_real_green_matsubara(std::ostream &os, const matsubara_green_function_t &v, const double beta, const shape_t shape=diagonal);
-void print_imag_green_matsubara(std::ostream &os, const matsubara_green_function_t &v, const double beta, const shape_t shape=diagonal);
-void print_tau_green_functions(std::string const &basename, const int iteration_ctr, const itime_green_function_t &G0_tau, const itime_green_function_t &G_tau, const double beta,
-                               const shape_t shape=nondiagonal, const std::string suffix="");
-void print_dressed_tau_green_functions(std::string const &basename, const int iteration_ctr, const itime_green_function_t &G_tau, const double beta,
-                                       const shape_t shape=nondiagonal, const std::string suffix="");
-                                       */
-
-
-        template<typename T>
-        std::pair<green_function<std::complex<double> >, green_function<T> >
-        read_bare_green_functions(const alps::params &parms) {
-          const unsigned int n_matsubara = parms["N_MATSUBARA"];
-          const unsigned int n_tau=parms["N_TAU"];
-          const spin_t n_flavors(parms["FLAVORS"]);
-          const unsigned int n_site(parms["SITES"]);
-
-          green_function<std::complex<double> > bare_green_matsubara(n_matsubara, n_site, n_flavors);
-          green_function<T> bare_green_itime(n_tau+1, n_site, n_flavors);
-
-          //Load G0 in Matsubara frequency
-          {
-            if (parms["G0_OMEGA"] == "") {
-              throw std::runtime_error("Please set G0_OMEGA");
-            }
-            std::string myfile(parms["G0_OMEGA"].template as<std::string>());
-            std::ifstream ifs(myfile.c_str());
-            if (!ifs.is_open()) {
-              throw std::runtime_error(myfile+" does not exist!");
-            }
-            int flavor_tmp, itmp, itmp2, itmp3;
-            double re, imag;
-            int line = 0;
-            for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-              for (std::size_t site1=0; site1<n_site; ++site1) {
-                for (std::size_t site2=0; site2<n_site; ++site2) {
-                  for (std::size_t iomega = 0; iomega < n_matsubara; iomega++) {
-                    ifs >> flavor_tmp >> itmp >> itmp2 >> itmp3 >> re >> imag;
-                    if (flavor_tmp!=flavor) {
-                      throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the first column of the line %2%") % flavor % line).str().c_str());
-                    }
-                    if (itmp!=site1) {
-                      throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the second column of the line %2%") % site1 % line).str().c_str());
-                    }
-                    if (itmp2!=site2) {
-                      throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the third column of the line %2%") % site2 % line).str().c_str());
-                    }
-                    if (itmp3!=iomega) {
-                      throw std::runtime_error((boost::format("Ilegal format of G0_OMEGA: We expect %1% at the fourth column of the line %2%") % iomega % line).str().c_str());
-                    }
-                    bare_green_matsubara(iomega, site1, site2, flavor) = std::complex<double>(re, imag);
-                    ++line;
-                  }
-                }
-              }
-            }
-          }
-
-          //Load G0 in imaginary time
-          {
-            if (parms["G0_TAU"] == "") {
-              throw std::runtime_error("Please set G0_TAU");
-            }
-            std::string myfile(parms["G0_TAU"].template as<std::string>());
-            std::ifstream ifs(myfile.c_str());
-            if (!ifs.is_open()) {
-              throw std::runtime_error(myfile+" does not exist!");
-            }
-            int flavor_tmp, itmp, itmp2, itmp3;
-            double re, im;
-            int line = 0;
-            for (spin_t flavor=0; flavor<n_flavors; ++flavor) {
-              for (std::size_t site1=0; site1<n_site; ++site1) {
-                for (std::size_t site2=0; site2<n_site; ++site2) {
-                  for (std::size_t itau = 0; itau < n_tau+1; itau++) {
-                    ifs >> flavor_tmp >> itmp >> itmp2 >> itmp3 >> re >> im;
-
-                    if (flavor_tmp != flavor) {
-                      throw std::runtime_error(
-                        (boost::format("Ilegal format of G0_TAU: We expect %1% at the first column of the line %2%") % flavor %
-                         line).str().c_str());
-                    }
-                    if (itmp != site1) {
-                      throw std::runtime_error(
-                        (boost::format("Ilegal format of G0_TAU: We expect %1% at the second column of the line %2%") % site1 %
-                         line).str().c_str());
-                    }
-                    if (itmp2 != site2) {
-                      throw std::runtime_error(
-                        (boost::format("Ilegal format of G0_TAU: We expect %1% at the third column of the line %2%") %
-                         site2 % line).str().c_str());
-                    }
-                    if (itmp3 != itau) {
-                      throw std::runtime_error(
-                        (boost::format("Ilegal format of G0_TAU: We expect %1% at the fourth column of the line %2%") % itau %
-                         line).str().c_str());
-                    }
-                    bare_green_itime(itau, site1, site2, flavor) = mycast<T>(std::complex<double>(re, im));
-                    ++line;
-                  }
-                }
-              }
-            }
-          }
-
-          return std::pair< green_function<std::complex<double> >, green_function<T> >(bare_green_matsubara, bare_green_itime);
-        };
-
 
 //groups(groups, sites belonging to groups)
         template<class T>
