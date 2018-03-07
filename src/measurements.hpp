@@ -12,6 +12,7 @@
 namespace alps {
     namespace ctint {
 
+        /*
         template<class SOLVER_TYPE>
         void evaluate_selfenergy_measurement_matsubara(const alps::accumulators::result_set &results,
                                                        typename SOLVER_TYPE::matsubara_green_function_t &green_matsubara_measured,
@@ -54,13 +55,8 @@ namespace alps {
           std::vector<double> dens = results["densities"].template mean<std::vector<double> >();
           for (std::size_t z = 0; z < n_flavors; ++z)
             densities[z] = dens[z];
-
-          //std::vector<double> tau = results["PerturbationOrderVertex"].template tau<std::vector<double> >();
-          //std::cout << "Autocorrelation times of PerturbationOrderVertex : " << std::endl;
-          //for (int iv=0; iv<tau.size(); ++iv) {
-          //std::cout << " iv = " << iv << " tau = " << tau[iv] << std::endl;
-          //}
         }
+        */
 
         template<class SOLVER_TYPE>
         void evaluate_selfenergy_measurement_legendre(const typename alps::accumulators::result_set &results,
@@ -196,6 +192,7 @@ namespace alps {
 
           //Matsubara freq. measurement
           if (n_matsubara_measurements > 0) {
+            /*
             evaluate_selfenergy_measurement_matsubara<SOLVER_TYPE>(results, green_matsubara_measured,
                                                                    bare_green_matsubara, densities,
                                                                    beta, n_site, n_flavors, n_matsubara,
@@ -211,6 +208,7 @@ namespace alps {
             green_itime_measured.write_hdf5(ar, "/G_tau");
             bare_green_matsubara.write_hdf5(ar, "/G0_omega");
             bare_green_itime.write_hdf5(ar, "/G0_tau");
+            */
           }
 
           //Legendre measurement

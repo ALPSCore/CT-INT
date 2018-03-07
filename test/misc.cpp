@@ -1,7 +1,21 @@
 #include <algorithm>
-#include "unittests.hpp"
+
+#include <complex>
+#include <limits>
+
+#include <boost/math/special_functions/binomial.hpp>
+#include <boost/random.hpp>
+#include <boost/multi_array.hpp>
+#include <boost/range/irange.hpp>
+
+#include "../src/legendre.h"
+#include "../src/util.h"
+#include "../src/green_function.h"
 
 #include "gtest.h"
+#include "common.hpp"
+
+using namespace alps::ctint;
 
 TEST(LegendreMeasurement, Tnl)
 {
@@ -43,6 +57,7 @@ TEST(MyUtil, permutation) {
     assert(permutation(3,2)==6);
 }
 
+/*
 TEST(QuantumNumber, diagonal_GF) {
     size_t n_site = 4;
     size_t n_flavors = 2;
@@ -94,12 +109,6 @@ TEST(QuantumNumber, diagonal_GF) {
         }
     }
     ASSERT_TRUE(flag);
-
-    //vertices[0].make_quantum_numbers(group_map, quantum_number_vertices[0].size()/n_flavors);
-
-    //ASSERT_TRUE(qs2==std::valarray<int>(quantum_number_vertices[0]));
-    //ASSERT_TRUE(1==1);
-    //ASSERT_TRUE(qs2==qs3);
 }
 
 TEST(UpdateStatistics, EstimateSpread) {
@@ -123,6 +132,7 @@ TEST(UpdateStatistics, EstimateSpread) {
 TEST(TypeRange, Integer) {
     ASSERT_TRUE(std::numeric_limits<int>::max()>=2147483647);
 }
+*/
 
 TEST(Util, Mymod) {
     const double tau = 1.0, beta = 15.0;

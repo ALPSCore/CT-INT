@@ -21,12 +21,13 @@ namespace alps {
           alps::mpi::communicator comm;
 
           my_sim_type::define_parameters(par);
+
           if (par.help_requested(std::cout)) {
             return 0;
           }
 
           std::cout << "Running simulation on rank " << comm.rank() << std::endl;
-          my_sim_type my_sim(par,comm);
+          my_sim_type my_sim(par, comm);
           my_sim.run(alps::stop_callback(5));
 
           // Collect the results from the simulation

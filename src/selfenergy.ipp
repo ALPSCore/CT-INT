@@ -5,14 +5,16 @@ namespace alps {
 
         template<class TYPES>
         void InteractionExpansion<TYPES>::compute_W_matsubara() {
-          Wk_t Wk(boost::extents[n_flavors][n_site][n_site][n_matsubara]);
-          measure_Wk(Wk, n_matsubara_measurements);
+          //Wk_t Wk(boost::extents[n_flavors][n_site][n_site][n_matsubara]);
+          //measure_Wk(Wk, n_matsubara_measurements);
           measure_densities();
         }
 
+        /*
         template<class TYPES>
         void InteractionExpansion<TYPES>::measure_Wk(Wk_t &Wk, const unsigned int nfreq) {
           const M_TYPE sign = submatrix_update->sign();
+          int n_matsubara = parms["G1.n_matsubara"];
 
           //clear contents of Wk
           std::fill(Wk.origin(), Wk.origin() + Wk.num_elements(), 0);
@@ -117,6 +119,7 @@ namespace alps {
             }
           }
         }
+         */
 
         template<class TYPES>
         void InteractionExpansion<TYPES>::compute_Sl() {
@@ -140,7 +143,7 @@ namespace alps {
 
           for (unsigned int z = 0; z < n_flavors; ++z) {
             std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);//clear the content for safety
-            const size_t Nv = M_flavors[z].size2();
+            int Nv = M_flavors[z].size2();
 
             if (Nv == 0) {
               continue;

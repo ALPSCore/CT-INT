@@ -206,16 +206,15 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
   /* init udpate_manager */
   alps::params params;
   define_ctint_parameters(params);
-  params["BETA"] = beta;
-  params["FLAVORS"] = n_flavors;
-  params["N_MULTI_VERTEX_UPDATE"] = Nv_max;
-  params["DOUBLE_VERTEX_UPDATE_A"] = 1.0/beta;
-  params["DOUBLE_VERTEX_UPDATE_B"] = 1.0e-2;
-  params["VERTEX_SHIFT_STEP_SIZE"] = 0.1*beta;
+  params["model.beta"] = beta;
+  params["model.flavors"] = n_flavors;
+  params["update.n_multi_vertex_update"] = Nv_max;
+  params["update.double_vertex_update_A"] = 1.0/beta;
+  params["update.double_vertex_update_B"] = 1.0e-2;
+  params["update.vertex_shift_step_size"] = 0.1*beta;
   VertexUpdateManager<T> manager(params, Uijkl, OffDiagonalG0<T>(beta, n_sites, E, phase), false);
 
   /* initialize RND generator */
-  //std::vector<double> probs(Nv_max, 1.0);
   boost::random::uniform_smallint<> dist(1,Nv_max);
   boost::random::uniform_01<> dist01;
   boost::random::mt19937 gen(seed);

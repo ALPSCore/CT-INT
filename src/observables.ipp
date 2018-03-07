@@ -16,6 +16,7 @@ namespace alps {
           }
           measurements << SimpleRealObservable("Sign");
           measurements << SimpleRealVectorObservable("PertOrder");
+          /*
           if (n_matsubara_measurements > 0) {
             for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
               for (unsigned int k = 0; k < n_site; k++) {
@@ -29,6 +30,7 @@ namespace alps {
               }
             }
           }
+          */
 
           if (n_legendre > 0) {
             for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
@@ -99,9 +101,11 @@ namespace alps {
           measurements["PertOrderHistogram"] << pert_order_hist;
 
           //const double t1 = timer.elapsed().wall*1E-6;
+          /*
           if (n_matsubara_measurements > 0) {
             compute_W_matsubara();
           }
+          */
           //const double t2 = timer.elapsed().wall*1E-6;
           if (n_legendre > 0) {
             compute_Sl();

@@ -157,7 +157,7 @@ namespace alps {
 
         class InteractionExpansionBase : public alps::mcbase {
         public:
-            InteractionExpansionBase(parameters_type const &params, std::size_t seed_offset = 42) : alps::mcbase(params,
+            InteractionExpansionBase(parameters_type const &params, std::size_t seed_offset) : alps::mcbase(params,
                                                                                                                  seed_offset) {};
 
             virtual ~InteractionExpansionBase() {}
@@ -172,6 +172,10 @@ namespace alps {
             virtual bool is_thermalized() const =0;
 
             virtual void finalize()=0;
+
+            static parameters_type &define_parameters(parameters_type &parameters) {
+              return alps::mcbase::define_parameters(parameters);
+            }
         };
 
         template<class TYPES>
@@ -200,6 +204,7 @@ namespace alps {
             typedef green_function<typename TYPES::COMPLEX_TYPE> itime_green_function_t;
 
             static parameters_type &define_parameters(parameters_type &parameters) {
+              InteractionExpansionBase::define_parameters(parameters);
               return define_ctint_parameters(parameters);
             }
 
@@ -209,7 +214,7 @@ namespace alps {
             /*io & initialization*/
             void initialize_simulation(const alps::params &parms); // called by constructor
 
-            void exchange_update();
+            //void exchange_update();
 
             // in file io.cpp
             void print(std::ostream &os);
@@ -224,7 +229,7 @@ namespace alps {
 
             void compute_Sl();
 
-            void measure_Wk(Wk_t &Wk, const unsigned int nfreq);
+            //void measure_Wk(Wk_t &Wk, const unsigned int nfreq);
 
             void measure_densities();
 
@@ -242,15 +247,15 @@ namespace alps {
             const unsigned int max_order;
             const spin_t n_flavors;                                //number of flavors (called 'flavors') in InteractionExpansion
             const site_t n_site;                                //number of sites
-            const frequency_t n_matsubara;        //number of matsubara freq
-            const frequency_t n_matsubara_measurements;        //number of measured matsubara freq
+            //const frequency_t n_matsubara;        //number of matsubara freq
+            //const frequency_t n_matsubara_measurements;        //number of measured matsubara freq
             const itime_index_t n_tau;                        //number of imag time slices
-            const itime_t n_tau_inv;                        //the inverse of n_tau
-            const frequency_t n_self;                        //number of self energy (W) binning points
+            //const itime_t n_tau_inv;                        //the inverse of n_tau
+            //const frequency_t n_self;                        //number of self energy (W) binning points
             const std::size_t n_legendre;
             const boost::uint64_t mc_steps;
-            const unsigned long therm_steps;
-            const double max_time_in_seconds;
+            const boost::uint64_t therm_steps;
+            //const double max_time_in_seconds;
             //const size_t n_multi_vertex_update;
             const int n_ins_rem;
             const int n_shift;
@@ -263,13 +268,13 @@ namespace alps {
             general_U_matrix<M_TYPE> Uijkl; //for any general two-body interaction
 
             /*heart of submatrix update*/
-            const int num_U_scale;
-            const double min_U_scale;
+            //const int num_U_scale;
+            //const double min_U_scale;
             typedef boost::shared_ptr<SubmatrixUpdate<M_TYPE> > WALKER_P_TYPE;
-            std::vector<WALKER_P_TYPE> walkers;
-            std::vector<double> U_scale_vals;//index: index of walkers, key: values of U
-            std::vector<double> U_scale_index;//index: index of U scales, key: index of walkers
-            WALKER_P_TYPE submatrix_update;//pointer to walker with the physical U_SCALE=1
+            WALKER_P_TYPE submatrix_update;
+            //std::vector<double> U_scale_vals;//index: index of walkers, key: values of U
+            //std::vector<double> U_scale_index;//index: index of U scales, key: index of walkers
+            //WALKER_P_TYPE submatrix_update;//pointer to walker with the physical U_SCALE=1
 
             //for measurement of Green's function
             //M is computed from A in measure_observables.
@@ -301,7 +306,7 @@ namespace alps {
             //const int seed;
             bool is_thermalized_in_previous_step_;
 
-            matsubara_green_function_t bare_green_matsubara;
+            //matsubara_green_function_t bare_green_matsubara;
             itime_green_function_t bare_green_itime;
             boost::shared_ptr<FourierTransformer> fourier_ptr;
 

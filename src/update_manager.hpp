@@ -147,18 +147,18 @@ namespace alps {
         template<typename T>
         template<typename G0_SPLINE>
         VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const general_U_matrix<T>& Uijkl, const G0_SPLINE &g0_spline, bool message)
-          : beta(parms["BETA"]),
-            n_flavors(parms["FLAVORS"]),
-            k_ins_max(parms["K_INS_MAX"]),
-            max_order(parms["MAX_ORDER"]),
+          : beta(parms["model.beta"]),
+            n_flavors(parms["model.flavors"]),
+            k_ins_max(parms["update.k_ins_max"]),
+            max_order(parms["update.max_order"]),
             num_vertex_type(Uijkl.get_vertices().size()),
             sv_update_vertices(),
             sv_update_vertices_flag(num_vertex_type, false),
-            n_multi_vertex_update(parms["N_MULTI_VERTEX_UPDATE"]),
-            n_shift(parms["N_VERTEX_SHIFT"]),
+            n_multi_vertex_update(parms["update.n_multi_vertex_update"]),
+            n_shift(parms["update.n_vertex_shift"]),
             shift_update_valid(num_vertex_type, false),
             num_shift_valid_vertex_types(0),
-            shift_step_size(parms["VERTEX_SHIFT_STEP_SIZE"]),
+            shift_step_size(parms["update.vertex_shift_step_size"]),
             statistics_ins((parms["N_TAU_UPDATE_STATISTICS"]), beta, n_multi_vertex_update-1),
             statistics_shift((parms["N_TAU_UPDATE_STATISTICS"]), beta, num_vertex_type)
         {
@@ -198,13 +198,13 @@ namespace alps {
             find_valid_pair_multi_vertex_update(Uijkl.get_vertices(), quantum_number_vertices, mv_update_valid_pair, mv_update_valid_pair_flag);
             const int N_vdef = Uijkl.get_vertices().size();
 
-            if (parms.defined("DOUBLE_VERTEX_UPDATE_PAIRS")) {
-              std::stringstream ss(parms["DOUBLE_VERTEX_UPDATE_PAIRS"].template as<std::string>());
+            if (parms.defined("update.double_vertex_update_pairs")) {
+              std::stringstream ss(parms["update.double_vertex_update_pairs"].template as<std::string>());
               int v1,v2;
               while (ss >> v1) {
                 ss >> v2;
                 if (v1>=N_vdef || v2>=N_vdef || v1<0 || v2<0) {
-                  throw std::runtime_error("Invalid entry in DOUBLE_VERTEX_UPDATE_PAIRS!");
+                  throw std::runtime_error("Invalid entry in update.double_vertex_update_pairs!");
                 }
                 if (!mv_update_valid_pair_flag[v1][v2]) {
                   mv_update_valid_pair.push_back(std::make_pair(v1,v2));
@@ -213,15 +213,11 @@ namespace alps {
               }
             }
 
-            symm_exp_dist = SymmExpDist(parms["DOUBLE_VERTEX_UPDATE_A"], parms["DOUBLE_VERTEX_UPDATE_B"], beta);
-
-            //statistics_dv_ins = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
-            //statistics_dv_rem = scalar_histogram_flavors((parms["N_TAU_UPDATE_STATISTICS"] | 100), beta, mv_update_valid_pair.size());
+            symm_exp_dist = SymmExpDist(parms["update.double_vertex_update_A"], parms["update.double_vertex_update_B"], beta);
           }
 
           if (n_shift>0) {
             std::fill(shift_update_valid.begin(), shift_update_valid.end(), true);
-            //const std::vector<vertex_definition<T> >& v_defs_tmp = Uijkl.get_vertices();
             for (int iv=0; iv<sv_update_vertices_flag.size(); ++iv) {
               if (sv_update_vertices_flag[iv]) {
                 shift_update_valid[iv] = false;
@@ -284,15 +280,15 @@ namespace alps {
 
           //set up parameters for updates
           std::vector<double> proposal_prob(n_multi_vertex_update, 1.0);
-          if (parms.defined("MULTI_VERTEX_UPDATE_PROPOSAL_RATE")) {
+          if (parms.defined("update.multi_vertex_update_proposal_rate")) {
             proposal_prob.resize(0);
-            std::stringstream ss(parms["MULTI_VERTEX_UPDATE_PROPOSAL_RATE"].template as<std::string>());
+            std::stringstream ss(parms["update.multi_vertex_update_proposal_rate"].template as<std::string>());
             double rtmp;
             while (ss >> rtmp) {
               proposal_prob.push_back(rtmp);
             }
             if (proposal_prob.size()!=n_multi_vertex_update)
-              throw std::runtime_error("The number of elements in MULTI_VERTEX_UPDATE_PROPOSAL_RATE is different from N_MULTI_VERTEX_UPDATE");
+              throw std::runtime_error("The number of elements in update.multi_vertex_update_proposal_rate is different from update.n_multi_vertex_update");
           }
           Nv_m1_dist = boost::random::discrete_distribution<>(proposal_prob.begin(), proposal_prob.end());
 

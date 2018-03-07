@@ -63,7 +63,6 @@ set (LIB_FILES
         src/fouriertransform.cpp
         src/observables.ipp
         src/interaction_expansion.ipp
-        src/legendre.cpp
         src/legendre.h
         src/fastupdate_formula.h
         src/update_statistics.h
@@ -110,3 +109,4 @@ set(LINK_REST ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EX
 enable_testing(test)
 
 add_gtest(fastupdate "${LINK_REST}")
+add_gtest(misc "${LINK_REST}")
