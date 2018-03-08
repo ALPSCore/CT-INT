@@ -255,17 +255,6 @@ namespace alps {
           }
           measurements["densities"] << static_cast<std::valarray<double> > (densities * sign_real);
 
-          /*
-          if (n_flavors == 2) {
-            double density_correlation = 0.;
-            for (unsigned int i = 0; i < n_site; ++i) {
-              density_correlation += (dens[0][i]) * (dens[1][i]);
-            }
-            density_correlation /= n_site;
-            measurements["density_correlation"] << (density_correlation * sign_real);
-          }
-          */
-
           {
             std::valarray<double> ninj(n_site * n_site * n_flavors * n_flavors);
             int pos = 0;
