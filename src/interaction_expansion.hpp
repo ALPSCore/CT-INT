@@ -11,7 +11,7 @@
 #include <alps/mc/mpiadapter.hpp>
 
 #include <boost/multi_array.hpp>
-#include <boost/timer/timer.hpp>
+//#include <boost/timer/timer.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/tuple/tuple_io.hpp>
 #include <boost/random.hpp>
