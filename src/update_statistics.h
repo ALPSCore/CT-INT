@@ -210,8 +210,8 @@ namespace alps {
                 sumval2.resize(num_bins_,0.0);
                 counter.resize(num_bins_,0.0);
                 std::fill(sumval.begin(), sumval.end(), 0.0);
-                std::fill(sumval2.begin(), sumval.end(), 0.0);
-                std::fill(counter.begin(), sumval.end(), 0.0);
+                std::fill(sumval2.begin(), sumval2.end(), 0.0);
+                std::fill(counter.begin(), counter.end(), 0.0);
             }
 
             bool add_sample(double distance, double value) {
