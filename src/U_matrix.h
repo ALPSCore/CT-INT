@@ -144,9 +144,15 @@ namespace alps {
 
                 for (size_t i_op=0; i_op<2*rank; ++i_op) {
                   ifs >> site_indices_[i_op];//i, j, k, l
+                  if (site_indices_[i_op] < 0 || site_indices_[i_op] >= ns_) {
+                    throw std::runtime_error("Wrong site index is given in the definition of vertex.");
+                  }
                 }
                 for (size_t i_rank=0; i_rank<rank; ++i_rank) {
                   ifs >> flavor_indices_[i_rank];
+                  if (flavor_indices_[i_rank] < 0 || flavor_indices_[i_rank] >= nf_) {
+                    throw std::runtime_error("Wrong flavor index is given in the definition of vertex.");
+                  }
                 }
                 for (size_t i_rank=0; i_rank<rank; ++i_rank) {
                   for (size_t iaf=0; iaf<num_af_states; ++iaf) {

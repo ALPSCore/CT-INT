@@ -46,7 +46,7 @@ namespace alps {
           if (params["model.G0_tau_file"] == "") {
             throw std::runtime_error("Set model.G0_tau_file!");
           }
-          g0_intpl.read_itime_data(params["model.G0_tau_file"], beta);
+          g0_intpl.read_itime_data(params["model.G0_tau_file"], beta, n_flavors, n_site);
 
           //initialize the simulation variables
           initialize_simulation(parms);

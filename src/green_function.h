@@ -25,7 +25,7 @@ namespace alps {
         public:
             green_function() : data_(), tau_(), beta_(0.0) {}
 
-            void read_itime_data(const std::string& input_file, double beta) {
+            void read_itime_data(const std::string& input_file, double beta, int flavors, int sites) {
               beta_ = beta;
 
               std::ifstream ifs(input_file);
@@ -34,6 +34,9 @@ namespace alps {
               }
               int n_flavor, n_site, n_tau;
               ifs >> n_flavor >> n_site >> n_tau;
+              if (flavors != n_flavor || sites != n_site) {
+                throw std::runtime_error("Wrong # of sites or flavors is given in " + input_file);
+              }
 
               tau_.resize(n_tau);
               dtau_ = beta/(n_tau-1);
@@ -44,30 +47,6 @@ namespace alps {
               splines_im_.resize(boost::extents[n_flavor][n_site][n_site]);
               spline_coeff_.resize(boost::extents[n_flavor][n_site][n_site][n_tau-1][4]);
 
-
-              // Read list of tau
-              /*
-              for (int t=0; t < n_tau; ++t) {
-                int t_in;
-                ifs >> t_in >> tau_[t];
-                if (t_in != t) {
-                  throw std::runtime_error("Error while reading a list of tau");
-                }
-              }
-              for (int t=0; t < n_tau-1; ++t) {
-                if (tau_[t] >= tau_[t+1]) {
-                  throw std::runtime_error("A list of tau is not given in ascending order!");
-                }
-              }
-
-              if (tau_[0] != 0.0) {
-                throw std::runtime_error("tau[0] should be 0!");
-              }
-
-              if (tau_[n_tau-1] != beta_) {
-                throw std::runtime_error("The last element in tau should be beta!");
-              }
-              */
 
               for (int t=0; t < n_tau; ++t) {
                 tau_[t] = beta * static_cast<double>(t)/(n_tau-1);
@@ -190,10 +169,15 @@ namespace alps {
             T interpolate(int flavor, int site, int site2, double tau) const {
               assert(tau >= 0 && tau <= beta_);
 
-              std::size_t idx = static_cast<std::size_t>(tau * inv_dtau_);
+              int idx = static_cast<std::size_t>(tau * inv_dtau_);
               if (idx == ntau_-1) {
                 idx = ntau_-2;
               }
+#ifndef NDEBUG
+              if (idx < 0 || idx >= ntau_-1) {
+                std::cerr << "interpolation error idx " << idx << " tau " << tau << std::endl;
+              }
+#endif
               assert(idx < ntau_-1);
               double h = tau - idx * dtau_;
 
