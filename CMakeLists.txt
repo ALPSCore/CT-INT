@@ -70,11 +70,15 @@ set (LIB_FILES
         )
 
 #executable
-add_executable(interaction_real src/main_real.cpp ${LIB_FILES})
-target_link_libraries(interaction_real ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+add_executable(ctint_real src/main_real.cpp ${LIB_FILES})
+target_link_libraries(ctint_real ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 
-add_executable(interaction_complex src/main_complex.cpp ${LIB_FILES})
-target_link_libraries(interaction_complex ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+add_executable(ctint_complex src/main_complex.cpp ${LIB_FILES})
+target_link_libraries(ctint_complex ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+
+install (TARGETS ctint_real RUNTIME DESTINATION bin)
+install (TARGETS ctint_complex RUNTIME DESTINATION bin)
+
 
 #testing setup
 option(Testing "Enable testing" ON)
