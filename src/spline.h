@@ -24,8 +24,7 @@
  */
 
 
-#ifndef TK_SPLINE_H
-#define TK_SPLINE_H
+#pragma once
 
 #include <cstdio>
 #include <cassert>
@@ -112,6 +111,8 @@ public:
                     const std::vector<double>& y, bool cubic_spline=true);
     double operator() (double x) const;
     double deriv(int order, double x) const;
+
+    double get_coeff(int point, int power) const;
 };
 
 
@@ -396,6 +397,22 @@ double spline::operator() (double x) const
     return interpol;
 }
 
+double spline::get_coeff(int idx, int power) const {
+    assert(idx >= 0);
+    assert(idx < m_y.size());
+    if (power == 0) {
+        return m_y[idx];
+    } else if (power == 1) {
+        return m_c[idx];
+    } else if (power == 2) {
+        return m_b[idx];
+    } else if (power == 3) {
+        return m_a[idx];
+    } else {
+        throw std::invalid_argument("invalid value of power");
+    }
+}
+
 double spline::deriv(int order, double x) const
 {
     assert(order>0);
@@ -461,4 +478,3 @@ double spline::deriv(int order, double x) const
 
 } // namespace
 
-#endif /* TK_SPLINE_H */

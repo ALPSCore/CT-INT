@@ -36,11 +36,17 @@ namespace alps {
               ifs >> n_flavor >> n_site >> n_tau;
 
               tau_.resize(n_tau);
+              dtau_ = beta/(n_tau-1);
+              inv_dtau_ = 1/dtau_;
+              ntau_ = n_tau;
               data_.resize(boost::extents[n_flavor][n_site][n_site][n_tau]);
               splines_re_.resize(boost::extents[n_flavor][n_site][n_site]);
               splines_im_.resize(boost::extents[n_flavor][n_site][n_site]);
+              spline_coeff_.resize(boost::extents[n_flavor][n_site][n_site][n_tau-1][4]);
+
 
               // Read list of tau
+              /*
               for (int t=0; t < n_tau; ++t) {
                 int t_in;
                 ifs >> t_in >> tau_[t];
@@ -61,7 +67,11 @@ namespace alps {
               if (tau_[n_tau-1] != beta_) {
                 throw std::runtime_error("The last element in tau should be beta!");
               }
+              */
 
+              for (int t=0; t < n_tau; ++t) {
+                tau_[t] = beta * static_cast<double>(t)/(n_tau-1);
+              }
 
               // Read data
               int flavor_tmp, itmp, itmp2, itmp3;
@@ -103,6 +113,15 @@ namespace alps {
                     // cublic spline
                     splines_re_[flavor][site1][site2].set_points(tau_, y_re);
                     splines_im_[flavor][site1][site2].set_points(tau_, y_im);
+                    for (int t=0; t < n_tau-1; ++t) {
+                      for (int p=0; p < 4; ++p) {
+                        spline_coeff_[flavor][site1][site2][t][p] =
+                          std::complex<double>(
+                            splines_re_[flavor][site1][site2].get_coeff(t,p),
+                            splines_im_[flavor][site1][site2].get_coeff(t,p)
+                          );
+                      }
+                    }
                   }
                 }
               }
@@ -171,25 +190,27 @@ namespace alps {
             T interpolate(int flavor, int site, int site2, double tau) const {
               assert(tau >= 0 && tau <= beta_);
 
-              /*
-              int sign = 1;
-              double tau_tmp = tau;
+              std::size_t idx = static_cast<std::size_t>(tau * inv_dtau_);
+              if (idx == ntau_-1) {
+                idx = ntau_-2;
+              }
+              assert(idx < ntau_-1);
+              double h = tau - idx * dtau_;
 
-              while (tau_tmp > beta_) {
-                tau_tmp -= beta_;
-                sign *= -1;
-              }
-              while (tau_tmp < 0) {
-                tau_tmp += beta_;
-                sign *= -1;
-              }
-              return sign * mycast<T>(
-                std::complex<double>(splines_re_[flavor][site][site2](tau_tmp), splines_im_[flavor][site][site2](tau_tmp))
-              );
-               */
-              return mycast<T>(
+              std::complex<double> y = spline_coeff_[flavor][site][site2][idx][0];
+              std::complex<double> c = spline_coeff_[flavor][site][site2][idx][1];
+              std::complex<double> b = spline_coeff_[flavor][site][site2][idx][2];
+              std::complex<double> a = spline_coeff_[flavor][site][site2][idx][3];
+              std::complex<double> intpl_val = ((a*h + b)*h + c)*h + y;
+
+#ifndef NDEBUG
+              std::complex<double> intpl_val_debug = mycast<T>(
                 std::complex<double>(splines_re_[flavor][site][site2](tau), splines_im_[flavor][site][site2](tau))
               );
+              assert(std::abs(intpl_val-intpl_val_debug) < 1e-8);
+#endif
+
+              return mycast<T>(intpl_val);
             }
 
             /*
@@ -220,8 +241,11 @@ namespace alps {
         private:
             // flavor, site, site, tau
             boost::multi_array<T,4> data_;
+            double dtau_, inv_dtau_;
+            int ntau_;
             std::vector<double> tau_;
             boost::multi_array<tk::spline,3> splines_re_, splines_im_;
+            boost::multi_array<std::complex<double>,5> spline_coeff_;//n_flavor, n_site, n_site, ntau-1, 3
             double beta_;
         };
 

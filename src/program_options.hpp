@@ -1,13 +1,17 @@
 #pragma once
 
 #include <alps/params.hpp>
+#include <alps/utilities/fs/remove_extensions.hpp>
 
 namespace alps {
     namespace ctint {
         inline alps::params& define_ctint_options(alps::params &parms) {
           parms.description("Continous-time interaction expansion impurity solver");
           parms.define<long>("total_steps", 0, "Number of Monte Carlo sweeps");
+          parms.define<std::size_t>("timelimit", 0, "Total simulation time (in units of second). 0 means \"indefinitely\"");
           parms.define<long>("thermalization_steps", 0, "Number of thermalization steps");
+          parms.define<int>("measurement_period", -1, "Interval between measurements");
+          parms.define<std::string>("outputfile", alps::fs::remove_extensions(origin_name(parms)) + ".out.h5", "name of the output file");
 
           //model
           parms.define<int>("model.sites", "Number of sites");
@@ -25,12 +29,11 @@ namespace alps {
           parms.define<int>("update.n_spin_flip", 1, "How many spin flip updates are performed at each MC step.");
           parms.define<int>("update.k_ins_max", 32, "Batch size for submatrix update");
           parms.define<int>("update.n_multi_vertex_update", 1, "????? ");
-          parms.define<int>("update.recalc_period", 5000, "Interval for recomputing determinat matrix from scratch");
+          //parms.define<int>("update.recalc_period", 5000, "Interval for recomputing determinat matrix from scratch");
 
           //Measurement
           parms.define<int>("G1.n_legendre", 200, "Number of Legendre polynomials");
           parms.define<int>("G1.n_matsubara", 1024, "Number of Matsubara frequencies");
-          parms.define<int>("G1.measurement_period", -1, "Interval between measurements");
 
           //parms.define<int>("MAX_TIME", 86400, "Max simulation time in units of second");
 

@@ -3,6 +3,12 @@
 namespace alps {
     namespace ctint {
 
+        inline std::vector<double> operator*(double s, const std::vector<double>& vec) {
+          std::vector<double> vec2(vec);
+          std::transform(vec2.begin(), vec2.end(), vec2.begin(), std::bind1st(std::multiplies<double>(), s));
+          return vec2;
+        }
+
 /// Allocation of memory for the ALPS observables.
         template<class TYPES>
         void InteractionExpansion<TYPES>::initialize_observables(void) {
@@ -82,7 +88,7 @@ namespace alps {
           //pert_order_hist /= pert_order_hist.sum();
           //measurements["PertOrderHistogram"] << pert_order_hist;
 
-          std::valarray<double> pert_order(n_flavors);
+          std::vector<double> pert_order(n_flavors);
           for (unsigned int i = 0; i < n_flavors; ++i) {
             pert_order[i] = M_flavors[i].size1();
           }
@@ -97,7 +103,7 @@ namespace alps {
           }
           */
 
-          std::valarray<double> pert_vertex(0.0, Uijkl.n_vertex_type());
+          std::vector<double> pert_vertex(Uijkl.n_vertex_type(), 0.0);
           const itime_vertex_container &itime_vertices = submatrix_update->itime_vertices();
           for (itime_vertex_container::const_iterator it = itime_vertices.begin(); it != itime_vertices.end(); ++it) {
             assert(it->type() >= 0 && it->type() < Uijkl.n_vertex_type());
@@ -185,21 +191,23 @@ namespace alps {
             }//random_walk
 
             //pass data to ALPS library
+            std::vector<double> Sl_real(n_legendre, 0.0);
+            std::vector<double> Sl_imag(n_legendre, 0.0);
             for (unsigned int site1 = 0; site1 < n_site; ++site1) {
               for (unsigned int site2 = 0; site2 < n_site; ++site2) {
-                std::stringstream Sl_real_name, Sl_imag_name;
-                Sl_real_name << "Sl_real_" << z << "_" << site1 << "_" << site2;
-                Sl_imag_name << "Sl_imag_" << z << "_" << site1 << "_" << site2;
-                std::valarray<double> Sl_real(n_legendre);
-                std::valarray<double> Sl_imag(n_legendre);
+                //std::fill(Sl_real.begin(), Sl_real.end(), 0.0);
+                //std::fill(Sl_imag.begin(), Sl_imag.end(), 0.0);
                 for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
                   const std::complex<double> ztmp =
                     (Sl[site1][site2][i_legendre] * sign) / static_cast<double>(num_random_walk);
                   Sl_real[i_legendre] = ztmp.real();
                   Sl_imag[i_legendre] = ztmp.imag();
                 }
-                measurements[Sl_real_name.str().c_str()] << Sl_real;
-                measurements[Sl_imag_name.str().c_str()] << Sl_imag;
+                std::stringstream Sl_real_name, Sl_imag_name;
+                Sl_real_name << "Sl_real_" << z << "_" << site1 << "_" << site2;
+                Sl_imag_name << "Sl_imag_" << z << "_" << site1 << "_" << site2;
+                measurements[Sl_real_name.str()] << Sl_real;
+                measurements[Sl_imag_name.str()] << Sl_imag;
               }//site2
             }//site1
           }//z
@@ -240,22 +248,27 @@ namespace alps {
               }
             }
           }
-          std::valarray<double> densities(0., n_flavors);
+          std::vector<double> densities(n_flavors, 0.0);
           for (unsigned int z = 0; z < n_flavors; ++z) {
-            std::valarray<double> densmeas(n_site);
+            std::vector<double> densmeas(n_site);
             for (unsigned int i = 0; i < n_site; ++i) {
               densities[z] += dens[z][i];
               densmeas[i] = dens[z][i];
             }
-            measurements["densities_" + boost::lexical_cast<std::string>(z)]
-              << static_cast<std::valarray<double> >(densmeas * sign_real);
+            {
+              std::vector<double> signed_densmeas(densmeas);
+              for (std::size_t i = 0; i < n_site; ++i) {
+                signed_densmeas[i] *= sign_real;
+              }
+            }
+            measurements["densities_" + boost::lexical_cast<std::string>(z)] << sign_real * densmeas;
             densities[z] /= n_site;
             densities[z] = densities[z];
           }
-          measurements["densities"] << static_cast<std::valarray<double> > (densities * sign_real);
+          measurements["densities"] << sign_real * densities;
 
           {
-            std::valarray<double> ninj(n_site * n_site * n_flavors * n_flavors);
+            std::vector<double> ninj(n_site * n_site * n_flavors * n_flavors);
             int pos = 0;
             for (unsigned int i = 0; i < n_site; ++i) {
               for (unsigned int j = 0; j < n_site; ++j) {
@@ -267,7 +280,7 @@ namespace alps {
                 }
               }
             }
-            measurements["n_i n_j"] << static_cast<std::valarray<double> > (ninj * sign_real);
+            measurements["n_i n_j"] << sign_real * ninj;
           }
         }
     }

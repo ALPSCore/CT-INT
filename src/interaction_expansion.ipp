@@ -19,9 +19,10 @@ namespace alps {
             //temperature(1. / beta),
             Uijkl(parms),
             M_flavors(n_flavors),
-            recalc_period(parms["update.recalc_period"]),
-            measurement_period(parms["G1.measurement_period"].template as<int>() > 0 ? parms["G1.measurement_period"] : 500 * n_flavors * n_site),
-            convergence_check_period(recalc_period),
+            //recalc_period(parms["update.recalc_period"]),
+            //measurement_period(parms["measurement_period"].template as<int>() > 0 ? parms["measurement_period"] : 500 * n_flavors * n_site),
+            measurement_period(parms["measurement_period"].template as<int>()),
+            //convergence_check_period(recalc_period),
             almost_zero(1.e-16),
             legendre_transformer(params["G1.n_matsubara"], params["G1.n_legendre"]),
             is_thermalized_in_previous_step_(false),
@@ -49,6 +50,11 @@ namespace alps {
 
           //initialize the simulation variables
           initialize_simulation(parms);
+
+          //Some checks
+          if (params["measurement_period"].template as<int>() <= 0) {
+            throw std::runtime_error("measurement_period must be specified. A reasonable value is the average expansion order");
+          }
 
           //submatrix update
           itime_vertex_container itime_vertices_init;
@@ -86,6 +92,7 @@ namespace alps {
         template<class TYPES>
         void InteractionExpansion<TYPES>::update() {
 
+          std::cout << "update " << step << std::endl;
           pert_order_hist = 0.;
 
           for (std::size_t i = 0; i < measurement_period; ++i) {
@@ -93,6 +100,7 @@ namespace alps {
             std::cout << " step " << step << std::endl;
 #endif
             step++;
+            //std::cout << " step " << step << std::endl;
 
 #ifndef NDEBUG
             std::cout << " step " << step << " node " << comm.rank() << " pert " << submatrix_update->pert_order() << std::endl;
@@ -103,18 +111,13 @@ namespace alps {
             }
 
             for (int i_shift = 0; i_shift < n_shift; ++i_shift) {
-              update_manager.do_shift_update(*submatrix_update, Uijkl, random, !is_thermalized());
+              update_manager.do_shift_update(*submatrix_update, Uijkl, random, false);
             }
 
             for (int i_spin_flip = 0; i_spin_flip < n_spin_flip; ++i_spin_flip) {
               update_manager.do_spin_flip_update(*submatrix_update, Uijkl, random);
             }
 
-            if (step % recalc_period == 0) {
-              submatrix_update->recompute_matrix(true);
-
-              update_manager.global_updates(submatrix_update, Uijkl, g0_intpl, random);
-            }
 
             //if (submatrix_update->pert_order() < max_order) {
               //pert_hist[submatrix_update->pert_order()]++;
@@ -127,11 +130,25 @@ namespace alps {
             }
 
           }
+
+          // heavy parts
+          submatrix_update->recompute_matrix(true);
+          update_manager.global_updates(submatrix_update, Uijkl, g0_intpl, random);
+
+          if (is_thermalized() && !is_thermalized_in_previous_step_) {
+            prepare_for_measurement();
+          }
+          is_thermalized_in_previous_step_ = is_thermalized();
         }
 
         template<class TYPES>
         void InteractionExpansion<TYPES>::measure() {
           //In the below, real physical quantities are measured.
+          std::cout << "measure " << step << std::endl;
+          if (!is_thermalized()) {
+            std::cout << "measure skipped" << step << std::endl;
+            return;
+          }
           measure_observables();
           update_manager.measure_observables(measurements);
         }
@@ -142,67 +159,15 @@ namespace alps {
         template<class TYPES>
         void InteractionExpansion<TYPES>::finalize() {
 
-          std::string node_str = boost::lexical_cast<std::string>(comm.rank());
-
           /*
-          if (pert_order_dynamics.size() > 0) {
-            std::ofstream ofs(
-              (parms["PREFIX_OUTPUT_TIME_SERIES"].template as<std::string>() + std::string("-pert_order-node") +
-               node_str + std::string(".txt")).c_str());
-            unsigned int n_data = pert_order_dynamics.size() / Uijkl.n_vertex_type();
-            unsigned int i = 0;
-            for (unsigned int i_data = 0; i_data < n_data; ++i_data) {
-              ofs << i_data << " ";
-              for (unsigned int i_vt = 0; i_vt < Uijkl.n_vertex_type(); ++i_vt) {
-                ofs << pert_order_dynamics[i] << " ";
-                ++i;
-              }
-              ofs << std::endl;
-            }
-          }
-
-          if (Wk_dynamics.size() > 0) {
-            std::ofstream ofs(
-              (parms["PREFIX_OUTPUT_TIME_SERIES"].template as<std::string>() + std::string("-Wk-node") + node_str +
-               std::string(".txt")).c_str());
-            unsigned int n_data = Wk_dynamics.size() / (n_flavors * n_site);
-            unsigned int i = 0;
-            for (unsigned int i_data = 0; i_data < n_data; ++i_data) {
-              ofs << i_data << " ";
-              for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
-                for (unsigned int site1 = 0; site1 < n_site; ++site1) {
-                  ofs << Wk_dynamics[i].real() << " " << Wk_dynamics[i].imag() << "   ";
-                  ++i;
-                }
-              }
-              ofs << std::endl;
-            }
-          }
-
-          if (Sl_dynamics.size() > 0) {
-            std::ofstream ofs(
-              (parms["PREFIX_OUTPUT_TIME_SERIES"].template as<std::string>() + std::string("-Sl-node") + node_str +
-               std::string(".txt")).c_str());
-            unsigned int n_data = Sl_dynamics.size() / (n_flavors * n_site);
-            unsigned int i = 0;
-            for (unsigned int i_data = 0; i_data < n_data; ++i_data) {
-              ofs << i_data << " ";
-              for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
-                for (unsigned int site1 = 0; site1 < n_site; ++site1) {
-                  ofs << Sl_dynamics[i].real() << " " << Sl_dynamics[i].imag() << "   ";
-                  ++i;
-                }
-              }
-              ofs << std::endl;
-            }
-          }
-           */
+          std::string node_str = boost::lexical_cast<std::string>(comm.rank());
 
           if (parms.defined("PREFIX_DUMP_CONFIG")) {
             std::ofstream os((parms["PREFIX_DUMP_CONFIG"].template as<std::string>()
                               + std::string("-config-node") + node_str + std::string(".txt")).c_str());
             dump(os, submatrix_update->itime_vertices());
           }
+           */
 
         }
 
@@ -212,7 +177,10 @@ namespace alps {
           if (!is_thermalized()) {
             return 0.;
           } else {
-            return ((step - therm_steps) / (double) mc_steps);
+            //std::cout << "step debug " << step << " " << ((step - therm_steps) / (double) mc_steps) << std::endl;
+            //std::cout << "step debug " << step << " " << step << " " <<  therm_steps << " " <<  mc_steps << std::endl;
+            double fraction = (static_cast<double>(step) - static_cast<double>(therm_steps))/static_cast<double>(mc_steps);
+            return fraction;
           }
         }
 
@@ -292,6 +260,8 @@ bool InteractionExpansion<TYPES>::is_quantum_number_within_range(const itime_ver
 
         template<class TYPES>
         void InteractionExpansion<TYPES>::prepare_for_measurement() {
+          //std::cout << "prepare for meas" << std::endl;
+          std::cout << "Rank " << comm.rank() << ": thermalization done!" << std::endl;
           update_manager.prepare_for_measurement_steps();
         }
 

@@ -25,9 +25,14 @@ namespace alps {
             return 0;
           }
 
+          if (comm.rank()==0) {
+            std::cout << "Interaction-expansion QMC impurity solver based on ALPSCore" << std::endl << std::endl;
+          }
+          comm.barrier();
+
           std::cout << "Running simulation on rank " << comm.rank() << std::endl;
           my_sim_type my_sim(par, comm);
-          my_sim.run(alps::stop_callback(5));
+          my_sim.run(alps::stop_callback(par["timelimit"].template as<std::size_t>()));
 
           // Collect the results from the simulation
           std::cout << "Rank " << comm.rank() << " has finished. Collecting results..." << std::endl;
@@ -35,18 +40,16 @@ namespace alps {
 
           // Print the mean and the standard deviation.
           // Only master has all the results!
-          /*
           if (comm.rank()==0) {
-            std::string output_file = parameters["outputfile"];
+            std::string output_file = par["outputfile"];
             alps::hdf5::archive ar(output_file, "w");
-            ar["/simulation/results"] << results;
+            ar["/simulation_raw_data/results"] << results;
 
             // Some post processing
             std::cout << " computing GF " << std::endl;
-            compute_greens_functions<SOLVER_TYPE>(results, parms, output_file);
+            compute_greens_functions<SOLVER_TYPE>(results, par, output_file);
             std::cout << " compute GF done" << std::endl;
           }
-          */
           return 0;
         }
     }

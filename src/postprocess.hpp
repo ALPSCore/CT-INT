@@ -9,29 +9,32 @@
 #include <alps/accumulators.hpp>
 
 #include "legendre.h"
+#include "hdf5/boost_any.hpp"
 
 namespace alps {
     namespace ctint {
 
         template<class SOLVER_TYPE>
         void evaluate_selfenergy_measurement_legendre(const typename alps::accumulators::result_set &results,
-                                                      const double &beta,
-                                                      int n_site,
-                                                      int n_flavors,
-                                                      int n_matsubara,
-                                                      int n_legendre,
+                                                      const typename alps::params &parms,
                                                       boost::multi_array<std::complex<double>,4>& Sl,
                                                       boost::multi_array<std::complex<double>,4>& Sw
         ) {
           std::cout << "evaluating self energy measurement: lengendre, real space" << std::endl;
           double sign = results["Sign"].template mean<double>();
 
+          double beta = parms["model.beta"];
+          int n_site = parms["model.sites"];
+          int n_flavors = parms["model.flavors"];
+          int n_matsubara = parms["G1.n_matsubara"];
+          int n_legendre = parms["G1.n_legendre"];
+
           //Legendre expansion utils
           LegendreTransformer legendre_transformer(n_matsubara, n_legendre);
           auto &Tnl = legendre_transformer.Tnl();
 
-          Sl = boost::multi_array<std::complex<double>, 4>(boost::extents[n_legendre][n_site][n_site][n_flavors]);
-          Sw = boost::multi_array<std::complex<double>, 4>(boost::extents[n_matsubara][n_site][n_site][n_flavors]);
+          Sl.resize(boost::extents[n_legendre][n_site][n_site][n_flavors]);
+          Sw.resize(boost::extents[n_matsubara][n_site][n_site][n_flavors]);
 
           //load S_l
           for (int flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
@@ -91,13 +94,7 @@ namespace alps {
 
           boost::multi_array<std::complex<double>,4> Sl, Sw;
 
-          evaluate_selfenergy_measurement_legendre<SOLVER_TYPE>(results,
-                                                                beta,
-                                                                n_site,
-                                                                n_flavors,
-                                                                n_matsubara,
-                                                                n_legendre,
-                                                                Sl, Sw);
+          evaluate_selfenergy_measurement_legendre<SOLVER_TYPE>(results, parms, Sl, Sw);
 
           alps::hdf5::archive ar(output_file, "a");
           ar["/SigmaG_legendre"] = Sl;

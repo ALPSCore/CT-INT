@@ -169,7 +169,7 @@ namespace alps {
             virtual double fraction_completed() const =0;
 
             // Some extension
-            virtual bool is_thermalized() const =0;
+            //virtual bool is_thermalized() const =0;
 
             virtual void finalize()=0;
 
@@ -191,8 +191,6 @@ namespace alps {
             void update();
 
             double fraction_completed() const;
-
-            bool is_thermalized() const { return step > therm_steps; }
 
             void finalize();
 
@@ -231,6 +229,10 @@ namespace alps {
             // in file interaction_expansion.hpp
             void sanity_check();
             //bool is_quantum_number_conserved(const itime_vertex_container& vertices);
+
+            virtual bool is_thermalized() const {
+              return step > therm_steps;
+            }
 
             void prepare_for_measurement(); //called once after thermalization is done
 
@@ -280,9 +282,9 @@ namespace alps {
             //for shift update
             //std::vector<bool> shift_update_valid;
 
-            const unsigned int recalc_period;
+            //const unsigned int recalc_period;
             const unsigned int measurement_period;
-            const unsigned int convergence_check_period;
+            //const unsigned int convergence_check_period;
 
             /*InteractionExpansion's roundoff threshold*/
             const double almost_zero;

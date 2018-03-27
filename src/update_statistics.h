@@ -89,7 +89,7 @@ namespace alps {
         public:
             simple_update_statistcs(int Nv) : counter_(), Nv_(Nv) {
                 for (int iv=0; iv<Nv_; ++iv) {
-                    counter_.push_back(std::valarray<double>(0.0, 4));
+                    counter_.push_back(std::vector<double>(4, 0.0));
                 }
             }
             void not_valid_state(int iv) {
@@ -108,14 +108,14 @@ namespace alps {
                 assert(iv>=0 && iv<Nv_);
                 ++counter_[iv][3];
             }
-            std::valarray<double> get_result(int iv) const {return counter_[iv];}
+            std::vector<double> get_result(int iv) const {return counter_[iv];}
             void reset() {
                 for (int iv=0; iv<Nv_; ++iv) {
-                    counter_[iv] = 0.0;
+                    std::fill(counter_[iv].begin(), counter_[iv].end(), 0.0);
                 }
             }
         private:
-            std::vector<std::valarray<double> > counter_;
+            std::vector<std::vector<double> > counter_;
             int Nv_;
         };
 
@@ -159,9 +159,9 @@ namespace alps {
         }
 
         template<class T>
-        void rebin(std::valarray<T>& org_array, int nrebin) {
+        void rebin(std::vector<T>& org_array, int nrebin) {
             const int new_len = org_array.size()/nrebin;
-            std::valarray<T> new_array(new_len);
+            std::vector<T> new_array(new_len);
             int count=0;
             for (int i=0; i<new_len; ++i) {
                 T sum = 0;
@@ -176,8 +176,8 @@ namespace alps {
         }
 
         template<class T>
-        void rebin(std::valarray<T>& org_array, double maxval, double maxval_new, int new_len) {
-            std::valarray<T> new_array(0.0,new_len);
+        void rebin(std::vector<T>& org_array, double maxval, double maxval_new, int new_len) {
+            std::vector<T> new_array(new_len,0.0);
             const int old_len = org_array.size();
 
             assert(maxval_new<=maxval);
@@ -209,9 +209,9 @@ namespace alps {
                 sumval.resize(num_bins_,0.0);
                 sumval2.resize(num_bins_,0.0);
                 counter.resize(num_bins_,0.0);
-                sumval = 0.0;
-                sumval2 = 0.0;
-                counter = 0.0;
+                std::fill(sumval.begin(), sumval.end(), 0.0);
+                std::fill(sumval2.begin(), sumval.end(), 0.0);
+                std::fill(counter.begin(), sumval.end(), 0.0);
             }
 
             bool add_sample(double distance, double value) {
@@ -227,19 +227,19 @@ namespace alps {
                 }
             }
 
-            std::valarray<double> get_mean() const {
-                std::valarray<double> mean(sumval);
+            std::vector<double> get_mean() const {
+                std::vector<double> mean(sumval);
                 for (int i=0; i<num_bins_; ++i) {
                     mean[i] /= static_cast<double>(counter[i]);
                 }
                 return mean;
             }
 
-            const std::valarray<double>& get_counter() const {
+            const std::vector<double>& get_counter() const {
                 return counter;
             }
 
-            const std::valarray<double>& get_sumval() const {
+            const std::vector<double>& get_sumval() const {
                 return sumval;
             }
 
@@ -252,8 +252,8 @@ namespace alps {
 
                 double maxdist_new = maxdist;
 
-                std::valarray<double> counter_tmp = counter;
-                std::valarray<double> sumval_tmp = sumval;
+                std::vector<double> counter_tmp = counter;
+                std::vector<double> sumval_tmp = sumval;
 
                 rebin(counter_tmp, max_val_, maxdist, ndiv);
                 rebin(sumval_tmp, max_val_, maxdist, ndiv);
@@ -301,8 +301,8 @@ namespace alps {
         private:
             int num_bins_, num_sample_;
             double max_val_;
-            std::valarray<double> sumval, sumval2;
-            std::valarray<double> counter;
+            std::vector<double> sumval, sumval2;
+            std::vector<double> counter;
         };
 
         class scalar_histogram_flavors
@@ -319,8 +319,8 @@ namespace alps {
                 return histograms[flavor].add_sample(distance, value);
             }
 
-            std::valarray<double> get_mean() const {
-                std::valarray<double> mean_flavors(num_bins*flavors), mean(num_bins);
+            std::vector<double> get_mean() const {
+                std::vector<double> mean_flavors(num_bins*flavors), mean(num_bins);
 
                 for (int iflavor=0; iflavor<flavors; ++iflavor) {
                     mean = histograms[iflavor].get_mean();
@@ -332,11 +332,11 @@ namespace alps {
                 return mean_flavors;
             }
 
-            std::valarray<double> get_counter() const {
-                std::valarray<double> counter_flavors(num_bins*flavors);
+            std::vector<double> get_counter() const {
+                std::vector<double> counter_flavors(num_bins*flavors);
 
                 for (int iflavor=0; iflavor<flavors; ++iflavor) {
-                    const std::valarray<double>& counter = histograms[iflavor].get_counter();
+                    const std::vector<double>& counter = histograms[iflavor].get_counter();
                     for (int ibin=0; ibin<num_bins; ++ibin) {
                         assert(ibin+iflavor*num_bins<counter_flavors.size());
                         counter_flavors[ibin+iflavor*num_bins] = counter[ibin];
@@ -345,11 +345,11 @@ namespace alps {
                 return counter_flavors;
             }
 
-            std::valarray<double> get_sumval() const {
-                std::valarray<double> sumval_flavors(num_bins*flavors);
+            std::vector<double> get_sumval() const {
+                std::vector<double> sumval_flavors(num_bins*flavors);
 
                 for (int iflavor=0; iflavor<flavors; ++iflavor) {
-                    const std::valarray<double>& sumval = histograms[iflavor].get_sumval();
+                    const std::vector<double>& sumval = histograms[iflavor].get_sumval();
                     for (int ibin=0; ibin<num_bins; ++ibin) {
                         assert(ibin+iflavor*num_bins<sumval_flavors.size());
                         sumval_flavors[ibin+iflavor*num_bins] = sumval[ibin];

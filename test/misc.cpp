@@ -11,11 +11,30 @@
 #include "../src/legendre.h"
 #include "../src/util.h"
 #include "../src/green_function.h"
+#include "../src/spline.h"
 
 #include "gtest.h"
 #include "common.hpp"
 
 using namespace alps::ctint;
+
+TEST(Spline, uniform_mesh) {
+    tk::spline spline;
+
+    std::size_t N = 100;
+
+    std::vector<double> x(N), y(N);
+
+    for (int i=0; i<N; ++i) {
+        x[i] = static_cast<double>(i)/(N-1);
+        y[i] = x[i] * x[i];
+    }
+
+    spline.set_points(x, y);
+
+  //do some test
+
+}
 
 TEST(LegendreMeasurement, Tnl)
 {
