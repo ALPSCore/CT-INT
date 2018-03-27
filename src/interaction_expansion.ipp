@@ -92,7 +92,6 @@ namespace alps {
         template<class TYPES>
         void InteractionExpansion<TYPES>::update() {
 
-          std::cout << "update " << step << std::endl;
           pert_order_hist = 0.;
 
           for (std::size_t i = 0; i < measurement_period; ++i) {
@@ -144,9 +143,7 @@ namespace alps {
         template<class TYPES>
         void InteractionExpansion<TYPES>::measure() {
           //In the below, real physical quantities are measured.
-          std::cout << "measure " << step << std::endl;
           if (!is_thermalized()) {
-            std::cout << "measure skipped" << step << std::endl;
             return;
           }
           measure_observables();
