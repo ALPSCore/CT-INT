@@ -158,7 +158,7 @@ namespace alps {
             n_shift(parms["update.n_vertex_shift"]),
             shift_update_valid(num_vertex_type, false),
             num_shift_valid_vertex_types(0),
-            shift_step_size(parms["update.vertex_shift_step_size"]),
+            shift_step_size(beta*parms["update.vertex_shift_step_size"].template as<double>()),
             statistics_ins((parms["N_TAU_UPDATE_STATISTICS"]), beta, n_multi_vertex_update-1),
             statistics_shift((parms["N_TAU_UPDATE_STATISTICS"]), beta, num_vertex_type)
         {

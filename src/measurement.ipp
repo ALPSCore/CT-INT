@@ -25,7 +25,6 @@ namespace alps {
           for (int flavor = 0; flavor < n_flavors; ++flavor) {
             measurements << SimpleRealVectorObservable("densities_" + boost::lexical_cast<std::string>(flavor));
           }
-          //measurements << SimpleRealObservable("density_correlation");
           measurements << SimpleRealVectorObservable("n_i n_j");
 
           for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
@@ -178,7 +177,7 @@ namespace alps {
                 const int n_legendre_tmp = n_legendre;
                 for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
                   for (unsigned int i_legendre = 0; i_legendre < n_legendre_tmp; ++i_legendre) {
-                    Sl[site_c][site_B][i_legendre] -=
+                    Sl[site_c][site_B][i_legendre] += // + is correct?
                       coeff * sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][q] * M_gR(q, site_B);
                   }
                 }

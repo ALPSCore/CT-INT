@@ -67,11 +67,11 @@ namespace alps {
               int flavor_tmp, itmp, itmp2, itmp3;
               std::vector<double> y_re(n_tau), y_im(n_tau);
               double re, im;
-              int line = 0;
+              int line = 1 + n_tau;
               for (spin_t flavor=0; flavor<n_flavor; ++flavor) {
                 for (std::size_t site1=0; site1<n_site; ++site1) {
                   for (std::size_t site2=0; site2<n_site; ++site2) {
-                    for (std::size_t itau = 0; itau < n_tau+1; itau++) {
+                    for (std::size_t itau = 0; itau < n_tau; itau++) {
                       ifs >> flavor_tmp >> itmp >> itmp2 >> itmp3 >> re >> im;
 
                       if (flavor_tmp != flavor) {

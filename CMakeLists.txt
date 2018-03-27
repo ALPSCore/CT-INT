@@ -71,10 +71,10 @@ set (LIB_FILES
 
 #executable
 add_executable(interaction_real src/main_real.cpp ${LIB_FILES})
-target_link_libraries(interaction_real alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+target_link_libraries(interaction_real ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 
 add_executable(interaction_complex src/main_complex.cpp ${LIB_FILES})
-target_link_libraries(interaction_complex alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+target_link_libraries(interaction_complex ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
 
 #testing setup
 option(Testing "Enable testing" ON)

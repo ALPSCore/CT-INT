@@ -107,13 +107,13 @@ namespace alps {
             typedef T value_type;
 
             general_U_matrix(const alps::params &parms) :
-              ns_(parms["SITES"]),
-              nf_(parms["FLAVORS"])
+              ns_(parms["model.sites"]),
+              nf_(parms["model.flavors"])
             {
-              if (parms["GENERAL_U_MATRIX_FILE"] == "") {
-                throw std::runtime_error("Error: GENERAL_U_MATRIX_FILE is not defined!");
+              if (parms["model.U_matrix_file"] == "") {
+                throw std::runtime_error("Error: model.U_matrix_file is not defined!");
               }
-              std::string ufilename(parms["GENERAL_U_MATRIX_FILE"].template as<std::string>());
+              std::string ufilename(parms["model.U_matrix_file"].template as<std::string>());
               std::ifstream ifs(ufilename.c_str());
               if (!ifs.is_open()) {
                 throw std::runtime_error(ufilename+" does not exist!");
