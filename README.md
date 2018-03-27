@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ALPSCore/CT-INT.svg?branch=master)](https://travis-ci.org/ALPSCore/CT-INT)
+
 CT-INT
 ======
 
