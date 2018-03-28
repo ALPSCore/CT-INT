@@ -33,9 +33,13 @@ namespace alps {
                 throw std::runtime_error(input_file+" does not exist!");
               }
               int n_flavor, n_site, n_tau;
-              ifs >> n_flavor >> n_site >> n_tau;
+              double beta_in;
+              ifs >> n_flavor >> n_site >> n_tau >> beta_in;
               if (flavors != n_flavor || sites != n_site) {
                 throw std::runtime_error("Wrong # of sites or flavors is given in " + input_file);
+              }
+              if (std::abs(beta_in - beta) > 1e-8) {
+                throw std::runtime_error("Wrong value of beta is given in " + input_file);
               }
 
               tau_.resize(n_tau);
