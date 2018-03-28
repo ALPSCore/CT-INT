@@ -108,10 +108,19 @@ namespace alps {
 
             general_U_matrix(const alps::params &parms) :
               ns_(parms["model.sites"]),
-              nf_(parms["model.flavors"])
-            {
-              if (parms["model.U_matrix_file"] == "") {
-                throw std::runtime_error("Error: model.U_matrix_file is not defined!");
+              nf_(parms["model.flavors"]) {
+              if (parms.supplied("model.U_matrix_file") && !parms.supplied("model.U")) {
+                load_vertex_from_file(parms);
+              } else if (!parms.supplied("model.U_matrix_file") && parms.supplied("model.U")) {
+                set_onsite_U(parms["model.U"]);
+              } else {
+                throw std::runtime_error("Do not set model.U_matrix_file and model.U at the same time!");
+              }
+            }
+
+            void load_vertex_from_file(const alps::params &parms) {
+              if (!parms.supplied("model.U_matrix_file")) {
+                throw std::runtime_error("Error: model.U_matrix_file is not set!");
               }
               std::string ufilename(parms["model.U_matrix_file"].template as<std::string>());
               std::ifstream ifs(ufilename.c_str());
@@ -171,8 +180,18 @@ namespace alps {
               find_non_density_vertices();
             }
 
-            //for unit test. Single-band Hubbard model
-            general_U_matrix(int n_site, double U, double alpha) : ns_(n_site), nf_(2), num_nonzero_(n_site) {
+            //for unit test. Single-band Hubbard model (supported only the cases with flavor = 2)
+            general_U_matrix(int n_site, double U, double alpha = 1e-5) : ns_(n_site), nf_(2), num_nonzero_(n_site) {
+              set_onsite_U(U, alpha);
+            }
+
+            void set_onsite_U(double U, double alpha = 1e-5) {
+              num_nonzero_ = ns_;
+
+              if (nf_ != 2) {
+                throw std::runtime_error("model.flavors must be 2 when model.U is specified.");
+              }
+
               const int num_af_states = 2;
               const int rank = 2;
 
