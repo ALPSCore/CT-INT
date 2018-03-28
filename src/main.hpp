@@ -43,6 +43,7 @@ namespace alps {
           if (comm.rank()==0) {
             std::string output_file = par["outputfile"];
             alps::hdf5::archive ar(output_file, "w");
+            ar["/parameters"] << par;
             ar["/simulation_raw_data/results"] << results;
 
             // Some post processing
