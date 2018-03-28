@@ -181,11 +181,11 @@ namespace alps {
             }
 
             //for unit test. Single-band Hubbard model (supported only the cases with flavor = 2)
-            general_U_matrix(int n_site, double U, double alpha = 1e-5) : ns_(n_site), nf_(2), num_nonzero_(n_site) {
+            general_U_matrix(int n_site, double U, double alpha = 1e-1) : ns_(n_site), nf_(2), num_nonzero_(n_site) {
               set_onsite_U(U, alpha);
             }
 
-            void set_onsite_U(double U, double alpha = 1e-5) {
+            void set_onsite_U(double U, double alpha = 1e-1) {
               num_nonzero_ = ns_;
 
               if (nf_ != 2) {
