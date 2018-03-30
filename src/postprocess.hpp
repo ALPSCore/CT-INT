@@ -23,7 +23,6 @@ namespace alps {
           std::cout << "evaluating self energy measurement: lengendre, real space" << std::endl;
           double sign = results["Sign"].template mean<double>();
 
-          double beta = parms["model.beta"];
           int n_site = parms["model.sites"];
           int n_flavors = parms["model.flavors"];
           int n_matsubara = parms["G1.n_matsubara"];
@@ -75,10 +74,6 @@ namespace alps {
         void compute_greens_functions(const typename alps::accumulators::result_set &results,
                                       const typename alps::params &parms, const std::string &output_file) {
           spin_t n_flavors = parms["model.flavors"];
-          unsigned int n_site = parms["model.sites"];
-          double beta = parms["model.beta"];
-          unsigned int n_matsubara = parms["G1.n_matsubara"];
-          int n_legendre = parms["G1.n_legendre"];
 
           std::vector<double> mean_order = results["PertOrder"].template mean<std::vector<double> >();
 

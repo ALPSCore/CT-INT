@@ -19,7 +19,12 @@ namespace alps {
             update_proposer() : mode_(0) {};
 
             update_proposer(int Nv, std::vector<double>& proposal_rate_Nv) :
-              Nv_(Nv),mode_(0), proposal_rate_Nv_(proposal_rate_Nv), hist_valid_(Nv, 1.0), hist_invalid_(Nv, 1.0), dist01_(),
+              Nv_(Nv),
+              mode_(0),
+              hist_valid_(Nv, 1.0),
+              hist_invalid_(Nv, 1.0),
+              proposal_rate_Nv_(proposal_rate_Nv),
+              dist01_(),
               dist_(proposal_rate_Nv.begin(), proposal_rate_Nv.end())
             {}
 
@@ -199,7 +204,12 @@ namespace alps {
         class scalar_histogram
         {
         public:
-            scalar_histogram() : num_bins_(0), max_val_(0.0), num_sample_(0), sumval(0.0,0), sumval2(0.0,0), counter(0.0,0) {};
+            scalar_histogram() : num_bins_(0),
+                                 num_sample_(0),
+                                 max_val_(0.0),
+                                 sumval(0.0,0),
+                                 sumval2(0.0,0),
+                                 counter(0.0,0) {};
             scalar_histogram(int num_bins_, double max_val) : num_bins_(num_bins_), num_sample_(0), max_val_(max_val), sumval(0.0,num_bins_), sumval2(0.0,num_bins_), counter(0.0,num_bins_){};
 
             void init(int num_bins_, double max_val) {
@@ -308,7 +318,12 @@ namespace alps {
         class scalar_histogram_flavors
         {
         public:
-            scalar_histogram_flavors(int num_bins_, double max_val, int flavors) : flavors(flavors), max_val(max_val), histograms(flavors), num_bins(num_bins_) {
+            scalar_histogram_flavors(int num_bins_, double max_val, int flavors) :
+              flavors(flavors),
+              num_bins(num_bins_),
+              max_val(max_val),
+              histograms(flavors)
+            {
                 for (int i=0; i<histograms.size(); ++i) {
                     histograms[i].init(num_bins_, max_val);
                 }

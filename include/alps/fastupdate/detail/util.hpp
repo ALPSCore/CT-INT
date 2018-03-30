@@ -100,7 +100,6 @@ namespace alps {
       safe_invert_in_place(Eigen::MatrixBase<Derived>& mat) {
         typedef typename Derived::RealScalar RealScalar;
 
-        const int N = mat.rows();
         const RealScalar max_coeff = mat.cwiseAbs().maxCoeff();
 
         Eigen::Matrix<typename Derived::Scalar,Eigen::Dynamic,Eigen::Dynamic> mat_copy = mat/max_coeff;
@@ -114,7 +113,6 @@ namespace alps {
       safe_inverse(const Eigen::MatrixBase<Derived>& mat) {
         typedef typename Derived::RealScalar RealScalar;
 
-        const int N = mat.rows();
         const RealScalar max_coeff = mat.cwiseAbs().maxCoeff();
 
         Eigen::Matrix<typename Derived::Scalar,Eigen::Dynamic,Eigen::Dynamic> mat_copy = mat/max_coeff;
@@ -128,7 +126,6 @@ namespace alps {
       safe_inverse(const Eigen::Block<const Derived>& mat) {
         typedef typename Derived::RealScalar RealScalar;
 
-        const int N = mat.rows();
         const RealScalar max_coeff = mat.cwiseAbs().maxCoeff();
 
         Eigen::Matrix<typename Derived::Scalar,Eigen::Dynamic,Eigen::Dynamic> mat_copy = mat/max_coeff;
@@ -142,7 +139,6 @@ namespace alps {
       safe_inverse(Eigen::Block<Derived>& mat) {
         typedef typename Derived::RealScalar RealScalar;
 
-        const int N = mat.rows();
         const RealScalar max_coeff = mat.cwiseAbs().maxCoeff();
 
         Eigen::Matrix<typename Derived::Scalar,Eigen::Dynamic,Eigen::Dynamic> mat_copy = mat/max_coeff;

@@ -15,29 +15,23 @@ namespace alps {
             n_site(parms["model.sites"]),
             mc_steps((boost::uint64_t) parms["total_steps"]),
             therm_steps(parms["thermalization_steps"]),
-            beta(parms["model.beta"]),
-            //temperature(1. / beta),
-            Uijkl(parms),
-            M_flavors(n_flavors),
-            //recalc_period(parms["update.recalc_period"]),
-            //measurement_period(parms["measurement_period"].template as<int>() > 0 ? parms["measurement_period"] : 500 * n_flavors * n_site),
-            measurement_period(parms["measurement_period"].template as<int>()),
-            //convergence_check_period(recalc_period),
-            almost_zero(1.e-16),
-            legendre_transformer(params["G1.n_matsubara"], params["G1.n_legendre"]),
-            is_thermalized_in_previous_step_(false),
             n_ins_rem(parms["update.n_ins_rem_vertex"]),
             n_shift(parms["update.n_vertex_shift"]),
             n_spin_flip(parms["update.n_spin_flip"]),
-            force_quantum_number_conservation(false),
             single_vertex_update_non_density_type(false),
+            beta(parms["model.beta"]),
+            Uijkl(parms),
+            M_flavors(n_flavors),
+            measurement_period(parms["measurement_period"].template as<int>()),
+            almost_zero(1.e-16),
+            is_thermalized_in_previous_step_(false),
+            legendre_transformer(params["G1.n_matsubara"], params["G1.n_legendre"]),
             pert_order_hist(max_order + 1),
             comm(),
             g0_intpl(),
             update_manager(parms, Uijkl, g0_intpl, comm.rank() == 0) {
           //other parameters
           step = 0;
-          start_time = time(NULL);
           measurement_time = 0;
           update_time = 0;
 

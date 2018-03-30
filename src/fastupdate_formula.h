@@ -436,7 +436,6 @@ compute_det_ratio_replace_row_col(const alps::numeric::matrix<T>& M, const alps:
         compute_inverse_matrix_replace_row_col2(alps::numeric::matrix<T>& invG, const alps::numeric::matrix<T>& Dr, const alps::numeric::matrix<T>& Dc, int m,
                                                 bool compute_only_det_rat) {
             typedef alps::numeric::matrix<T> matrix_t;
-            const double eps = 1E-10;
 
             const int N = num_cols(invG);
             const int Nm1 = N-1;
@@ -602,7 +601,6 @@ compute_det_ratio_replace_row_col(const alps::numeric::matrix<T>& M, const alps:
                           const alps::numeric::matrix<T>& Q, const alps::numeric::matrix<T>& R, const alps::numeric::matrix<T>& S,
                           const std::vector<int>& rows_cols) {
             using namespace alps::numeric;
-            typedef matrix<T> matrix_t;
 
             const int NpM = num_cols(A);
             const int M = rows_cols.size();
@@ -760,7 +758,6 @@ compute_det_ratio_replace_row_col(const alps::numeric::matrix<T>& M, const alps:
 
             const int N = num_cols(R);
             const int M = num_rows(R);
-            const int M_old = num_cols(invBigMat)-N;
 
             assert(num_cols(invBigMat)==num_rows(invBigMat));
             assert(num_rows(R)==M && num_cols(R)==N);
@@ -779,7 +776,6 @@ compute_det_ratio_replace_row_col(const alps::numeric::matrix<T>& M, const alps:
             tmp_NM.destructive_resize(N,M);
             tmp_MN.destructive_resize(M,N);
             invBigMat.destructive_resize(N+M, N+M);
-            auto tPp_view = invBigMat.block(0,0,N,N);
             auto tQp_view = invBigMat.block(0,N,N,M);
             auto tRp_view = invBigMat.block(N,0,M,N);
             auto tSp_view = invBigMat.block(N,N,M,M);

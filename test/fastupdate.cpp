@@ -124,8 +124,6 @@ TEST(FastUpdate, BlockMatrixReplaceRowsColsSingular) {
         matrix_t Mmat, inv_tSp;
         matrix_t tPp, tQp, tRp, tSp;
 
-        double det_rat_fast = compute_det_ratio_replace_rows_cols_safe(M2p_fast, Q, R, S, Mmat, inv_tSp);
-        double det_rat = (alpha-b)*(alpha+b)/((alpha-a)*(alpha+a));
     }
 }
 
@@ -252,6 +250,5 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
     boost::tie(sign_from_M2,weight_from_M2) = submatrix_update.compute_M_from_scratch(M_scratch);
     ASSERT_TRUE(my_equal(weight_from_M2/weight_from_M, weight_rat2, 1E-5));
 
-    const T weight_rat3 = manager.do_shift_update(submatrix_update, Uijkl, random01, false);
   }
 }

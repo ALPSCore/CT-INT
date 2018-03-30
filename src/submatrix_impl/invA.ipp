@@ -5,7 +5,6 @@
 
 template<typename T>
 InvAMatrix<T>::InvAMatrix() :
-    alpha_scale_(1.0),
     matrix_(0,0),
     creators_(0),
     annihilators_(0),

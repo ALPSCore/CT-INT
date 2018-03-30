@@ -250,7 +250,6 @@ namespace alps {
             const int n_ins_rem;
             const int n_shift;
             const int n_spin_flip;
-            const bool force_quantum_number_conservation;
             const bool single_vertex_update_non_density_type;
             const double beta;
             //const double temperature;                        //only for performance reasons: avoid 1/beta computations where possible
@@ -299,7 +298,6 @@ namespace alps {
             unsigned int vertex_histogram_size;
 
             unsigned long step;
-            time_t start_time;
             clock_t update_time;
             clock_t measurement_time;
 

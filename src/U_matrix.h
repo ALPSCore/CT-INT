@@ -33,7 +33,13 @@ namespace alps {
             }
 
             vertex_definition(size_t rank, size_t num_af_states, std::vector<spin_t>& flavors, std::vector<size_t>& sites, T Uval, boost::multi_array<T,2>& alpha_af_rank, int id)
-              : rank_(rank), num_af_states_(num_af_states), flavors_(flavors), sites_(sites), Uval_(Uval), alpha_af_rank_(alpha_af_rank), id_(id) {
+              : rank_(rank),
+                flavors_(flavors),
+                sites_(sites),
+                num_af_states_(num_af_states),
+                Uval_(Uval),
+                alpha_af_rank_(alpha_af_rank),
+                id_(id) {
               assert(flavors_.size()==rank);
               assert(sites.size()==2*rank);
               assert(alpha_af_rank_.shape()[0]==num_af_states_);
@@ -127,7 +133,6 @@ namespace alps {
               if (!ifs.is_open()) {
                 throw std::runtime_error(ufilename+" does not exist!");
               }
-              size_t num_non_zero_;
               ifs >> num_nonzero_;
 
               //temporary
@@ -317,8 +322,8 @@ namespace alps {
             itime_vertex()
               : vertex_type_(-1),
                 af_state_(-1),
-                time_(-1),
                 rank_(-1),
+                time_(-1),
                 is_density_type_(false),
                 is_non_interacting_(false),
                 unique_id_(0)
@@ -327,8 +332,8 @@ namespace alps {
             itime_vertex(int vertex_type, int af_state, double time, int rank, bool is_density_type)
               : vertex_type_(vertex_type),
                 af_state_(af_state),
-                time_(time),
                 rank_(rank),
+                time_(time),
                 is_density_type_(is_density_type),
                 is_non_interacting_(false),
                 unique_id_(0)
@@ -472,7 +477,13 @@ public:
 
         class non_density_type_in_window : public std::unary_function<itime_vertex,bool> {
         public:
-            non_density_type_in_window() : ts_(0), w_(0), t_small1_(0), t_small2_(0), t_large1_(1E+100), t_large2_(1E+100) {}
+            non_density_type_in_window() :
+              ts_(0),
+              w_(0),
+              t_small1_(0),
+              t_large1_(1E+100),
+              t_small2_(0),
+              t_large2_(1E+100) {}
 
             non_density_type_in_window(double ts, double w, double beta) : ts_(ts), w_(w), beta_(beta) {
               assert(w<=beta);

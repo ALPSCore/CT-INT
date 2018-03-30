@@ -59,7 +59,7 @@ namespace alps {
             const std::vector<annihilator> &annihilators()const{ return annihilators_;}
             T alpha_at(int pos) const {
               assert(pos>=0 && pos<creators_.size());
-              return creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_scale_*alpha_[pos];
+              return creators_[pos].s()==annihilators_[pos].s() ? alpha_[pos] : alpha_[pos];
             }
             T bare_alpha_at(int pos) const {
               assert(pos>=0 && pos<creators_.size());
@@ -70,8 +70,6 @@ namespace alps {
               alpha_[pos] = new_val;
             }
             void alpha_push_back(T new_elem) {alpha_.push_back(new_elem);}
-            double alpha_scale() const {return alpha_scale_;}
-            void set_alpha_scale(double alpha_scale) {alpha_scale_ = alpha_scale;}
             std::vector<std::pair<vertex_t,size_t> > &vertex_info(){ return vertex_info_;}
             const std::vector<std::pair<vertex_t,size_t> > &vertex_info() const{ return vertex_info_;}
 
@@ -162,7 +160,6 @@ namespace alps {
             std::vector<annihilator> annihilators_; //an array of to annihilation operators c corresponding to the column of the matrix
             std::vector<T> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
             std::vector<vertex_info_type> vertex_info_; // an array of pairs which remember from which type of vertex operators come from. (type of vertex and rank)
-            double alpha_scale_; //this scales the values of alpha for non-density-type vertices.
 
             //work space for update()
             alps::numeric::matrix<T> G0_left, invA0, G0_inv_gamma;
@@ -178,7 +175,7 @@ namespace alps {
         class InvAMatrixFlavors
         {
         public:
-            InvAMatrixFlavors(int n_flavors) : alpha_scale_(1), sub_matrices_(n_flavors) {
+            InvAMatrixFlavors(int n_flavors) : sub_matrices_(n_flavors) {
               assert(n_flavors>=0);
             }
 
@@ -198,14 +195,6 @@ namespace alps {
             size_t size() const {
               return sub_matrices_.size();
             };
-
-            void set_alpha_scale(double r) {
-              alpha_scale_ = r;
-              for (spin_t flavor=0; flavor<sub_matrices_.size(); ++flavor)
-                sub_matrices_[flavor].set_alpha_scale(r);
-            }
-
-            double alpha_scale() const {return alpha_scale_;}
 
             template<typename SPLINE_G0_TYPE>
             bool sanity_check(const SPLINE_G0_TYPE& spline_G0, general_U_matrix<T>* p_Uijkl, const itime_vertex_container& itime_vertices) const;
@@ -230,7 +219,6 @@ namespace alps {
             void update_matrix(const std::vector<InvGammaMatrix<T> >& inv_gamma_flavors, const SPLINE_G0_TYPE& spline_G0);
 
         private:
-            double alpha_scale_;
             std::vector<InvAMatrix<T> > sub_matrices_;
         };
 
@@ -416,7 +404,6 @@ namespace alps {
             //const T coeff_det;
 
             SubmatrixState state;
-            double alpha_scale_;
             InvAMatrixFlavors<T> invA_;
 
             //Monte Carlo variables

@@ -152,11 +152,11 @@ namespace alps {
             k_ins_max(parms["update.k_ins_max"]),
             max_order(parms["update.max_order"]),
             num_vertex_type(Uijkl.get_vertices().size()),
-            sv_update_vertices(),
-            sv_update_vertices_flag(num_vertex_type, false),
             n_multi_vertex_update(1),
             //n_multi_vertex_update(parms["update.n_multi_vertex_update"]),
             n_shift(parms["update.n_vertex_shift"]),
+            sv_update_vertices(),
+            sv_update_vertices_flag(num_vertex_type, false),
             shift_update_valid(num_vertex_type, false),
             num_shift_valid_vertex_types(0),
             shift_step_size(beta*parms["update.vertex_shift_step_size"].template as<double>()),
@@ -368,8 +368,6 @@ namespace alps {
           std::vector<itime_vertex> new_vertices_all;
           for (int i_ins=0; i_ins<num_ins_try; ++i_ins) {
             std::vector<itime_vertex> new_vertices = gen_itime_vertices_insertion(Uijkl, random);
-            const int Nv = new_vertices.size();
-
             for (int iv=0; iv<new_vertices.size(); ++iv) {
               new_vertices[iv].set_non_interacting();//this does not modify the spin state but just hide it.
               new_vertices_all.push_back(new_vertices[iv]);
@@ -598,7 +596,6 @@ namespace alps {
           const int Nv_updated = Nv_m1_dist(random01)+1;
           //choose vertices to be removed
           if (Nv_updated==1) {
-            int num_v = 0;
             pos_vertices.resize(0);
             pos_vertices.reserve(itime_vertices_current.size());
             for (int iv=0; iv<itime_vertices_current.size(); ++iv) {
