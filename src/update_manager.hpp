@@ -154,13 +154,14 @@ namespace alps {
             num_vertex_type(Uijkl.get_vertices().size()),
             sv_update_vertices(),
             sv_update_vertices_flag(num_vertex_type, false),
-            n_multi_vertex_update(parms["update.n_multi_vertex_update"]),
+            n_multi_vertex_update(1),
+            //n_multi_vertex_update(parms["update.n_multi_vertex_update"]),
             n_shift(parms["update.n_vertex_shift"]),
             shift_update_valid(num_vertex_type, false),
             num_shift_valid_vertex_types(0),
             shift_step_size(beta*parms["update.vertex_shift_step_size"].template as<double>()),
-            statistics_ins((parms["N_TAU_UPDATE_STATISTICS"]), beta, n_multi_vertex_update-1),
-            statistics_shift((parms["N_TAU_UPDATE_STATISTICS"]), beta, num_vertex_type)
+            statistics_ins((parms["update.n_tau_statistics"]), beta, n_multi_vertex_update-1),
+            statistics_shift((parms["update.n_tau_statistics"]), beta, num_vertex_type)
         {
           const double almost_zero = 1E-10;
 

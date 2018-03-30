@@ -16,7 +16,6 @@ namespace alps {
           //model
           parms.define<int>("model.sites", "Number of sites");
           parms.define<int>("model.flavors", "Number of flavors per site");
-          //parms.define<int>("model.n_tau", "Number of imaginary time points for non-interacting Green's function");
           parms.define<std::string>("model.U_matrix_file", "Text file containing a list of interaction terms");
           parms.define<double>("model.U", "onsite U");
           parms.define<std::string>("model.G0_tau_file", "", "Text file containing non-interacting Green's function");
@@ -25,11 +24,12 @@ namespace alps {
           //update
           parms.define<int>("update.max_order", 10240, "Max perturbation order");
           parms.define<int>("update.n_ins_rem_vertex", 1, "????? ");
-          parms.define<int>("update.n_vertex_shift", 1, "How many vertex shift updates are performed at each MC step.");
-          parms.define<double>("update.vertex_shift_step_size", 0.1, "Step size for shift updates in units of beta.");
-          parms.define<int>("update.n_spin_flip", 1, "How many spin flip updates are performed at each MC step.");
-          parms.define<int>("update.k_ins_max", 32, "Batch size for submatrix update");
+          parms.define<int>("update.n_vertex_shift", 1, "How many vertex shift updates are performed at each MC step");
+          parms.define<double>("update.vertex_shift_step_size", 0.1, "Step size for shift updates in units of beta");
+          parms.define<int>("update.n_spin_flip", 1, "How many spin flip updates are performed at each MC step");
+          parms.define<int>("update.k_ins_max", 100, "Batch size for submatrix update");
           parms.define<int>("update.n_multi_vertex_update", 1, "????? ");
+          parms.define<int>("update.n_tau_statistics", 100, "Number of tau points for statistics");
           //parms.define<int>("update.recalc_period", 5000, "Interval for recomputing determinat matrix from scratch");
 
           //Measurement
@@ -38,8 +38,7 @@ namespace alps {
 
           //parms.define<int>("MAX_TIME", 86400, "Max simulation time in units of second");
 
-          parms.define<bool>("FORCE_QUANTUM_NUMBER_CONSERVATION", false, "Will be removed.");
-          parms.define<int>("N_TAU_UPDATE_STATISTICS", 100, "Will be removed. ");
+          //parms.define<bool>("FORCE_QUANTUM_NUMBER_CONSERVATION", false, "Will be removed.");
           //parms.define<bool>(single_vertex_update_non_density_type(parms.defined("SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE") ? parms["SINGLE_VERTEX_UPDATE_FOR_NON_DENSITY_TYPE"] : true),
 
           return parms;
