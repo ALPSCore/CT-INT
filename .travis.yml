@@ -54,14 +54,14 @@ script:
   - make install
   - export ALPSCore_DIR=$PREREQS_DIR/ALPSCore
    
-  # Build, test and install ALPSCore/CT-HYB
+  # Build, test and install ALPSCore/CT-INT
   - cd $TRAVIS_BUILD_DIR/..
   - mkdir build
   - cd build
   - |
     cmake ../CT-INT                                       \
     -DCMAKE_BUILD_TYPE=Debug                              \
-    -DCMAKE_CXX_FLAGS='-DALPS_GF_DEBUG'                   \
+    -DCMAKE_CXX_FLAGS='-DALPS_GF_DEBUG -O3'               \
     -DCMAKE_C_COMPILER=mpicc                              \
     -DCMAKE_CXX_COMPILER=mpic++                           \
     -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/installed

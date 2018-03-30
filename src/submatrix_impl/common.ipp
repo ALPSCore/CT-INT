@@ -206,8 +206,6 @@ boost::tuple<T,T,T>
 SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector<int>& new_spins) {
   assert(state==TRYING_SPIN_FLIP);
 
-  const int n_pos = pos.size();
-
   ops_rem.resize(n_flavors());
   ops_ins.resize(n_flavors());
   ops_replace.resize(n_flavors());
@@ -218,6 +216,7 @@ SubmatrixUpdate<T>::try_spin_flip(const std::vector<int>& pos, const std::vector
   }
 
 #ifndef NDEBUG
+  const int n_pos = pos.size();
   assert(pos.size()==new_spins.size());
   for (int i=0; i<n_pos; ++i) {
     assert (pos[i]<itime_vertices_.size());

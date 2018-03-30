@@ -172,7 +172,9 @@ namespace alps {
             using namespace alps::numeric;
             typedef matrix<T> matrix_t;
 
+#ifndef NDEBUG
             const I NpM = num_rows(invBigMat);
+#endif
             const I M = num_rows_cols_removed;
             assert(invBigMat.size2()==NpM);
             assert(rows_cols_removed.size()>=M);
