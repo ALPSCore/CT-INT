@@ -9,7 +9,7 @@ compiler:
 branches:
   only:
     - master
-    - travis # To debug .travis.yml
+    - devel
 
 addons:
   apt:
