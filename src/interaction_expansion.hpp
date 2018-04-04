@@ -33,6 +33,46 @@
 namespace alps {
     namespace ctint {
 
+
+        //class check_schedule : public alps::check_schedule {
+            //using alps::check_schedule::check_schedule;
+        //};
+
+        /**
+         * Custom version to output fraction at each step to stdout
+         * @tparam Base
+         */
+        template<typename Base>
+        class mcmpiadapter : public alps::mcmpiadapter<Base,alps::check_schedule> {
+            using alps::mcmpiadapter<Base,alps::check_schedule>::mcmpiadapter;
+            using BaseType = alps::mcmpiadapter<Base,alps::check_schedule>;
+
+
+        public:
+            bool run(boost::function<bool ()> const & stop_callback) {
+              bool done = false, stopped = false;
+              do {
+                this->update();
+                this->measure();
+                if (stopped || BaseType::schedule_checker.pending()) {
+                  stopped = stop_callback();
+                  double local_fraction = stopped ? 1. : Base::fraction_completed();
+                  BaseType::schedule_checker.update(BaseType::fraction = alps::mpi::all_reduce(BaseType::communicator, local_fraction, std::plus<double>()));
+                  done = BaseType::fraction >= 1.;
+
+                  if (BaseType::communicator.rank() == 0) {
+                    if (BaseType::fraction > 0) {
+                      std::cout << 100 * BaseType::fraction << "% of measurement steps done... " << std::endl;
+                    } else {
+                      std::cout << "Not thermalized yet... " << std::endl;
+                    }
+                  }
+                }
+              } while(!done);
+              return !stopped;
+            }
+        };
+
 /*types*/
         class c_or_cdagger;
 

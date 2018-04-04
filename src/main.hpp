@@ -10,7 +10,7 @@ namespace alps {
 
         template<class SOLVER_TYPE>
         int run_simulation(int argc, char** argv) {
-          typedef alps::mcmpiadapter<SOLVER_TYPE> my_sim_type;
+          typedef alps::ctint::mcmpiadapter<SOLVER_TYPE> my_sim_type;
 
           //Here we construct a parameter object by parsing an ini file.
           alps::params par(argc, argv);
