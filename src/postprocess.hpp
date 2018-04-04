@@ -123,9 +123,13 @@ namespace alps {
           std::vector<double> timings = results["Timings"].template mean<std::vector<double> >();
           std::cout << std::endl << "#### Timing analysis ####" << std::endl;
           std::cout << "For measurement_period = " << parms["measurement_period"].template as<int>()
-                    << " steps, the Monte Carlo updates took "  << timings[0] << " ms, the measurement took "  << timings[1] << " ms."
+                    << " steps, each part took " << std::endl
+                    << " Monte Carlo update: "  << timings[0] << " ms" << std::endl
+                    << " Recompute inverse matrix: "  << timings[1] << " ms" << std::endl
+                    << " Global update: "  << timings[2] << " ms" << std::endl
+                    << " Measurement: "  << timings[3] << " ms" << std::endl
                     << std::endl;
-          std::cout << "If the latter dominates, please increase the value of measurement_period." << std::endl << std::endl;
+          //std::cout << "If the latter dominates, please increase the value of measurement_period." << std::endl << std::endl;
         }
     }
 }

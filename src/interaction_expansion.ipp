@@ -30,7 +30,7 @@ namespace alps {
             comm(),
             g0_intpl(),
             update_manager(parms, Uijkl, g0_intpl, comm.rank() == 0),
-            timings(2) {
+            timings(4) {
           //other parameters
           step = 0;
           measurement_time = 0;
@@ -91,6 +91,8 @@ namespace alps {
 
           auto t_start = std::chrono::system_clock::now();
 
+          std::vector<double> timing_part(2, 0.0);
+
           for (std::size_t i = 0; i < measurement_period; ++i) {
 #ifndef NDEBUG
             std::cout << " step " << step << std::endl;
@@ -121,8 +123,19 @@ namespace alps {
           }
 
           // heavy parts
-          submatrix_update->recompute_matrix(true);
-          update_manager.global_updates(submatrix_update, Uijkl, g0_intpl, random);
+          {
+            auto t_start_local = std::chrono::system_clock::now();
+            submatrix_update->recompute_matrix(true);
+            auto t_end_local = std::chrono::system_clock::now();
+            timing_part[0] += std::chrono::duration_cast<std::chrono::nanoseconds>(t_end_local-t_start_local).count();
+            //std::cout << "debug " << std::chrono::duration_cast<std::chrono::nanoseconds>(t_end_local-t_start_local).count() << std::endl;
+          }
+          {
+            auto t_start_local = std::chrono::system_clock::now();
+            update_manager.global_updates(submatrix_update, Uijkl, g0_intpl, random);
+            auto t_end_local = std::chrono::system_clock::now();
+            timing_part[1] += std::chrono::duration_cast<std::chrono::nanoseconds>(t_end_local-t_start_local).count();
+          }
 
           if (is_thermalized() && !is_thermalized_in_previous_step_) {
             prepare_for_measurement();
@@ -131,7 +144,10 @@ namespace alps {
 
           auto t_end = std::chrono::system_clock::now();
 
-          timings[0] = std::chrono::duration_cast<std::chrono::milliseconds>(t_end-t_start).count();
+          timings[0] = std::chrono::duration_cast<std::chrono::nanoseconds>(t_end-t_start).count()
+                       - std::accumulate(timing_part.begin(), timing_part.end(), 0.0);
+          timings[1] = timing_part[0];
+          timings[2] = timing_part[1];
         }
 
         template<class TYPES>
@@ -146,7 +162,10 @@ namespace alps {
           update_manager.measure_observables(measurements);
 
           auto t_end = std::chrono::system_clock::now();
-          timings[1] = std::chrono::duration_cast<std::chrono::milliseconds>(t_end-t_start).count();
+          timings[3] = std::chrono::duration_cast<std::chrono::nanoseconds>(t_end-t_start).count();
+
+          // from nanoseconds to milliseconds
+          std::transform(timings.begin(), timings.end(), timings.begin(), [](double x){return 1E-6*x;});
 
           measurements["Timings"] << timings;
         }
