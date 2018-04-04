@@ -29,7 +29,8 @@ namespace alps {
             pert_order_hist(max_order + 1),
             comm(),
             g0_intpl(),
-            update_manager(parms, Uijkl, g0_intpl, comm.rank() == 0) {
+            update_manager(parms, Uijkl, g0_intpl, comm.rank() == 0),
+            timings(2) {
           //other parameters
           step = 0;
           measurement_time = 0;
@@ -88,6 +89,8 @@ namespace alps {
 
           pert_order_hist = 0.;
 
+          auto t_start = std::chrono::system_clock::now();
+
           for (std::size_t i = 0; i < measurement_period; ++i) {
 #ifndef NDEBUG
             std::cout << " step " << step << std::endl;
@@ -111,13 +114,6 @@ namespace alps {
               update_manager.do_spin_flip_update(*submatrix_update, Uijkl, random);
             }
 
-
-            //if (submatrix_update->pert_order() < max_order) {
-              //pert_hist[submatrix_update->pert_order()]++;
-            //}
-            //assert(submatrix_update->pert_order() < pert_order_hist.size());
-            //++pert_order_hist[submatrix_update->pert_order()];
-
             for (spin_t flavor = 0; flavor < n_flavors; ++flavor) {
               vertex_histograms[flavor]->count(submatrix_update->invA()[flavor].creators().size());
             }
@@ -132,16 +128,27 @@ namespace alps {
             prepare_for_measurement();
           }
           is_thermalized_in_previous_step_ = is_thermalized();
+
+          auto t_end = std::chrono::system_clock::now();
+
+          timings[0] = std::chrono::duration_cast<std::chrono::milliseconds>(t_end-t_start).count();
         }
 
         template<class TYPES>
         void InteractionExpansion<TYPES>::measure() {
+          auto t_start = std::chrono::system_clock::now();
+
           //In the below, real physical quantities are measured.
           if (!is_thermalized()) {
             return;
           }
           measure_observables();
           update_manager.measure_observables(measurements);
+
+          auto t_end = std::chrono::system_clock::now();
+          timings[1] = std::chrono::duration_cast<std::chrono::milliseconds>(t_end-t_start).count();
+
+          measurements["Timings"] << timings;
         }
 
 /**

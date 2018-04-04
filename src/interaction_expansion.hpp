@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <cmath>
+#include <chrono>
 
 #include <alps/accumulators.hpp>
 #include <alps/mc/api.hpp>
@@ -315,6 +316,8 @@ namespace alps {
             green_function<M_TYPE> g0_intpl;
 
             VertexUpdateManager<M_TYPE> update_manager;
+
+            std::vector<double> timings;
 
         };
 

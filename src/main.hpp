@@ -47,9 +47,9 @@ namespace alps {
             ar["/simulation_raw_data/results"] << results;
 
             // Some post processing
-            std::cout << " computing GF " << std::endl;
-            compute_greens_functions<SOLVER_TYPE>(results, par, output_file);
-            std::cout << " compute GF done" << std::endl;
+            std::cout << " Postprocessing... " << std::endl;
+            postprocess<SOLVER_TYPE>(results, par, output_file);
+            std::cout << " done" << std::endl;
           }
           return 0;
         }

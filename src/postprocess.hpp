@@ -91,7 +91,7 @@ namespace alps {
         }
 
         template<class SOLVER_TYPE>
-        void compute_greens_functions(const typename alps::accumulators::result_set &results,
+        void postprocess(const typename alps::accumulators::result_set &results,
                                       const typename alps::params &parms, const std::string &output_file) {
           spin_t n_flavors = parms["model.flavors"];
 
@@ -119,6 +119,13 @@ namespace alps {
           /* Density and density correlations */
           postprocess_densities<SOLVER_TYPE>(results, parms, ar);
 
+          /* Timings */
+          std::vector<double> timings = results["Timings"].template mean<std::vector<double> >();
+          std::cout << std::endl << "#### Timing analysis ####" << std::endl;
+          std::cout << "For measurement_period = " << parms["measurement_period"].template as<int>()
+                    << " steps, the Monte Carlo updates took "  << timings[0] << " ms, the measurement took "  << timings[1] << " ms."
+                    << std::endl;
+          std::cout << "If the latter dominates, please increase the value of measurement_period." << std::endl << std::endl;
         }
     }
 }

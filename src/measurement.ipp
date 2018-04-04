@@ -41,28 +41,11 @@ namespace alps {
               measurements << SimpleRealObservable(density_name.str().c_str());
             }
           }
-          /*
-          for (unsigned int i = 0; i < n_site; ++i) {
-            std::stringstream sz_name, sz2_name, sz0_szj_name;
-            sz_name << "Sz_" << i;
-            sz2_name << "Sz2_" << i;
-            sz0_szj_name << "Sz0_Sz" << i;
-          }
-          */
-          //measurements << SimpleRealVectorObservable("MeasurementTimeMsec");
-          //measurements << SimpleRealVectorObservable("UpdateTimeMsec");
-          //measurements << SimpleRealVectorObservable("UpdateTimeMsecAllWalkers");
-          //measurements << SimpleRealObservable("RecomputeTime");
-          /*
-          for (spin_t flavor = 0; flavor < n_flavors; ++flavor) {
-            std::stringstream tmp;
-            tmp << "VertexHistogram_" << flavor;
-            measurements << SimpleRealVectorObservable(tmp.str().c_str());
-          }
-          */
 
           measurements << SimpleRealVectorObservable("PerturbationOrderVertex");
-          //measurements << SimpleRealVectorObservable("PertOrderHistogram");
+
+          // Timings for MC update and measuremrent
+          measurements << SimpleRealVectorObservable("Timings");
         }
 
 ///this function is called whenever measurements should be performed. Depending
