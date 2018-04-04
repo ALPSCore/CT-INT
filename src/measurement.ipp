@@ -138,13 +138,11 @@ namespace alps {
               const double time_shift = beta * random();
 
               for (unsigned int p = 0; p < Nv; ++p) {//annihilation operators
-                const double tmp = annihilators[p].t().time() + time_shift;
-                const double time_a_shifted = tmp < beta ? tmp : tmp - beta;
-                const double coeff = tmp < beta ? 1 : -1;
+                const double time_a = annihilators[p].t().time() + time_shift;
 
                 //interpolate G0
                 for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
-                  gR(p, site_B) = mycast<M_TYPE>(coeff * g0_intpl(time_a_shifted, z, annihilators[p].s(), site_B));
+                  gR(p, site_B) = mycast<M_TYPE>(g0_intpl(time_a, z, annihilators[p].s(), site_B));
                 }
               }
 
@@ -178,8 +176,6 @@ namespace alps {
             std::vector<double> Sl_imag(n_legendre, 0.0);
             for (unsigned int site1 = 0; site1 < n_site; ++site1) {
               for (unsigned int site2 = 0; site2 < n_site; ++site2) {
-                //std::fill(Sl_real.begin(), Sl_real.end(), 0.0);
-                //std::fill(Sl_imag.begin(), Sl_imag.end(), 0.0);
                 for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
                   const std::complex<double> ztmp =
                     (Sl[site1][site2][i_legendre] * sign) / static_cast<double>(num_random_walk);
