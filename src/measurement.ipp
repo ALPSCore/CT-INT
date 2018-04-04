@@ -270,10 +270,10 @@ namespace alps {
           {
             std::vector<double> ninj(n_site * n_site * n_flavors * n_flavors);
             int pos = 0;
-            for (unsigned int i = 0; i < n_site; ++i) {
-              for (unsigned int j = 0; j < n_site; ++j) {
-                for (unsigned int flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
-                  for (unsigned int flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+            for (unsigned int flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+              for (unsigned int i = 0; i < n_site; ++i) {
+                for (unsigned int flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
+                  for (unsigned int j = 0; j < n_site; ++j) {
                     ninj[pos] = (dens[flavor1][i]) * (dens[flavor2][j]);
                     ++pos;
                   }

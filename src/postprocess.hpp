@@ -71,6 +71,26 @@ namespace alps {
         }
 
         template<class SOLVER_TYPE>
+        void postprocess_densities(const typename alps::accumulators::result_set &results,
+                                                      const typename alps::params &parms, alps::hdf5::archive& ar) {
+          std::cout << "evaluating self energy measurement: lengendre, real space" << std::endl;
+          double sign = results["Sign"].template mean<double>();
+
+          int n_site = parms["model.sites"];
+          int n_flavors = parms["model.flavors"];
+
+          auto divide_by_sign =  [&](double x){return x/sign;};
+          std::vector<double> densities = results["densities"].template mean<std::vector<double> >();
+          std::transform(densities.begin(), densities.end(), densities.begin(), divide_by_sign);
+          ar["/densities"] = densities;
+
+          std::vector<double> ni_nj_flatten = results["n_i n_j"].template mean<std::vector<double> >();
+          boost::multi_array<double,4> ni_nj(boost::extents[n_flavors][n_site][n_flavors][n_site]);
+          std::transform(ni_nj_flatten.begin(), ni_nj_flatten.end(), ni_nj.origin(), divide_by_sign);
+          ar["/ni_nj"] = ni_nj;
+        }
+
+        template<class SOLVER_TYPE>
         void compute_greens_functions(const typename alps::accumulators::result_set &results,
                                       const typename alps::params &parms, const std::string &output_file) {
           spin_t n_flavors = parms["model.flavors"];
@@ -87,13 +107,18 @@ namespace alps {
           matrix_size << std::endl;
           std::cout << "average sign was: " << results["Sign"].template mean<double>() << std::endl;
 
-          boost::multi_array<std::complex<double>,4> Sl, Sw;
-
-          evaluate_selfenergy_measurement_legendre<SOLVER_TYPE>(results, parms, Sl, Sw);
-
           alps::hdf5::archive ar(output_file, "a");
+
+          /*  Single-particle Green's function */
+          boost::multi_array<std::complex<double>,4> Sl, Sw;
+          evaluate_selfenergy_measurement_legendre<SOLVER_TYPE>(results, parms, Sl, Sw);
+          ar["Sign"] = results["Sign"].template mean<double>();
           ar["/SigmaG_legendre"] = Sl;
           ar["/SigmaG_omega"] = Sw;
+
+          /* Density and density correlations */
+          postprocess_densities<SOLVER_TYPE>(results, parms, ar);
+
         }
     }
 }

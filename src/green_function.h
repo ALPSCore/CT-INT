@@ -206,19 +206,19 @@ namespace alps {
              */
             T operator()(double delta_t, int flavor, int site1, int site2) const {
               double dt = delta_t;
-              T coeff = 1.0;
+              T sign = 1.0;
               while (dt >= beta_) {
                 dt -= beta_;
-                coeff *= -1.0;
+                sign *= -1.0;
               }
               while (dt < 0.0) {
                 dt += beta_;
-                coeff *= -1.0;
+                sign *= -1.0;
               }
 
               if (dt == 0.0) dt += 1E-8;
 
-              return interpolate(flavor, site1, site2, dt);
+              return sign * interpolate(flavor, site1, site2, dt);
             }
 
             bool is_zero(int flavor, int site1, int site2, double eps) const {
