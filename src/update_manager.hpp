@@ -813,22 +813,25 @@ namespace alps {
         void
         VertexUpdateManager<T>::global_updates(boost::shared_ptr<SubmatrixUpdate<T> > submatrix,
         general_U_matrix<T>& Uijkl, const SPLINE_G0& spline_G0, R& random01) {
-        itime_vertex_container itime_vertices = submatrix->itime_vertices();
-        T weight = compute_weight(Uijkl, spline_G0, itime_vertices);
+             if (global_update_list.size() == 0) {
+               return;
+             }
 
-        for (int i_update=0; i_update<global_update_list.size(); ++i_update) {
-        DoTransform op(&global_update_list[i_update]);
-        weight = global_update_impl(Uijkl, spline_G0, itime_vertices, op, random01, weight);
+            itime_vertex_container itime_vertices = submatrix->itime_vertices();
+            T weight = compute_weight(Uijkl, spline_G0, itime_vertices);
+
+            for (int i_update=0; i_update<global_update_list.size(); ++i_update) {
+                DoTransform op(&global_update_list[i_update]);
+                weight = global_update_impl(Uijkl, spline_G0, itime_vertices, op, random01, weight);
+            }
+
+            boost::shared_ptr<SubmatrixUpdate<T> > walker_new(
+            new SubmatrixUpdate<T>(
+              submatrix->k_ins_max(), n_flavors,
+              spline_G0, &Uijkl, beta, itime_vertices)
+            );
+
+            submatrix.swap(walker_new);
+        }
     }
-
-    boost::shared_ptr<SubmatrixUpdate<T> > walker_new(
-    new SubmatrixUpdate<T>(
-      submatrix->k_ins_max(), n_flavors,
-      spline_G0, &Uijkl, beta, itime_vertices)
-    );
-
-    submatrix.swap(walker_new);
-}
-
-}
 }
