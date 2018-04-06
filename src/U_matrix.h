@@ -186,11 +186,11 @@ namespace alps {
             }
 
             //for unit test. Single-band Hubbard model (supported only the cases with flavor = 2)
-            general_U_matrix(int n_site, double U, double alpha = 1e-1) : ns_(n_site), nf_(2), num_nonzero_(n_site) {
-              set_onsite_U(U, alpha);
+            general_U_matrix(int n_site, double U, double delta = 1e-2) : ns_(n_site), nf_(2), num_nonzero_(n_site) {
+              set_onsite_U(U, delta);
             }
 
-            void set_onsite_U(double U, double alpha = 1e-1) {
+            void set_onsite_U(double U, double delta = 1e-2) {
               num_nonzero_ = ns_;
 
               if (nf_ != 2) {
@@ -218,12 +218,12 @@ namespace alps {
                 flavor_indices_[0] = 0;
                 flavor_indices_[1] = 1;
                 //up
-                alpha_[0][0] = 1+alpha;
-                alpha_[0][1] = -alpha;
+                alpha_[0][0] = 1+delta;
+                alpha_[0][1] = -delta;
 
                 //down
-                alpha_[1][0] = -alpha;
-                alpha_[1][1] = 1+alpha;
+                alpha_[1][0] = -delta;
+                alpha_[1][1] = 1+delta;
 
                 vertex_list.push_back(vertex_definition<T>(rank, num_af_states, flavor_indices_, site_indices_, U, alpha_, idx));
               }

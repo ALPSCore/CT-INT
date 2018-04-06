@@ -99,7 +99,6 @@ namespace alps {
         void InteractionExpansion<TYPES>::compute_Sl() {
           int n_legendre = legendre_transformer.Nl();
           static boost::multi_array<std::complex<double>, 3> Sl(boost::extents[n_site][n_site][n_legendre]);
-          const size_t num_random_walk = 10;
 
           const M_TYPE sign = submatrix_update->sign();
           const double temperature = 1.0 / beta;
@@ -110,6 +109,8 @@ namespace alps {
             max_mat_size = std::max(max_mat_size, M_flavors[z].size2());
           }
           const std::vector<double> &sqrt_vals = legendre_transformer.get_sqrt_2l_1();
+
+          const size_t num_random_walk = max_mat_size;
 
           std::vector<double> x_vals;
           boost::multi_array<double, 2> legendre_vals_all; //, legendre_vals_trans_all;
