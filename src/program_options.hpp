@@ -27,10 +27,9 @@ namespace alps {
           parms.define<int>("update.n_vertex_shift", 1, "How many vertex shift updates are performed at each MC step");
           parms.define<double>("update.vertex_shift_step_size", 0.1, "Step size for shift updates in units of beta");
           parms.define<int>("update.n_spin_flip", 1, "How many spin flip updates are performed at each MC step");
-          parms.define<int>("update.k_ins_max", 100, "Batch size for submatrix update");
+          parms.define<int>("update.k_ins_max", 100, "Batch size for submatrix update: k^ins_max in PRB 89, 195146 (2014)");
           parms.define<int>("update.n_multi_vertex_update", 1, "????? ");
           parms.define<int>("update.n_tau_statistics", 100, "Number of tau points for statistics");
-          //parms.define<int>("update.recalc_period", 5000, "Interval for recomputing determinat matrix from scratch");
 
           //Measurement
           parms.define<int>("G1.n_legendre", 200, "Number of Legendre polynomials");

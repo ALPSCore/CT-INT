@@ -105,6 +105,27 @@ namespace alps {
         };
 
 
+        template<class T>
+        std::ostream& operator<<(std::ostream& os, const vertex_definition<T>& v) {
+          os << " rank= " << v.rank();
+          os << " flavors = ";
+          for (auto f : v.flavors()) {
+            os << f;
+          }
+          os << " sites = ";
+          for (auto f : v.sites()) {
+            os << f;
+          }
+          os << " num_af_states = " << v.num_af_states();
+          for (int iaf = 0; iaf < v.num_af_states(); ++iaf) {
+            for (int rank = 0; rank < v.rank(); ++rank) {
+              std::cout << " ( " << iaf << "," << rank << "," << v.get_alpha(iaf, rank) << ") ";
+            }
+          }
+
+          return os;
+        }
+
 
 //Data structure for general two-body interactions for a multi-orbital cluster impurity problem
         template<class T>

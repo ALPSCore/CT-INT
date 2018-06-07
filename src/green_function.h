@@ -108,6 +108,18 @@ namespace alps {
                   }
                 }
               }
+
+              for (int flavor=0; flavor < num_flavors(); ++flavor) {
+                for (int site=0; site<num_sites(); ++site) {
+                for (int site2=0; site2<num_sites(); ++site2) {
+                for (auto tau : {0.0, 0.5 * beta, beta}) {
+                  if(std::abs(interpolate(flavor, site, site2, tau) - std::conj(interpolate(flavor, site2, site, tau))) > 1e-8) {
+                    throw std::runtime_error("G0 is not hermite!");
+                  }
+                }
+                }
+                }
+              }
             }
 
             /*
