@@ -426,8 +426,8 @@ void InvAMatrix<T>::eval_Gij_col_part(const SPLINE_G0_TYPE& spline_G0, const std
       //alps::numeric::submatrix_view<T> invA_view(matrix_, rows[iv], 0, 1, Nv);
       //auto invA_view = matrix_.block(rows[iv], 0, 1, Nv);
       //mygemm((T) 1.0, invA_view, G0_view, (T) 0.0, G_tmp);
-      G_tmp.block() = matrix_.block(rows[iv], 0, 1, Nv) * G0_view;
-      Gij(iv,0) = G_tmp(0,0);
+      //G_tmp.block() = matrix_.block(rows[iv], 0, 1, Nv) * G0_view;
+      Gij(iv,0) = (matrix_.block(rows[iv], 0, 1, Nv) * G0_view)(0,0);
     }
 
   }
