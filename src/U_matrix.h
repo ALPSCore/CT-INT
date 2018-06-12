@@ -214,8 +214,8 @@ namespace alps {
             void set_onsite_U(double U, double delta = 1e-2) {
               num_nonzero_ = ns_;
 
-              if (nf_ != 2) {
-                throw std::runtime_error("model.flavors must be 2 when model.U is specified.");
+              if (nf_ != 1 && nf_ != 2) {
+                throw std::runtime_error("model.flavors must be either 1 or 2 when model.U is specified.");
               }
 
               const int num_af_states = 2;
@@ -231,22 +231,41 @@ namespace alps {
               flavor_indices_.resize(rank);
               alpha_.resize(boost::extents[num_af_states][rank]);
 
-              for (unsigned int idx=0; idx<num_nonzero_; ++idx) {
+              for (int site=0; site<num_nonzero_; ++site) {
+                if (nf_ == 1) {
+                  for (size_t i_op=0; i_op<rank; ++i_op) {
+                    site_indices_[i_op] = 2*site;
+                  }
+                  for (size_t i_op=rank; i_op<2*rank; ++i_op) {
+                    site_indices_[i_op] = 2*site + 1;
+                  }
+                  flavor_indices_[0] = 0;
+                  flavor_indices_[1] = 0;
 
-                for (size_t i_op=0; i_op<2*rank; ++i_op) {
-                  site_indices_[i_op] = idx;
+                  //up af spin
+                  alpha_[0][0] = 1+delta;
+                  alpha_[0][1] = -delta;
+
+                  //down af spin
+                  alpha_[1][0] = -delta;
+                  alpha_[1][1] = 1+delta;
+                } else {
+                  for (size_t i_op=0; i_op<2*rank; ++i_op) {
+                    site_indices_[i_op] = site;
+                  }
+                  flavor_indices_[0] = 0;
+                  flavor_indices_[1] = 1;
+
+                  //up af spin
+                  alpha_[0][0] = 1+delta;
+                  alpha_[0][1] = -delta;
+
+                  //down af spin
+                  alpha_[1][0] = -delta;
+                  alpha_[1][1] = 1+delta;
                 }
-                flavor_indices_[0] = 0;
-                flavor_indices_[1] = 1;
-                //up
-                alpha_[0][0] = 1+delta;
-                alpha_[0][1] = -delta;
 
-                //down
-                alpha_[1][0] = -delta;
-                alpha_[1][1] = 1+delta;
-
-                vertex_list.push_back(vertex_definition<T>(rank, num_af_states, flavor_indices_, site_indices_, U, alpha_, idx));
+                vertex_list.push_back(vertex_definition<T>(rank, num_af_states, flavor_indices_, site_indices_, U, alpha_, site));
               }
 
               find_non_density_vertices();
