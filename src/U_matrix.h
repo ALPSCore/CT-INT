@@ -231,7 +231,8 @@ namespace alps {
               flavor_indices_.resize(rank);
               alpha_.resize(boost::extents[num_af_states][rank]);
 
-              for (int site=0; site<num_nonzero_; ++site) {
+              auto num_physical_sites = nf_ == 2 ? ns_ : ns_/2;
+              for (int site=0; site<num_physical_sites; ++site) {
                 if (nf_ == 1) {
                   for (size_t i_op=0; i_op<rank; ++i_op) {
                     site_indices_[i_op] = 2*site;
