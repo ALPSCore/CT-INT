@@ -9,14 +9,14 @@ This program solves impurity models with onsite Coulomb interactions and complex
 The code is built on the ALPSCore libraries (Applications and Libraries for Physics Simulations Core libraries).
 
 The code was written by Hiroshi Shinaoka in collaboration with Yusuke Nomura based on its ancestor written by Emanuel Gull.
-All the files expect for spline.h are licensed under GPLv3 or later.
 
 # Table of Contents
 - [Requirements](#requirements)
+- [License](#license)
 - [Manual source installation](#manual-source-installation)
 - [Trouble shooting](#trouble-shooting)
 
-## Requirements
+## <a href="requirements">Requirements</a>
 ### C++11 compiler
 Modern C++ compier supporting C++11
 
@@ -34,7 +34,11 @@ Thus, this dependency will automatically propagate to the build of the CT-INT.
 ### MPI
 MPI environment is required.
 
-## Manual source installation
+## <a href="license">License</a>
+All the source files are license under GPLv3.
+spline.h was originally written by Tino Kluge.
+
+## <a href="manual-source-installation">Manual source installation</a>
 The solver depends on ALPSCore libraries and some Boost header-file only libraries.
 These libraries must be preinstalled.
 The CT-INT does NOT depend on any Boost binary libraries.
@@ -71,7 +75,7 @@ Please make sure that ALPSCore/CT-INT is going to be built with the same C++ sta
 as that used for building the ALPSCore libraries (>= C++11).
 
 
-## Trouble shooting
+## <a href="trouble-shooting">Trouble shooting</a>
 * Some libraries are not found at runtime.<br>
 When you install the executalbe to your installation path by "make install", CMake removes the paths of dynamic libraries from the binary.
 When you launch "/path/to/install/dir/hybmat", some dynamic libraries which were visible in the build may not be found.
