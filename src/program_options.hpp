@@ -15,7 +15,7 @@ namespace alps {
 
           //model
           parms.define<int>("model.sites", "Number of sites");
-          parms.define<int>("model.flavors", "Number of flavors per site");
+          parms.define<int>("model.spins", "Number of spins per site");//internally, model.spins is denoted by "flavors".
           parms.define<std::string>("model.U_matrix_file", "Text file containing a list of interaction terms");
           parms.define<double>("model.U", "onsite U");
           parms.define<std::string>("model.G0_tau_file", "", "Text file containing non-interacting Green's function");

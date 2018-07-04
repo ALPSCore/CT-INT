@@ -171,7 +171,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
   const double alpha = 1E-2;
   const double beta = 200.0;
   const int Nv_max = 2;
-  const int n_flavors = 2;
+  const int n_spins = 2;
   const int k_ins_max = 32;
   const int n_update = 5;
   const int seed = 100;
@@ -196,8 +196,8 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
   itime_vertices_init.push_back(itime_vertex(0, 0, 0.5*beta, 2, true));
 
   /* initialize submatrix_update */
-  //SubmatrixUpdate<T> submatrix_update(k_ins_max, n_flavors, DiagonalG0<T>(beta), &Uijkl, beta, itime_vertices_init);
-  SubmatrixUpdate<T> submatrix_update(k_ins_max, n_flavors, OffDiagonalG0<T>(beta, n_sites, E, phase), &Uijkl, beta, itime_vertices_init);
+  //SubmatrixUpdate<T> submatrix_update(k_ins_max, n_spins, DiagonalG0<T>(beta), &Uijkl, beta, itime_vertices_init);
+  SubmatrixUpdate<T> submatrix_update(k_ins_max, n_spins, OffDiagonalG0<T>(beta, n_sites, E, phase), &Uijkl, beta, itime_vertices_init);
 
   submatrix_update.sanity_check();
 
@@ -205,7 +205,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
   alps::params params;
   define_ctint_options(params);
   params["model.beta"] = beta;
-  params["model.flavors"] = n_flavors;
+  params["model.spins"] = n_spins;
   params["update.n_multi_vertex_update"] = Nv_max;
   params["update.double_vertex_update_A"] = 1.0/beta;
   params["update.double_vertex_update_B"] = 1.0e-2;
@@ -219,7 +219,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
   boost::random::variate_generator<boost::random::mt19937&, boost::random::uniform_smallint<> > Nv_prob(gen, dist);
   boost::random::variate_generator<boost::random::mt19937&, boost::random::uniform_01<> > random01(gen, dist01);
 
-  std::vector<alps::numeric::matrix<T> > M(n_flavors), M_scratch(n_flavors);
+  std::vector<alps::numeric::matrix<T> > M(n_spins), M_scratch(n_spins);
 
   for (int i_update=0; i_update<n_update; ++i_update) {
     T sign_from_M0, weight_from_M0;
@@ -238,7 +238,7 @@ TEST(SubmatrixUpdate, single_vertex_insertion_spin_flip)
 
     ASSERT_TRUE(std::abs(sign_bak-submatrix_update.sign())<1.0e-5);
     ASSERT_TRUE(std::abs(sign_from_M-submatrix_update.sign())<1.0e-5);
-    for (int flavor=0; flavor<n_flavors; ++flavor) {
+    for (int flavor=0; flavor<n_spins; ++flavor) {
       if (M[flavor].size2()>0) {
         ASSERT_TRUE(alps::fastupdate::norm_square(M[flavor]-M_scratch[flavor])/alps::fastupdate::norm_square(M[flavor])<1E-8);
       }

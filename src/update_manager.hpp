@@ -148,7 +148,7 @@ namespace alps {
         template<typename G0_SPLINE>
         VertexUpdateManager<T>::VertexUpdateManager(const alps::params &parms, const general_U_matrix<T>& Uijkl, const G0_SPLINE &g0_spline, bool message)
           : beta(parms["model.beta"]),
-            n_flavors(parms["model.flavors"]),
+            n_flavors(parms["model.spins"]),
             k_ins_max(parms["update.k_ins_max"]),
             max_order(parms["update.max_order"]),
             num_vertex_type(Uijkl.get_vertices().size()),

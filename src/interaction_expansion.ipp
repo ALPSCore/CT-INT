@@ -11,7 +11,7 @@ namespace alps {
           : InteractionExpansionBase(params, seed_offset),
             parms(parameters),
             max_order(parms["update.max_order"]),
-            n_flavors(parms["model.flavors"]),
+            n_flavors(parms["model.spins"]),
             n_site(parms["model.sites"]),
             mc_steps((boost::uint64_t) parms["total_steps"]),
             therm_steps(parms["thermalization_steps"]),

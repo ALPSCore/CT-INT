@@ -24,7 +24,7 @@ namespace alps {
           double sign = results["Sign"].template mean<double>();
 
           int n_site = parms["model.sites"];
-          int n_flavors = parms["model.flavors"];
+          int n_flavors = parms["model.spins"];
           int n_matsubara = parms["G1.n_matsubara"];
           int n_legendre = parms["G1.n_legendre"];
 

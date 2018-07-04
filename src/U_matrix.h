@@ -135,7 +135,7 @@ namespace alps {
 
             general_U_matrix(const alps::params &parms) :
               ns_(parms["model.sites"]),
-              nf_(parms["model.flavors"]) {
+              nf_(parms["model.spins"]) {
               if (parms.supplied("model.U_matrix_file") && !parms.supplied("model.U")) {
                 load_vertex_from_file(parms);
               } else if (!parms.supplied("model.U_matrix_file") && parms.supplied("model.U")) {
@@ -215,13 +215,12 @@ namespace alps {
               num_nonzero_ = ns_;
 
               if (nf_ != 1 && nf_ != 2) {
-                throw std::runtime_error("model.flavors must be either 1 or 2 when model.U is specified.");
+                throw std::runtime_error("model.spins must be either 1 or 2 when model.U is specified.");
               }
 
               const int num_af_states = 2;
               const int rank = 2;
 
-              std::complex<double> Uval_cmplx;
               std::vector<size_t> site_indices_;//site indices (ijkl)
               std::vector<spin_t> flavor_indices_;//flavor indices for c^dagger c
               boost::multi_array<T,2> alpha_;//the first index is auxially spin, the second denotes (ij) or (kl).
