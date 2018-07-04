@@ -16,7 +16,7 @@ The code was written by Hiroshi Shinaoka in collaboration with Yusuke Nomura bas
 - [Manual source installation](#manual-source-installation)
 - [Trouble shooting](#trouble-shooting)
 
-## <a href="requirements">Requirements</a>
+## Requirements
 ### C++11 compiler
 Modern C++ compier supporting C++11
 
@@ -34,11 +34,11 @@ Thus, this dependency will automatically propagate to the build of the CT-INT.
 ### MPI
 MPI environment is required.
 
-## <a href="license">License</a>
+## License
 All the source files are license under GPLv3.
 spline.h was originally written by Tino Kluge.
 
-## <a href="manual-source-installation">Manual source installation</a>
+## Manual source installation
 The solver depends on ALPSCore libraries and some Boost header-file only libraries.
 These libraries must be preinstalled.
 The CT-INT does NOT depend on any Boost binary libraries.
@@ -63,8 +63,7 @@ $ make
 $ make test
 $ make install
 ```
-You must use a MPI C++ compiler.
-This may be done by setting the path of your MPI wrapper compiler (such as mpic++) to CMAKE\_CXX\_COMPILER.
+You must use a MPI C++ compiler.  This may be done by setting the path of your MPI wrapper compiler (such as mpic++) to CMAKE\_CXX\_COMPILER.
 Note that, in such cases, MPI must be enabled also in the installation of ALPSCore.
 If cmake does not find boost, please tell cmake the installation directory of boost by using the option "-DBOOST_ROOT=***".
 If cmake does not find Eigen3, please set use the option "-DEIGEN3\_INCLUDE\_DIR".
