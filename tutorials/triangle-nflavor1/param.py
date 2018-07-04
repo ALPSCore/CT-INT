@@ -23,7 +23,7 @@ parms = (
               'total_steps'              : 1500000,
               'thermalization_steps'     : 1500,
               'measurement_period'       : 10,
-              'model.flavors'            : 1,
+              'model.spins'              : 1,
               'model.sites'              : 6,
               'model.beta'               : 10.0,
               'model.G0_tau_file'        : 'G0_TAU.txt',
