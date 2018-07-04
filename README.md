@@ -13,6 +13,7 @@ All the files expect for spline.h are licensed under GPLv3 or later.
 
 # Table of Contents
 - [Requirements](#requirements)
+- [License](#license)
 - [Manual source installation](#manual-source-installation)
 - [Trouble shooting](#trouble-shooting)
 
@@ -33,6 +34,10 @@ Thus, this dependency will automatically propagate to the build of the CT-INT.
 
 ### MPI
 MPI environment is required.
+
+## License
+All the source files are license under GPLv3.
+spline.h was originally written by Tino Kluge.
 
 ## Manual source installation
 The solver depends on ALPSCore libraries and some Boost header-file only libraries.
@@ -59,8 +64,7 @@ $ make
 $ make test
 $ make install
 ```
-You must use a MPI C++ compiler.
-This may be done by setting the path of your MPI wrapper compiler (such as mpic++) to CMAKE\_CXX\_COMPILER.
+You must use a MPI C++ compiler.  This may be done by setting the path of your MPI wrapper compiler (such as mpic++) to CMAKE\_CXX\_COMPILER.
 Note that, in such cases, MPI must be enabled also in the installation of ALPSCore.
 If cmake does not find boost, please tell cmake the installation directory of boost by using the option "-DBOOST_ROOT=***".
 If cmake does not find Eigen3, please set use the option "-DEIGEN3\_INCLUDE\_DIR".
