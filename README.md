@@ -74,7 +74,7 @@ Please make sure that ALPSCore/CT-INT is going to be built with the same C++ sta
 as that used for building the ALPSCore libraries (>= C++11).
 
 
-## <a href="trouble-shooting">Trouble shooting</a>
+## Trouble shooting
 * Some libraries are not found at runtime.<br>
 When you install the executalbe to your installation path by "make install", CMake removes the paths of dynamic libraries from the binary.
 When you launch "/path/to/install/dir/hybmat", some dynamic libraries which were visible in the build may not be found.
