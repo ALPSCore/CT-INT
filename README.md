@@ -15,6 +15,7 @@ All the files expect for spline.h are licensed under GPLv3 or later.
 - [Requirements](#requirements)
 - [License](#license)
 - [Manual source installation](#manual-source-installation)
+- [Structure](#structure)
 - [Trouble shooting](#trouble-shooting)
 
 ## Requirements
@@ -73,6 +74,15 @@ please use "-DEIGEN3\_INCLUDE\_DIR=/opt/local/include/eigen3".
 
 Please make sure that ALPSCore/CT-INT is going to be built with the same C++ standard
 as that used for building the ALPSCore libraries (>= C++11).
+
+## Structure
+We describe the structure of the main contents.
+
+* LICENSE.TXT   License file
+* src/  source files
+* test/  source files of unit tests
+* tutorials/  Tutorials/samples are included. Refer to the readme file in that directory. 
+
 
 
 ## Trouble shooting
