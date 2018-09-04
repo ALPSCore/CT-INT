@@ -77,7 +77,7 @@ namespace alps {
           double sign = results["Sign"].template mean<double>();
 
           int n_site = parms["model.sites"];
-          int n_flavors = parms["model.flavors"];
+          int n_flavors = parms["model.spins"];
 
           auto divide_by_sign =  [&](double x){return x/sign;};
           std::vector<double> densities = results["densities"].template mean<std::vector<double> >();
@@ -93,7 +93,7 @@ namespace alps {
         template<class SOLVER_TYPE>
         void postprocess(const typename alps::accumulators::result_set &results,
                                       const typename alps::params &parms, const std::string &output_file) {
-          spin_t n_flavors = parms["model.flavors"];
+          spin_t n_flavors = parms["model.spins"];
 
           std::vector<double> mean_order = results["PertOrder"].template mean<std::vector<double> >();
 
