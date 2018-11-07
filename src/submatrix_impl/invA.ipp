@@ -6,6 +6,7 @@
 template<typename T>
 InvAMatrix<T>::InvAMatrix() :
     matrix_(0,0),
+    tildeG_(0,0),
     creators_(0),
     annihilators_(0),
     alpha_(0),
@@ -36,9 +37,9 @@ template<typename SPLINE_G0_TYPE>
 void InvAMatrix<T>::extend(const SPLINE_G0_TYPE& spline_G0) {
   const int noperators = matrix_.size2();//num of operators corresponding to interacting vertices
   const int nops_add = creators_.size()-noperators;//num of operators corresponding to non-interacting vertices
-  if (nops_add==0) {
-    return;
-  }
+  //if (nops_add==0) {
+    //return;
+  //}
 
   //extend tilde A and set new elements to zero
   matrix_.conservative_resize(noperators + nops_add, noperators + nops_add);
@@ -58,9 +59,9 @@ void InvAMatrix<T>::extend(const SPLINE_G0_TYPE& spline_G0) {
   std::fill(index_G0_cache.begin(), index_G0_cache.end(), -1);
   num_entry_G0_cache = 0;
 
-  if (noperators==0) {
-    return;
-  }
+  //if (noperators==0) {
+    //return;
+  //}
 
   //compute entries of B
   static alps::numeric::matrix<T> B;
@@ -72,10 +73,6 @@ void InvAMatrix<T>::extend(const SPLINE_G0_TYPE& spline_G0) {
   }
 
   //compute entries in the right lower block of A^{-1}
-  //alps::numeric::submatrix_view<T> invA_view(matrix_, 0, 0, noperators, noperators);
-  //alps::numeric::submatrix_view<T> B_invB_view(matrix_, noperators, 0, nops_add, noperators);
-  //mygemm(-1.0, B, invA_view, (T) 0.0, B_invB_view);
-
   matrix_.block(noperators, 0, nops_add, noperators) = - B.block() * matrix_.block(0, 0, noperators, noperators);
 
   sanity_check(spline_G0);
@@ -289,7 +286,7 @@ InvAMatrix<T>::update_matrix(const InvGammaMatrix<T>& inv_gamma, const SPLINE_G0
   }
   for (int l=0; l<nop; ++l) {
     auto view = G0_left.block(0, l, N, 1);
-    eval_Gij_col(spline_G0, pl[l], view);
+    read_Gij_col(pl[l], view);
   }
 
   G0_inv_gamma.block() = - G0_left.block() * inv_gamma.matrix().block();
@@ -373,29 +370,27 @@ void InvAMatrix<T>::compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE&
 // G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
 // cols specifies {j}
 template<typename T>
-template<typename SPLINE_G0_TYPE, typename M>
-void InvAMatrix<T>::eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gij) const {
-  //static alps::numeric::matrix<T> G0;
- assert (col>=0);
-
-  const int Nv = matrix_.size1();
-  const T alpha_col = alpha_at(col);
-  //assert(Gij.size1()==Nv);
-  //assert(Gij.size2()==1);
-  if (alpha_col!=ALPHA_NON_INT) {
-    const T fj = eval_f(alpha_col);
-    for (int iv=0; iv<Nv; ++iv) {
-      Gij(iv,0) = (fj*matrix_(iv,col))/(fj-1.0);
-    }
-    Gij(col,0) = (fj*matrix_(col,col)-1.0)/(fj-1.0);
-  } else {
-    auto G0_view = compute_G0_col(spline_G0, col);
-    //mygemm((T) 1.0, matrix_, G0_view, (T) 0.0, Gij);
-    Gij = matrix_.block() * G0_view;
+template<typename M>
+void InvAMatrix<T>::read_Gij_col(int col, M& Gij) const {
+  for (int iv=0; iv<matrix_.size1(); ++iv) {
+    Gij(iv,0) = tildeG_(iv, col);
   }
 }
 
 //#include <chrono>
+
+// Compute G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj} for given sets of i and j.
+template<typename T>
+template<typename M>
+void InvAMatrix<T>::read_Gij_cols_rows(
+                                       const std::vector<int>& rows,
+                                       const std::vector<int>& cols, M& result) const {
+  for (int icol = 0; icol < cols.size(); ++icol) {
+    for (int irow = 0; irow < rows.size(); ++irow) {
+      result(irow, icol) = tildeG_(rows[irow], cols[icol]);
+    }
+  }
+}
 
 // Compute G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj} for given sets of i and j.
 template<typename T>

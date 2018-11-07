@@ -35,10 +35,9 @@ T InvGammaMatrix<T>::eval_Gammaij(const InvAMatrix<T>& invA, const SPLINE_G0_TYP
 template<typename T>
 template<typename SPLINE_G0_TYPE>
 T InvGammaMatrix<T>::eval_Gij_gamma(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_gamma, int col_gamma) const {
-
   assert(pos_in_invA(row_gamma)>=0);
   assert(pos_in_invA(col_gamma)>=0);
-  return eval_Gij(invA, spline_G0, pos_in_invA(row_gamma), pos_in_invA(col_gamma));
+  return invA.tildeG()(pos_in_invA(row_gamma), pos_in_invA(col_gamma));
 }
 
 template<typename T>
@@ -129,7 +128,7 @@ T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& sp
      for(unsigned int i=0;i<nop;++i) {
        pos_cols_in_invA[i] = pos_in_invA(i);
      }
-     invA.eval_Gij_cols_rows(spline_G0, rows_in_A2, pos_cols_in_invA, G_n_j);
+     invA.read_Gij_cols_rows(rows_in_A2, pos_cols_in_invA, G_n_j);
   }
 
   std::vector<int> pos_cols_in_invA(nop_add);
@@ -139,11 +138,11 @@ T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& sp
 
   // Set up G_j_n
   if (nop>0) {
-    invA.eval_Gij_cols_rows(spline_G0, rows_in_A, pos_cols_in_invA, G_j_n);
+    invA.read_Gij_cols_rows(rows_in_A, pos_cols_in_invA, G_j_n);
   }
 
   // Set up G_n_n
-  invA.eval_Gij_cols_rows(spline_G0, rows_in_A2, pos_cols_in_invA, G_n_n);
+  invA.read_Gij_cols_rows(rows_in_A2, pos_cols_in_invA, G_n_n);
   for (size_t iv2=0; iv2<nop_add; ++iv2) {
     T small_gamma = gamma_func(eval_f(alpha(iv2+nop)), eval_f(alpha0(iv2+nop)));
     G_n_n(iv2, iv2) -= (1.0+small_gamma)/small_gamma;
