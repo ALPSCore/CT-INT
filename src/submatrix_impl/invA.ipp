@@ -413,30 +413,6 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
       // Eq. (A3) in Nomura et al (2014)
       auto view = result.block(0, icol, n_rows, 1);
       eval_Gij_col_part(spline_G0, rows, col, view);
-
-      /*
-      for (int iv=0; iv<n_rows; ++iv) {
-        std::cout << " iv " << iv << " " << result(iv,icol) << std::endl;
-      }
-
-      const T fj = eval_f(alpha_col);
-      for (int iv=0; iv<n_rows; ++iv) {
-        if (rows[iv] != col) {
-          //result(iv,icol) = (fj*matrix_(rows[iv],col))/(fj-1.0);
-          auto r = (fj*matrix_(rows[iv],col))/(fj-1.0);
-          std::cout << " iv2 " << iv << " " << r << std::endl;
-        } else {
-          auto r = (fj*matrix_(rows[iv],col)-1.0)/(fj-1.0);
-          std::cout << " iv2 " << iv << " " << r << std::endl;
-          //result(iv,icol) = (fj*matrix_(rows[iv],col)-1.0)/(fj-1.0);
-        }
-      }
-      */
-
-      //for (int iv=0; iv<n_rows; ++iv) {
-        //std::cout << " iv2 " << iv << " " << result(iv,icol) << std::endl;
-      //}
-
     } else {
       // Use Slow formula later
       idx_cols_slow.push_back(icol);

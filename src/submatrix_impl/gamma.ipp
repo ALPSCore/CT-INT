@@ -104,8 +104,6 @@ T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& sp
   const int nop = matrix_.size2();
   const int nop_add = ops_ins.size();
 
-  std::cout << "debug " << nop << " " << nop_add << std::endl;
-
   T gamma_prod = 1.0;
   for (int iop=0; iop<nop_add; ++iop) {
     assert(ops_ins[iop].alpha0_==ops_ins[iop].alpha_current_);
