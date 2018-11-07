@@ -147,6 +147,12 @@ namespace alps {
             template<typename SPLINE_G0_TYPE, typename M>
             void eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gij) const;
 
+
+            template<typename SPLINE_G0_TYPE, typename M>
+            void eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
+                               const std::vector<int>& rows,
+                               const std::vector<int>& cols, M& result) const;
+
             template<typename SPLINE_G0_TYPE, typename M>
             void eval_Gij_col_part(const SPLINE_G0_TYPE& spline_G0, const std::vector<int>& rows, int col, M& Gij) const;
 
