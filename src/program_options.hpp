@@ -23,10 +23,10 @@ namespace alps {
 
           //update
           parms.define<int>("update.max_order", 10240, "Max perturbation order");
-          parms.define<int>("update.n_ins_rem_vertex", 1, "????? ");
-          parms.define<int>("update.n_vertex_shift", 1, "How many vertex shift updates are performed at each MC step");
+          parms.define<int>("update.n_ins_rem_vertex", 1, "How many vertex ins rem updates are performed at each MC step");
+          parms.define<int>("update.n_vertex_shift", 0, "How many vertex shift updates are performed at each MC step");
           parms.define<double>("update.vertex_shift_step_size", 0.1, "Step size for shift updates in units of beta");
-          parms.define<int>("update.n_spin_flip", 1, "How many spin flip updates are performed at each MC step");
+          parms.define<int>("update.n_spin_flip", 0, "How many spin flip updates are performed at each MC step");
           parms.define<int>("update.k_ins_max", 100, "Batch size for submatrix update: k^ins_max in PRB 89, 195146 (2014)");
           parms.define<int>("update.n_multi_vertex_update", 1, "????? ");
           parms.define<int>("update.n_tau_statistics", 100, "Number of tau points for statistics");

@@ -110,7 +110,7 @@ namespace alps {
           }
           const std::vector<double> &sqrt_vals = legendre_transformer.get_sqrt_2l_1();
 
-          const size_t num_random_walk = max_mat_size;
+          const size_t num_random_walk = std::min(100, max_mat_size);
 
           std::vector<double> x_vals;
           boost::multi_array<double, 2> legendre_vals_all; //, legendre_vals_trans_all;
