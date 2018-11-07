@@ -1,5 +1,9 @@
 #include "interaction_expansion.hpp"
 
+#include <chrono>
+
+#include <chrono>
+
 namespace alps {
     namespace ctint {
 
@@ -136,6 +140,8 @@ namespace alps {
             //shift times of operators by time_shift
             for (std::size_t random_walk = 0; random_walk < num_random_walk; ++random_walk) {
 
+              auto t1 = std::chrono::high_resolution_clock::now();
+
               const double time_shift = beta * random();
 
               for (unsigned int p = 0; p < Nv; ++p) {//annihilation operators
@@ -147,8 +153,10 @@ namespace alps {
                 }
               }
 
+              auto t2 = std::chrono::high_resolution_clock::now();
               gemm(M_flavors[z], gR, M_gR);
 
+              auto t3 = std::chrono::high_resolution_clock::now();
               //compute legendre coefficients
               for (unsigned int q = 0; q < Nv; ++q) {//creation operators
                 const double tmp = creators[q].t().time() + time_shift;
@@ -157,6 +165,7 @@ namespace alps {
               }
               legendre_transformer.compute_legendre(x_vals, legendre_vals_all);//P_l[x(tau_q)]
 
+              auto t4 = std::chrono::high_resolution_clock::now();
               for (unsigned int q = 0; q < Nv; ++q) {//creation operators
                 const unsigned int site_c = creators[q].s();
                 const double tmp = creators[q].t().time() + time_shift;
@@ -170,6 +179,12 @@ namespace alps {
                   }
                 }
               }
+              auto t5 = std::chrono::high_resolution_clock::now();
+
+              //std::cout << "t2 - t1 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count() << std::endl;
+              //std::cout << "t3 - t2 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count() << std::endl;
+              //std::cout << "t4 - t3 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count() << std::endl;
+              //std::cout << "t5 - t4 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count() << std::endl;
             }//random_walk
 
             //pass data to ALPS library

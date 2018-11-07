@@ -125,7 +125,10 @@ namespace alps {
           // heavy parts
           {
             auto t_start_local = std::chrono::system_clock::now();
-            submatrix_update->recompute_matrix(true);
+            // I do not want to recompute the inverse matrix so frequently.
+            if (step % (10 * measurement_period) == 0) {
+              submatrix_update->recompute_matrix(true);
+            }
             auto t_end_local = std::chrono::system_clock::now();
             timing_part[0] += std::chrono::duration_cast<std::chrono::nanoseconds>(t_end_local-t_start_local).count();
             //std::cout << "debug " << std::chrono::duration_cast<std::chrono::nanoseconds>(t_end_local-t_start_local).count() << std::endl;
