@@ -48,32 +48,6 @@ SubmatrixUpdate<T>::SubmatrixUpdate(int k_ins_max, int n_flavors, SPLINE_G0_TYPE
   }
 }
 
-template<typename T, typename SPLINE_G0_TYPE>
-T eval_Gij(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, int row_A, int col_A) {
-  static alps::numeric::matrix<T> G0, invA_G0(1,1);
-
-  const T alpha_col = invA.alpha_at(col_A);
-  if (alpha_col!=ALPHA_NON_INT) {
-    //use Eq. (A3)
-    const T fj = eval_f(alpha_col);
-    return row_A==col_A ? (fj*invA.matrix()(row_A,col_A)-1.0)/(fj-1.0)
-                        : (fj*invA.matrix()(row_A,col_A))/(fj-1.0);
-  } else {
-    //use Eq. (A4)
-    const int Nv = invA.matrix().size1();
-    assert (invA.creators().size()==Nv);
-    assert (invA.annihilators().size()==Nv);
-    G0.destructive_resize(Nv, 1);
-    for (int iv=0; iv<Nv; ++iv) {
-      G0(iv,0) = spline_G0(invA.annihilators()[iv], invA.creators()[col_A]);
-    }
-    //alps::numeric::submatrix_view<T> invA_view(invA.matrix(), row_A, 0, 1, Nv);
-    //mygemm((T) 1.0, invA_view, G0, (T) 0.0, invA_G0);
-    invA_G0.block() = invA.matrix().block(row_A, 0, 1, Nv) * G0.block();
-    return invA_G0(0,0);
-  }
-}
-
 template<typename T>
 bool SubmatrixUpdate<T>::sanity_check() {
   bool result = true;
@@ -158,6 +132,8 @@ void SubmatrixUpdate<T>::init_update(const std::vector<itime_vertex>& non_int_it
   if (begin_index<itime_vertices_.size()) {
     invA_.add_non_interacting_vertices(p_Uijkl_, spline_G0_, itime_vertices0_, begin_index);
   }
+
+  invA_.update_tildeG(spline_G0_);
 
   state = TRYING_SPIN_FLIP;
 }

@@ -53,6 +53,7 @@ namespace alps {
 
             alps::numeric::matrix<T> &matrix() { return matrix_;}
             alps::numeric::matrix<T> const &matrix() const { return matrix_;}
+            alps::numeric::matrix<T> const &tildeG() const { return tildeG_;}
             std::vector<creator> &creators(){ return creators_;}
             const std::vector<creator> &creators() const{ return creators_;}
             std::vector<annihilator> &annihilators(){ return annihilators_;}
@@ -135,6 +136,16 @@ namespace alps {
             void extend(const SPLINE_G0_TYPE& spline_G0);
             void remove_rows_cols(const std::vector<my_uint64>& v_uid);
 
+            template<typename SPLINE_G0_TYPE>
+            void update_tildeG(const SPLINE_G0_TYPE& spline_G0) {
+              tildeG_.destructive_resize(matrix_.size1(), matrix_.size1());
+              std::vector<int> all_rows_cols;
+              for (int i=0; i < matrix_.size1(); ++i) {
+                all_rows_cols.push_back(i);
+              }
+              eval_Gij_cols_rows(spline_G0, all_rows_cols, all_rows_cols, tildeG_);
+            }
+
             /*recompute A^{-1} and return det(A) and det(1-F)*/
             template<typename SPLINE_G0_TYPE>
             std::pair<T,T> recompute_matrix(const SPLINE_G0_TYPE& spline_G0, bool check_error);
@@ -144,8 +155,12 @@ namespace alps {
             template<typename SPLINE_G0_TYPE>
             void compute_M(alps::numeric::matrix<T>& M, const SPLINE_G0_TYPE& spline_G0) const;
 
-            template<typename SPLINE_G0_TYPE, typename M>
-            void eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gij) const;
+            template<typename M>
+            void read_Gij_col(int col, M& Gij) const;
+
+            template<typename M>
+            void read_Gij_cols_rows(const std::vector<int>& rows,
+                                    const std::vector<int>& cols, M& result) const;
 
 
             template<typename SPLINE_G0_TYPE, typename M>
@@ -162,6 +177,7 @@ namespace alps {
             alps::numeric::submatrix_view<T> compute_G0_col(const SPLINE_G0_TYPE& spline_G0, int col) const;
 
             alps::numeric::matrix<T> matrix_;
+            alps::numeric::matrix<T> tildeG_;
             std::vector<creator> creators_;         //an array of creation operators c_dagger corresponding to the row of the matrix
             std::vector<annihilator> annihilators_; //an array of to annihilation operators c corresponding to the column of the matrix
             std::vector<T> alpha_;             //an array of doubles corresponding to the alphas of Rubtsov for the c, cdaggers at the same index.
@@ -218,6 +234,13 @@ namespace alps {
 
             template<typename SPLINE_G0_TYPE>
             void add_non_interacting_vertices(general_U_matrix<T>* p_Uijkl, const SPLINE_G0_TYPE& spline_G0, const itime_vertex_container& itime_vertices, int begin_index);
+
+            template<typename SPLINE_G0_TYPE>
+            void update_tildeG(const SPLINE_G0_TYPE& spline_G0) {
+              for (int flavor=0; flavor<sub_matrices_.size(); ++flavor) {
+                sub_matrices_[flavor].update_tildeG(spline_G0);
+              }
+            }
 
             void remove_rows_cols(const std::vector<my_uint64>& vertex_uid);
 
