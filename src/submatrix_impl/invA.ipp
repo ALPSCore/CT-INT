@@ -395,7 +395,7 @@ void InvAMatrix<T>::eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gi
   }
 }
 
-#include <chrono>
+//#include <chrono>
 
 // Compute G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj} for given sets of i and j.
 template<typename T>
@@ -406,7 +406,7 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
   const int Nv = matrix_.size1();
   const int n_rows = rows.size();
 
-  auto t1 = std::chrono::high_resolution_clock::now();
+  //auto t1 = std::chrono::high_resolution_clock::now();
 
   std::vector<int> idx_cols_slow, cols_slow;
   for (int icol = 0; icol < cols.size(); ++icol) {
@@ -424,7 +424,7 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
     }
   }
 
-  auto t2 = std::chrono::high_resolution_clock::now();
+  //auto t2 = std::chrono::high_resolution_clock::now();
 
   // Use Slow Formula with optimization of blas3 level
   // Eq. (A4) in Nomura et al (2014)
@@ -434,7 +434,7 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
     G0_tmp.block(0, icol, Nv, 1) = compute_G0_col(spline_G0, cols_slow[icol]);
   }
 
-  auto t3 = std::chrono::high_resolution_clock::now();
+  //auto t3 = std::chrono::high_resolution_clock::now();
 
   matrix_type invA_tmp(rows.size(), Nv);
 
@@ -444,11 +444,11 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
     }
   }
 
-  auto t4 = std::chrono::high_resolution_clock::now();
+  //auto t4 = std::chrono::high_resolution_clock::now();
 
   matrix_type Gij_slow = (invA_tmp * G0_tmp);
 
-  auto t5 = std::chrono::high_resolution_clock::now();
+  //auto t5 = std::chrono::high_resolution_clock::now();
 
   for (int icol = 0; icol < cols_slow.size(); ++icol) {
     for (int irow = 0; irow < n_rows; ++irow) {
@@ -457,7 +457,7 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
     //result.block(0, idx_cols_slow[icol], n_rows, 1) = Gij_slow.block(0, icol, n_rows, 1);
   }
 
-  auto t6 = std::chrono::high_resolution_clock::now();
+  //auto t6 = std::chrono::high_resolution_clock::now();
 
           //std::cout << "t2 - t1 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count() << std::endl;
           //std::cout << "t3 - t2 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count() << std::endl;
