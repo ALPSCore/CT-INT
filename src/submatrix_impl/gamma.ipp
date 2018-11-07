@@ -100,9 +100,11 @@ void InvGammaMatrix<T>::resize(size_t new_size) {
 //returns the determinant ratio of A.
 template<typename T>
 template<typename SPLINE_G0_TYPE>
-T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, const std::vector<OperatorToBeUpdated<T> >& ops_ins) {
+T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& spline_G0, const std::vector< OperatorToBeUpdated < T > > & ops_ins) {
   const int nop = matrix_.size2();
   const int nop_add = ops_ins.size();
+
+  std::cout << "debug " << nop << " " << nop_add << std::endl;
 
   T gamma_prod = 1.0;
   for (int iop=0; iop<nop_add; ++iop) {
@@ -122,22 +124,43 @@ T InvGammaMatrix<T>::try_add(const InvAMatrix<T>& invA, const SPLINE_G0_TYPE& sp
   G_n_n.destructive_resize(nop_add, nop_add);
   G_n_j.destructive_resize(nop_add, nop);
   G_j_n.destructive_resize(nop, nop_add);
-  for(unsigned int i=0;i<nop;++i) {
-    auto view = G_n_j.block(0, i, nop_add, 1);
-    invA.eval_Gij_col_part(spline_G0, rows_in_A2, pos_in_invA(i), view);
+
+  // Set up G_n_j
+  {
+    std::vector<int> pos_cols_in_invA(nop);
+     for(unsigned int i=0;i<nop;++i) {
+       pos_cols_in_invA[i] = pos_in_invA(i);
+     }
+     invA.eval_Gij_cols_rows(spline_G0, rows_in_A2, pos_cols_in_invA, G_n_j);
   }
+
   if (nop>0) {
+    std::vector<int> pos_cols_in_invA(nop_add);
     for (size_t iv=0; iv<nop_add; ++iv) {
-      auto view = G_j_n.block(0, iv, nop, 1);
-      invA.eval_Gij_col_part(spline_G0, rows_in_A, pos_in_invA(iv+nop), view);
+      pos_cols_in_invA[iv] = pos_in_invA(iv+nop);
+    }
+
+    // Set up G_j_n
+    invA.eval_Gij_cols_rows(spline_G0, rows_in_A, pos_cols_in_invA, G_j_n);
+
+    //std::vector<int> pos_cols_in_invA(nop_add);
+    //for (size_t iv2=0; iv2<nop_add; ++iv2) {
+      //pos_cols_in_invA[iv2] = pos_in_invA(iv2+nop);
+    //}
+
+    // Set up G_n_n
+    invA.eval_Gij_cols_rows(spline_G0, rows_in_A2, pos_cols_in_invA, G_n_n);
+    for (size_t iv2=0; iv2<nop_add; ++iv2) {
+      T small_gamma = gamma_func(eval_f(alpha(iv2+nop)), eval_f(alpha0(iv2+nop)));
+      G_n_n(iv2, iv2) -= (1.0+small_gamma)/small_gamma;
     }
   }
-  for (size_t iv2=0; iv2<nop_add; ++iv2) {
-    auto view = G_n_n.block(0, iv2, nop_add, 1);
-    invA.eval_Gij_col_part(spline_G0, rows_in_A2, pos_in_invA(iv2+nop), view);
-    T small_gamma = gamma_func(eval_f(alpha(iv2+nop)), eval_f(alpha0(iv2+nop)));
-    G_n_n(iv2, iv2) -= (1.0+small_gamma)/small_gamma;
-  }
+  //for (size_t iv2=0; iv2<nop_add; ++iv2) {
+    //auto view = G_n_n.block(0, iv2, nop_add, 1);
+    //invA.eval_Gij_col_part(spline_G0, rows_in_A2, pos_in_invA(iv2+nop), view);
+    //T small_gamma = gamma_func(eval_f(alpha(iv2+nop)), eval_f(alpha0(iv2+nop)));
+    //G_n_n(iv2, iv2) -= (1.0+small_gamma)/small_gamma;
+  //}
 
   return gamma_prod*compute_det_ratio_up(G_j_n, G_n_j, G_n_n, matrix_);
 }

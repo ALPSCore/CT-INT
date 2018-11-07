@@ -395,12 +395,85 @@ void InvAMatrix<T>::eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gi
   }
 }
 
+// Compute G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj} for given sets of i and j.
+template<typename T>
+template<typename SPLINE_G0_TYPE, typename M>
+void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
+                                       const std::vector<int>& rows,
+                                       const std::vector<int>& cols, M& result) const {
+  const int Nv = matrix_.size1();
+  const int n_rows = rows.size();
+
+  std::vector<int> idx_cols_slow, cols_slow;
+  for (int icol = 0; icol < cols.size(); ++icol) {
+    int col = cols[icol];
+    T alpha_col = alpha_at(col);
+    if (alpha_col!=ALPHA_NON_INT) {
+      // Use Fast formula
+      // Eq. (A3) in Nomura et al (2014)
+      auto view = result.block(0, icol, n_rows, 1);
+      eval_Gij_col_part(spline_G0, rows, col, view);
+
+      /*
+      for (int iv=0; iv<n_rows; ++iv) {
+        std::cout << " iv " << iv << " " << result(iv,icol) << std::endl;
+      }
+
+      const T fj = eval_f(alpha_col);
+      for (int iv=0; iv<n_rows; ++iv) {
+        if (rows[iv] != col) {
+          //result(iv,icol) = (fj*matrix_(rows[iv],col))/(fj-1.0);
+          auto r = (fj*matrix_(rows[iv],col))/(fj-1.0);
+          std::cout << " iv2 " << iv << " " << r << std::endl;
+        } else {
+          auto r = (fj*matrix_(rows[iv],col)-1.0)/(fj-1.0);
+          std::cout << " iv2 " << iv << " " << r << std::endl;
+          //result(iv,icol) = (fj*matrix_(rows[iv],col)-1.0)/(fj-1.0);
+        }
+      }
+      */
+
+      //for (int iv=0; iv<n_rows; ++iv) {
+        //std::cout << " iv2 " << iv << " " << result(iv,icol) << std::endl;
+      //}
+
+    } else {
+      // Use Slow formula later
+      idx_cols_slow.push_back(icol);
+      cols_slow.push_back(col);
+    }
+  }
+
+  // Use Slow Formula with optimization of blas3 level
+  // Eq. (A4) in Nomura et al (2014)
+  using matrix_type =  Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>;
+  matrix_type G0_tmp(Nv, cols_slow.size());
+  for (int icol = 0; icol < cols_slow.size(); ++icol) {
+    G0_tmp.block(0, icol, Nv, 1) = compute_G0_col(spline_G0, cols_slow[icol]);
+  }
+
+  matrix_type invA_tmp(rows.size(), Nv);
+  for (int iv=0; iv<n_rows; ++iv) {
+    invA_tmp.block(iv, 0, 1, Nv) = matrix_.block(rows[iv], 0, 1, Nv);
+  }
+
+  matrix_type Gij_slow = (invA_tmp * G0_tmp);
+
+  for (int icol = 0; icol < cols_slow.size(); ++icol) {
+    result.block(0, idx_cols_slow[icol], n_rows, 1) = Gij_slow.block(0, icol, n_rows, 1);
+  }
+
+  //for (int iv=0; iv<n_rows; ++iv) {
+    //Gij(iv,0) = (matrix_.block(rows[iv], 0, 1, Nv) * G0_view)(0,0);
+  //}
+
+};
+
 // G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj}
 // cols specifies {j}
 template<typename T>
 template<typename SPLINE_G0_TYPE, typename M>
 void InvAMatrix<T>::eval_Gij_col_part(const SPLINE_G0_TYPE& spline_G0, const std::vector<int>& rows, int col, M& Gij) const {
-  static alps::numeric::matrix<T> invA_tmp;
   assert (col>=0);
 
   const int Nv = matrix_.size1();
@@ -420,6 +493,7 @@ void InvAMatrix<T>::eval_Gij_col_part(const SPLINE_G0_TYPE& spline_G0, const std
       }
     }
   } else {
+    throw std::runtime_error("Do not use this anymore");
     alps::numeric::submatrix_view<T> G0_view = compute_G0_col(spline_G0, col);
     alps::numeric::matrix<T> G_tmp(1,1);
     for (int iv=0; iv<n_rows; ++iv) {
