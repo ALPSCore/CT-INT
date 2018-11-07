@@ -395,6 +395,8 @@ void InvAMatrix<T>::eval_Gij_col(const SPLINE_G0_TYPE& spline_G0, int col, M& Gi
   }
 }
 
+#include <chrono>
+
 // Compute G_{ij} = sum_p (A^{-1})_{ip}, G0_{pj} for given sets of i and j.
 template<typename T>
 template<typename SPLINE_G0_TYPE, typename M>
@@ -403,6 +405,8 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
                                        const std::vector<int>& cols, M& result) const {
   const int Nv = matrix_.size1();
   const int n_rows = rows.size();
+
+  auto t1 = std::chrono::high_resolution_clock::now();
 
   std::vector<int> idx_cols_slow, cols_slow;
   for (int icol = 0; icol < cols.size(); ++icol) {
@@ -420,6 +424,8 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
     }
   }
 
+  auto t2 = std::chrono::high_resolution_clock::now();
+
   // Use Slow Formula with optimization of blas3 level
   // Eq. (A4) in Nomura et al (2014)
   using matrix_type =  Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>;
@@ -428,16 +434,37 @@ void InvAMatrix<T>::eval_Gij_cols_rows(const SPLINE_G0_TYPE& spline_G0,
     G0_tmp.block(0, icol, Nv, 1) = compute_G0_col(spline_G0, cols_slow[icol]);
   }
 
+  auto t3 = std::chrono::high_resolution_clock::now();
+
   matrix_type invA_tmp(rows.size(), Nv);
-  for (int iv=0; iv<n_rows; ++iv) {
-    invA_tmp.block(iv, 0, 1, Nv) = matrix_.block(rows[iv], 0, 1, Nv);
+
+  for (int col=0; col<Nv; ++col) {
+    for (int iv=0; iv<n_rows; ++iv) {
+      invA_tmp(iv, col) = matrix_(rows[iv], col);
+    }
   }
+
+  auto t4 = std::chrono::high_resolution_clock::now();
 
   matrix_type Gij_slow = (invA_tmp * G0_tmp);
 
+  auto t5 = std::chrono::high_resolution_clock::now();
+
   for (int icol = 0; icol < cols_slow.size(); ++icol) {
-    result.block(0, idx_cols_slow[icol], n_rows, 1) = Gij_slow.block(0, icol, n_rows, 1);
+    for (int irow = 0; irow < n_rows; ++irow) {
+      result(irow, idx_cols_slow[icol]) = Gij_slow(irow, icol);
+    }
+    //result.block(0, idx_cols_slow[icol], n_rows, 1) = Gij_slow.block(0, icol, n_rows, 1);
   }
+
+  auto t6 = std::chrono::high_resolution_clock::now();
+
+          //std::cout << "t2 - t1 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count() << std::endl;
+          //std::cout << "t3 - t2 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count() << std::endl;
+          //std::cout << "t4 - t3 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count() << std::endl;
+          //std::cout << "t5 - t4 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count() << std::endl;
+          //std::cout << "t6 - t5 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t6-t5).count() << std::endl;
+
 
   //for (int iv=0; iv<n_rows; ++iv) {
     //Gij(iv,0) = (matrix_.block(rows[iv], 0, 1, Nv) * G0_view)(0,0);
