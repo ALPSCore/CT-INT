@@ -157,12 +157,13 @@ namespace alps {
 
         }
 
+        template<typename T>
+        using rowmajor_mat_type = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+
         template<class TYPES>
         void InteractionExpansion<TYPES>::compute_Sl_optimized(const std::vector<double>& time_shifts,
                                                      boost::multi_array<std::complex<double>, 4>& Sl
         ) {
-          using rowmajor_mat_type = Eigen::Matrix<M_TYPE, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-
           std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);//clear the content for safety
           int n_legendre = legendre_transformer.Nl();
 
@@ -207,8 +208,8 @@ namespace alps {
             auto t2 = std::chrono::high_resolution_clock::now();
 
             boost::multi_array<M_TYPE, 3> M_gR(boost::extents[Nv][n_site][num_random_walk]);
-            Eigen::Map<rowmajor_mat_type> gR_map(gR.origin(), Nv, n_site * num_random_walk);
-            Eigen::Map<rowmajor_mat_type> M_gR_map(M_gR.origin(), Nv, n_site * num_random_walk);
+            Eigen::Map<rowmajor_mat_type<M_TYPE> > gR_map(gR.origin(), Nv, n_site * num_random_walk);
+            Eigen::Map<rowmajor_mat_type<M_TYPE> > M_gR_map(M_gR.origin(), Nv, n_site * num_random_walk);
             M_gR_map = M_flavors[z].block() * gR_map;
 
             auto t3 = std::chrono::high_resolution_clock::now();
@@ -228,7 +229,8 @@ namespace alps {
             auto t4 = std::chrono::high_resolution_clock::now();
 
             // Compute Sl
-            boost::multi_array<M_TYPE, 2> M_gR_tmp(boost::extents[n_site][num_random_walk]);
+            Eigen::Matrix<M_TYPE, Eigen::Dynamic, Eigen::Dynamic> M_gR_tmp(num_random_walk, n_site);
+            Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> legendre_tmp(n_legendre, num_random_walk);
             for (auto q = 0; q < Nv; ++q) {//creation operators
               auto site_c = creators[q].s();
 
@@ -237,21 +239,30 @@ namespace alps {
                 coeff *= sign / (1. * num_random_walk);
 
                 for (auto site_B = 0; site_B < n_site; ++site_B) {
-                  M_gR_tmp[site_B][random_walk] = coeff * M_gR[q][site_B][random_walk];
+                  M_gR_tmp(random_walk, site_B) = coeff * M_gR[q][site_B][random_walk];
                 }
               }
 
 
               for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
-                // coeff(random_walk) * legendre(l, random_walk) * M_gR(site_B, random_walk)
-                // => Sl(site_B, l)
+                for (auto i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
+                  legendre_tmp(i_legendre, random_walk) = sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][random_walk][q];
+                }
+              }
+
+              /*
+               * Equivalent code to the optimized one.
+              for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
                 for (auto site_B = 0; site_B < n_site; ++site_B) {
                   for (auto i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
                     Sl[z][site_c][site_B][i_legendre] +=
-                      sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][random_walk][q] * M_gR_tmp[site_B][random_walk];
+                      legendre_tmp(i_legendre, random_walk) * M_gR_tmp(random_walk, site_B);
                   }
                 }
               }
+              */
+              Eigen::Map<rowmajor_mat_type<std::complex<double>>> Sl_map(&(Sl[z][site_c][0][0]), n_site, n_legendre);
+              Sl_map += (legendre_tmp * M_gR_tmp).transpose();
 
             }
             auto t5 = std::chrono::high_resolution_clock::now();
