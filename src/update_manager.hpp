@@ -505,7 +505,8 @@ namespace alps {
           //measurements << SimpleRealVectorObservable("VertexShift_attempted");
           //measurements << SimpleRealVectorObservable("VertexShift_accepted");
           measurements << SimpleRealVectorObservable("VertexInsertionRemoval_Acceptance_Rate");
-          measurements << SimpleRealVectorObservable("VertexShiftRemoval_Acceptance_Rate");
+          measurements << SimpleRealVectorObservable("VertexShift_Acceptance_Rate");
+          std::cout << "called " << std::endl;
         }
 
         template<typename T>
