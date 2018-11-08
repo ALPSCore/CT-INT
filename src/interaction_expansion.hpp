@@ -262,7 +262,10 @@ namespace alps {
 
             void initialize_observables(void);
 
-            void compute_Sl();
+            void measure_Sl();
+
+            void compute_Sl(const std::vector<double>& time_shifts, boost::multi_array<std::complex<double>, 4>& Sl );
+            void compute_Sl_optimized(const std::vector<double>& time_shifts, boost::multi_array<std::complex<double>, 4>& Sl );
 
             void measure_densities();
 

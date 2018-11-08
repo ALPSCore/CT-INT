@@ -69,7 +69,7 @@ namespace alps {
           }
           */
 
-          compute_Sl();
+          measure_Sl();
           measure_densities();
 
           //pert_order_hist /= pert_order_hist.sum();
@@ -100,9 +100,166 @@ namespace alps {
         }
 
         template<class TYPES>
-        void InteractionExpansion<TYPES>::compute_Sl() {
+        void InteractionExpansion<TYPES>::measure_Sl() {
           int n_legendre = legendre_transformer.Nl();
-          static boost::multi_array<std::complex<double>, 3> Sl(boost::extents[n_site][n_site][n_legendre]);
+          int num_time_shifts = 100;
+
+          std::vector<double> time_shifts;
+          for (int i=0; i < num_time_shifts; ++i) {
+            time_shifts.push_back(beta * random());
+          }
+
+          boost::multi_array<std::complex<double>, 4> Sl(boost::extents[n_flavors][n_site][n_site][n_legendre]);
+          std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);
+          auto t1 = std::chrono::high_resolution_clock::now();
+          compute_Sl(time_shifts, Sl);
+          auto t2 = std::chrono::high_resolution_clock::now();
+
+          boost::multi_array<std::complex<double>, 4> Sl_optimized(boost::extents[n_flavors][n_site][n_site][n_legendre]);
+          std::fill(Sl_optimized.origin(), Sl_optimized.origin() + Sl_optimized.num_elements(), 0.0);
+          auto t3 = std::chrono::high_resolution_clock::now();
+          compute_Sl_optimized(time_shifts, Sl_optimized);
+          auto t4 = std::chrono::high_resolution_clock::now();
+
+          std::cout << "time "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count() << std::endl;
+
+          auto it = Sl.origin();
+          auto it2 = Sl_optimized.origin();
+
+          for (int i=0; i<Sl.num_elements(); ++i, ++it, ++it2) {
+            auto diff = std::abs(*it - *it2);
+            if (diff > 1e-1) {
+              throw std::runtime_error("Failed");
+            }
+          }
+
+          //pass data to ALPS library
+          std::vector<double> Sl_real(n_legendre, 0.0);
+          std::vector<double> Sl_imag(n_legendre, 0.0);
+          for (int z = 0; z < n_flavors; ++z) {
+            for (int site1 = 0; site1 < n_site; ++site1) {
+              for (int site2 = 0; site2 < n_site; ++site2) {
+                for (int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
+                  std::complex<double> ztmp = Sl[z][site1][site2][i_legendre];
+                  Sl_real[i_legendre] = ztmp.real();
+                  Sl_imag[i_legendre] = ztmp.imag();
+                }
+                std::stringstream Sl_real_name, Sl_imag_name;
+                Sl_real_name << "Sl_real_" << z << "_" << site1 << "_" << site2;
+                Sl_imag_name << "Sl_imag_" << z << "_" << site1 << "_" << site2;
+                measurements[Sl_real_name.str()] << Sl_real;
+                measurements[Sl_imag_name.str()] << Sl_imag;
+              }//site2
+            }//site1
+          }//z
+
+        }
+
+        template<class TYPES>
+        void InteractionExpansion<TYPES>::compute_Sl_optimized(const std::vector<double>& time_shifts,
+                                                     boost::multi_array<std::complex<double>, 4>& Sl
+        ) {
+          using rowmajor_mat_type = Eigen::Matrix<M_TYPE, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+
+          std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);//clear the content for safety
+          int n_legendre = legendre_transformer.Nl();
+
+          M_TYPE sign = submatrix_update->sign();
+          double temperature = 1.0 / beta;
+
+          //Work arrays
+          //int max_mat_size = 0;
+          //for (unsigned int z = 0; z < n_flavors; ++z) {
+            //max_mat_size = std::max(max_mat_size, M_flavors[z].size2());
+          //}
+          const std::vector<double> &sqrt_vals = legendre_transformer.get_sqrt_2l_1();
+
+          int num_random_walk = time_shifts.size();
+
+          std::vector<double> x_vals;
+          boost::multi_array<double, 3> legendre_vals_all; //, legendre_vals_trans_all;
+
+          for (auto z = 0; z < n_flavors; ++z) {
+            int Nv = M_flavors[z].size2();
+
+            if (Nv == 0) {
+              continue;
+            }
+
+            const std::vector<annihilator> &annihilators = submatrix_update->invA()[z].annihilators();
+            const std::vector<creator> &creators = submatrix_update->invA()[z].creators();
+
+            auto t1 = std::chrono::high_resolution_clock::now();
+
+            //interpolate G0
+            boost::multi_array<M_TYPE, 3> gR(boost::extents[Nv][n_site][num_random_walk]);
+            for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
+              for (auto p = 0; p < Nv; ++p) {//annihilation operators
+                double time_a = annihilators[p].t().time() + time_shifts[random_walk];
+                for (auto site_B = 0; site_B < n_site; ++site_B) {
+                  gR[p][site_B][random_walk] = mycast<M_TYPE>(g0_intpl(time_a, z, annihilators[p].s(), site_B));
+                }
+              }
+            }
+
+            auto t2 = std::chrono::high_resolution_clock::now();
+
+            boost::multi_array<M_TYPE, 3> M_gR(boost::extents[Nv][n_site][num_random_walk]);
+            Eigen::Map<rowmajor_mat_type> gR_map(gR.origin(), Nv, n_site * num_random_walk);
+            Eigen::Map<rowmajor_mat_type> M_gR_map(M_gR.origin(), Nv, n_site * num_random_walk);
+            M_gR_map = M_flavors[z].block() * gR_map;
+
+            auto t3 = std::chrono::high_resolution_clock::now();
+
+            // Compute values of Legendre polynomials
+            x_vals.resize(0);//num_random_walk * Nv);
+            legendre_vals_all.resize(boost::extents[n_legendre][num_random_walk][Nv]);
+            for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
+              for (auto q = 0; q < Nv; ++q) {//creation operators
+                double tmp = creators[q].t().time() + time_shifts[random_walk];
+                double time_c_shifted = tmp < beta ? tmp : tmp - beta;
+                x_vals.push_back(2 * time_c_shifted * temperature - 1.0);
+              }
+            }
+            auto ref = boost::multi_array_ref<double,2>(legendre_vals_all.origin(), boost::extents[n_legendre][num_random_walk * Nv]);
+            legendre_transformer.compute_legendre(x_vals, ref);//P_l[x(tau_q)]
+            auto t4 = std::chrono::high_resolution_clock::now();
+
+            // Compute Sl
+            for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
+              for (auto q = 0; q < Nv; ++q) {//creation operators
+                auto site_c = creators[q].s();
+                double tmp = creators[q].t().time() + time_shifts[random_walk];
+                std::complex<double> coeff = tmp < beta ? 1 : -1;
+
+                coeff *= sign / (1. * num_random_walk);
+
+                for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
+                  for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
+                    Sl[z][site_c][site_B][i_legendre] +=
+                      coeff * sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][random_walk][q] * M_gR[q][site_B][random_walk];
+                  }
+                }
+              }
+            }
+            auto t5 = std::chrono::high_resolution_clock::now();
+
+            std::cout << "t2 - t1 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count() << std::endl;
+            std::cout << "t3 - t2 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count() << std::endl;
+            std::cout << "t4 - t3 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count() << std::endl;
+            std::cout << "t5 - t4 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count() << std::endl;
+
+          }
+        }
+
+        template<class TYPES>
+        void InteractionExpansion<TYPES>::compute_Sl(const std::vector<double>& time_shifts,
+                                                     boost::multi_array<std::complex<double>, 4>& Sl
+          ) {
+          std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);//clear the content for safety
+          int n_legendre = legendre_transformer.Nl();
 
           const M_TYPE sign = submatrix_update->sign();
           const double temperature = 1.0 / beta;
@@ -114,7 +271,7 @@ namespace alps {
           }
           const std::vector<double> &sqrt_vals = legendre_transformer.get_sqrt_2l_1();
 
-          const size_t num_random_walk = std::min(100, max_mat_size);
+          int num_random_walk = time_shifts.size();
 
           std::vector<double> x_vals;
           boost::multi_array<double, 2> legendre_vals_all; //, legendre_vals_trans_all;
@@ -122,7 +279,6 @@ namespace alps {
           alps::numeric::matrix<M_TYPE> gR(max_mat_size, n_site), M_gR(max_mat_size, n_site);
 
           for (unsigned int z = 0; z < n_flavors; ++z) {
-            std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);//clear the content for safety
             int Nv = M_flavors[z].size2();
 
             if (Nv == 0) {
@@ -142,7 +298,7 @@ namespace alps {
 
               auto t1 = std::chrono::high_resolution_clock::now();
 
-              const double time_shift = beta * random();
+              double time_shift = time_shifts[random_walk];
 
               for (unsigned int p = 0; p < Nv; ++p) {//annihilation operators
                 const double time_a = annihilators[p].t().time() + time_shift;
@@ -169,12 +325,13 @@ namespace alps {
               for (unsigned int q = 0; q < Nv; ++q) {//creation operators
                 const unsigned int site_c = creators[q].s();
                 const double tmp = creators[q].t().time() + time_shift;
-                const double coeff = tmp < beta ? 1 : -1;
+                std::complex<double> coeff = tmp < beta ? 1 : -1;
 
-                const int n_legendre_tmp = n_legendre;
+                coeff *= sign / (1. *num_random_walk);
+
                 for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
-                  for (unsigned int i_legendre = 0; i_legendre < n_legendre_tmp; ++i_legendre) {
-                    Sl[site_c][site_B][i_legendre] += // + is correct?
+                  for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
+                    Sl[z][site_c][site_B][i_legendre] +=
                       coeff * sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][q] * M_gR(q, site_B);
                   }
                 }
@@ -186,26 +343,7 @@ namespace alps {
               //std::cout << "t4 - t3 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count() << std::endl;
               //std::cout << "t5 - t4 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count() << std::endl;
             }//random_walk
-
-            //pass data to ALPS library
-            std::vector<double> Sl_real(n_legendre, 0.0);
-            std::vector<double> Sl_imag(n_legendre, 0.0);
-            for (unsigned int site1 = 0; site1 < n_site; ++site1) {
-              for (unsigned int site2 = 0; site2 < n_site; ++site2) {
-                for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
-                  const std::complex<double> ztmp =
-                    (Sl[site1][site2][i_legendre] * sign) / static_cast<double>(num_random_walk);
-                  Sl_real[i_legendre] = ztmp.real();
-                  Sl_imag[i_legendre] = ztmp.imag();
-                }
-                std::stringstream Sl_real_name, Sl_imag_name;
-                Sl_real_name << "Sl_real_" << z << "_" << site1 << "_" << site2;
-                Sl_imag_name << "Sl_imag_" << z << "_" << site1 << "_" << site2;
-                measurements[Sl_real_name.str()] << Sl_real;
-                measurements[Sl_imag_name.str()] << Sl_imag;
-              }//site2
-            }//site1
-          }//z
+          }
         }
 
 
