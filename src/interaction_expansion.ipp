@@ -126,7 +126,7 @@ namespace alps {
           {
             auto t_start_local = std::chrono::system_clock::now();
             // I do not want to recompute the inverse matrix so frequently.
-            if (step % (10 * measurement_period) == 0) {
+            if (step % (20 * measurement_period) == 0) {
               submatrix_update->recompute_matrix(true);
             }
             auto t_end_local = std::chrono::system_clock::now();
