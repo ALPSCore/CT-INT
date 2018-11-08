@@ -90,6 +90,33 @@ namespace alps {
             boost::random::discrete_distribution<> dist_;
         };
 
+
+        class acc_rate_statistics {
+        public:
+            acc_rate_statistics() {
+              reset();
+            }
+
+            void accepted() {
+                ++counter_[0];
+            }
+
+            void rejected() {
+                ++counter_[1];
+            }
+
+            std::vector<double> get_result() const {
+                auto sum = static_cast<double>(counter_[0] + counter_[1]);
+                return std::vector<double> {counter_[0]/sum, counter_[1]/sum};
+            }
+
+            void reset() {
+                std::fill(counter_.begin(), counter_.end(), 0);
+            }
+        private:
+            std::array<long,2> counter_;
+        };
+
         class simple_update_statistcs {
         public:
             simple_update_statistcs(int Nv) : counter_(), Nv_(Nv) {

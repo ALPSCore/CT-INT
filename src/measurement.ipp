@@ -102,7 +102,7 @@ namespace alps {
         template<class TYPES>
         void InteractionExpansion<TYPES>::measure_Sl() {
           int n_legendre = legendre_transformer.Nl();
-          int num_time_shifts = 100;
+          int num_time_shifts = parms["G1.num_samples"];
 
           std::vector<double> time_shifts;
           for (int i=0; i < num_time_shifts; ++i) {
