@@ -228,21 +228,31 @@ namespace alps {
             auto t4 = std::chrono::high_resolution_clock::now();
 
             // Compute Sl
-            for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
-              for (auto q = 0; q < Nv; ++q) {//creation operators
-                auto site_c = creators[q].s();
-                double tmp = creators[q].t().time() + time_shifts[random_walk];
-                std::complex<double> coeff = tmp < beta ? 1 : -1;
+            boost::multi_array<M_TYPE, 2> M_gR_tmp(boost::extents[n_site][num_random_walk]);
+            for (auto q = 0; q < Nv; ++q) {//creation operators
+              auto site_c = creators[q].s();
 
+              for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
+                M_TYPE coeff = creators[q].t().time() + time_shifts[random_walk] < beta ? 1 : -1;
                 coeff *= sign / (1. * num_random_walk);
 
-                for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
-                  for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
+                for (auto site_B = 0; site_B < n_site; ++site_B) {
+                  M_gR_tmp[site_B][random_walk] = coeff * M_gR[q][site_B][random_walk];
+                }
+              }
+
+
+              for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
+                // coeff(random_walk) * legendre(l, random_walk) * M_gR(site_B, random_walk)
+                // => Sl(site_B, l)
+                for (auto site_B = 0; site_B < n_site; ++site_B) {
+                  for (auto i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
                     Sl[z][site_c][site_B][i_legendre] +=
-                      coeff * sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][random_walk][q] * M_gR[q][site_B][random_walk];
+                      sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][random_walk][q] * M_gR_tmp[site_B][random_walk];
                   }
                 }
               }
+
             }
             auto t5 = std::chrono::high_resolution_clock::now();
 
