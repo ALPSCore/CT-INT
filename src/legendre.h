@@ -67,9 +67,10 @@ namespace alps {
               }
             }
 
+            template <typename MULTI_ARRAY>
             void
             compute_legendre(const std::vector<double> &xval,
-                                                  boost::multi_array<double, 2> &val) const {
+                                                  MULTI_ARRAY &val) const {
               assert(val.shape()[0] >= n_legendre_);
               const int nx = xval.size();
               for (int l = 0; l < n_legendre_; l++) {
