@@ -109,31 +109,32 @@ namespace alps {
             time_shifts.push_back(beta * random());
           }
 
+          //boost::multi_array<std::complex<double>, 4> Sl(boost::extents[n_flavors][n_site][n_site][n_legendre]);
+          //std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);
+          //auto t1 = std::chrono::high_resolution_clock::now();
+          //compute_Sl(time_shifts, Sl);
+          //auto t2 = std::chrono::high_resolution_clock::now();
+
           boost::multi_array<std::complex<double>, 4> Sl(boost::extents[n_flavors][n_site][n_site][n_legendre]);
           std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);
-          auto t1 = std::chrono::high_resolution_clock::now();
-          compute_Sl(time_shifts, Sl);
-          auto t2 = std::chrono::high_resolution_clock::now();
-
-          boost::multi_array<std::complex<double>, 4> Sl_optimized(boost::extents[n_flavors][n_site][n_site][n_legendre]);
-          std::fill(Sl_optimized.origin(), Sl_optimized.origin() + Sl_optimized.num_elements(), 0.0);
           auto t3 = std::chrono::high_resolution_clock::now();
-          compute_Sl_optimized(time_shifts, Sl_optimized);
+          compute_Sl_optimized(time_shifts, Sl);
           auto t4 = std::chrono::high_resolution_clock::now();
 
-          std::cout << "time "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count() << std::endl;
+          //std::cout << "time "
+              //<< std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " "
+              //<< std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count() << std::endl;
 
+          /*
           auto it = Sl.origin();
           auto it2 = Sl_optimized.origin();
-
           for (int i=0; i<Sl.num_elements(); ++i, ++it, ++it2) {
             auto diff = std::abs(*it - *it2);
             if (diff > 1e-1) {
               throw std::runtime_error("Failed");
             }
           }
+          */
 
           //pass data to ALPS library
           std::vector<double> Sl_real(n_legendre, 0.0);
@@ -241,10 +242,7 @@ namespace alps {
                 for (auto site_B = 0; site_B < n_site; ++site_B) {
                   M_gR_tmp(random_walk, site_B) = coeff * M_gR[q][site_B][random_walk];
                 }
-              }
 
-
-              for (auto random_walk = 0; random_walk < num_random_walk; ++random_walk) {
                 for (auto i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
                   legendre_tmp(i_legendre, random_walk) = sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][random_walk][q];
                 }
@@ -267,10 +265,12 @@ namespace alps {
             }
             auto t5 = std::chrono::high_resolution_clock::now();
 
+            /*
             std::cout << "t2 - t1 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count() << std::endl;
             std::cout << "t3 - t2 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count() << std::endl;
             std::cout << "t4 - t3 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count() << std::endl;
             std::cout << "t5 - t4 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count() << std::endl;
+            */
 
           }
         }
