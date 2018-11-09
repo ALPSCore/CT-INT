@@ -45,10 +45,23 @@ find_package(ALPSCore REQUIRED)
 #Find MPI
 include(EnableMPI)
 
-
 # Eigen is provided by ALPSCore
 if (NOT ALPSCore_HAS_EIGEN_VERSION)
-  find_package(Eigen3 3.2.8 REQUIRED)
+  if (${USE_BLAS_LAPACK})
+    # To use Lapack with Eigen3, version >= 3.3 is required.
+    find_package(Eigen3 3.3 REQUIRED)
+  else()
+    find_package(Eigen3 3.2.8 REQUIRED)
+  endif()
+endif()
+
+if (${USE_BLAS_LAPACK})
+  add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
+  set(BLA_VENDOR Generic)
+  find_package(BLAS)
+  find_package(LAPACK)
+  set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${BLAS_LINKER_FLAGS} ${LAPACK_LINKER_FLAGS}")
+  set(EXTRA_LIBS ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 endif()
 
 #ALPSCore disable debug for gf library
