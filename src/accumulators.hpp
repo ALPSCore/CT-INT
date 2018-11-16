@@ -4,7 +4,7 @@
 
 namespace alps {
     namespace ctint {
-        using SimpleRealVectorObservable = alps::accumulators::NoBinningAccumulator<std::vector<double> >;
-        using SimpleRealObservable = alps::accumulators::NoBinningAccumulator<double>;
+        typedef alps::accumulators::NoBinningAccumulator<double> SimpleRealObservable;
+        typedef alps::accumulators::NoBinningAccumulator<std::vector<double> > SimpleRealVectorObservable;
     }
 }
