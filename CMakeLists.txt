@@ -45,6 +45,8 @@ find_package(ALPSCore REQUIRED)
 #Find MPI
 include(EnableMPI)
 
+find_package(Threads)
+
 # Eigen is provided by ALPSCore
 if (NOT ALPSCore_HAS_EIGEN_VERSION)
   if (${USE_BLAS_LAPACK})
@@ -84,10 +86,10 @@ set (LIB_FILES
 
 #executable
 add_executable(ctint_real src/main_real.cpp ${LIB_FILES})
-target_link_libraries(ctint_real ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+target_link_libraries(ctint_real ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_LIBS})
 
 add_executable(ctint_complex src/main_complex.cpp ${LIB_FILES})
-target_link_libraries(ctint_complex ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+target_link_libraries(ctint_complex ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_LIBS})
 
 install (TARGETS ctint_real RUNTIME DESTINATION bin)
 install (TARGETS ctint_complex RUNTIME DESTINATION bin)
@@ -110,8 +112,8 @@ function(add_gtest test link_lib)
     add_test(NAME ${test} COMMAND ${test} ${test_xml_output})
 endfunction(add_gtest)
 
-set(LINK_ALL alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
-set(LINK_REST ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${EXTRA_LIBS})
+set(LINK_ALL alpscore_ctint ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_LIBS})
+set(LINK_REST ${ALPSCore_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_LIBS})
 enable_testing(test)
 
 add_gtest(fastupdate "${LINK_REST}")
