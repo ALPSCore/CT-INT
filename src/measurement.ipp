@@ -7,7 +7,7 @@
 namespace alps {
     namespace ctint {
 
-        inline std::vector<double> operator*(double s, const std::vector<double>& vec) {
+        inline std::vector<double> operator*(double s, const std::vector<double> &vec) {
           std::vector<double> vec2(vec);
           std::transform(vec2.begin(), vec2.end(), vec2.begin(), std::bind1st(std::multiplies<double>(), s));
           return vec2;
@@ -19,12 +19,26 @@ namespace alps {
           measurements << SimpleRealObservable("Sign");
           measurements << SimpleRealVectorObservable("PertOrder");
 
+          /*
           for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
             for (unsigned int k = 0; k < n_site; k++) {
               for (unsigned int k2 = 0; k2 < n_site; k2++) {
                 std::stringstream obs_name_real, obs_name_imag;
                 obs_name_real << "Sl_real_" << flavor << "_" << k << "_" << k2;
                 obs_name_imag << "Sl_imag_" << flavor << "_" << k << "_" << k2;
+                measurements << SimpleRealVectorObservable(obs_name_real.str().c_str());
+                measurements << SimpleRealVectorObservable(obs_name_imag.str().c_str());
+              }
+            }
+          }
+          */
+
+          for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
+            for (unsigned int k = 0; k < n_site; k++) {
+              for (unsigned int k2 = 0; k2 < n_site; k2++) {
+                std::stringstream obs_name_real, obs_name_imag;
+                obs_name_real << "Stau_real_" << flavor << "_" << k << "_" << k2;
+                obs_name_imag << "Stau_imag_" << flavor << "_" << k << "_" << k2;
                 measurements << SimpleRealVectorObservable(obs_name_real.str().c_str());
                 measurements << SimpleRealVectorObservable(obs_name_imag.str().c_str());
               }
@@ -103,9 +117,10 @@ namespace alps {
         void InteractionExpansion<TYPES>::measure_Sl() {
           int n_legendre = legendre_transformer.Nl();
           int num_time_shifts = parms["G1.num_samples"];
+          int n_bin = parms["G1.n_bin"];
 
           std::vector<double> time_shifts;
-          for (int i=0; i < num_time_shifts; ++i) {
+          for (int i = 0; i < num_time_shifts; ++i) {
             time_shifts.push_back(beta * random());
           }
 
@@ -115,15 +130,19 @@ namespace alps {
           //compute_Sl(time_shifts, Sl);
           //auto t2 = std::chrono::high_resolution_clock::now();
 
-          boost::multi_array<std::complex<double>, 4> Sl(boost::extents[n_flavors][n_site][n_site][n_legendre]);
-          std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);
-          auto t3 = std::chrono::high_resolution_clock::now();
-          compute_Sl_optimized(time_shifts, Sl);
-          auto t4 = std::chrono::high_resolution_clock::now();
+          //boost::multi_array<std::complex<double>, 4> Sl(boost::extents[n_flavors][n_site][n_site][n_legendre]);
+          //std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);
+          //auto t3 = std::chrono::high_resolution_clock::now();
+          //compute_Sl_optimized(time_shifts, Sl);
+          //auto t4 = std::chrono::high_resolution_clock::now();
+
+          boost::multi_array<std::complex<double>, 4> Stau(boost::extents[n_flavors][n_site][n_site][n_bin]);
+          std::fill(Stau.origin(), Stau.origin() + Stau.num_elements(), 0.0);
+          compute_Stau(time_shifts, Stau);
 
           //std::cout << "time "
-              //<< std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " "
-              //<< std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count() << std::endl;
+          //<< std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " "
+          //<< std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count() << std::endl;
 
           /*
           auto it = Sl.origin();
@@ -137,6 +156,7 @@ namespace alps {
           */
 
           //pass data to ALPS library
+          /*
           std::vector<double> Sl_real(n_legendre, 0.0);
           std::vector<double> Sl_imag(n_legendre, 0.0);
           for (int z = 0; z < n_flavors; ++z) {
@@ -155,15 +175,35 @@ namespace alps {
               }//site2
             }//site1
           }//z
+           */
 
+          //pass data to ALPS library
+          std::vector<double> Stau_real(n_bin, 0.0);
+          std::vector<double> Stau_imag(n_bin, 0.0);
+          for (int z = 0; z < n_flavors; ++z) {
+            for (int site1 = 0; site1 < n_site; ++site1) {
+              for (int site2 = 0; site2 < n_site; ++site2) {
+                for (int ibin = 0; ibin < n_bin; ++ibin) {
+                  std::complex<double> ztmp = Stau[z][site1][site2][ibin];
+                  Stau_real[ibin] = ztmp.real();
+                  Stau_imag[ibin] = ztmp.imag();
+                }
+                std::stringstream Stau_real_name, Stau_imag_name;
+                Stau_real_name << "Stau_real_" << z << "_" << site1 << "_" << site2;
+                Stau_imag_name << "Stau_imag_" << z << "_" << site1 << "_" << site2;
+                measurements[Stau_real_name.str()] << Stau_real;
+                measurements[Stau_imag_name.str()] << Stau_imag;
+              }//site2
+            }//site1
+          }//z
         }
 
         template<typename T>
         using rowmajor_mat_type = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
         template<class TYPES>
-        void InteractionExpansion<TYPES>::compute_Sl_optimized(const std::vector<double>& time_shifts,
-                                                     boost::multi_array<std::complex<double>, 4>& Sl
+        void InteractionExpansion<TYPES>::compute_Sl_optimized(const std::vector<double> &time_shifts,
+                                                               boost::multi_array<std::complex<double>, 4> &Sl
         ) {
           std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);//clear the content for safety
           int n_legendre = legendre_transformer.Nl();
@@ -174,7 +214,7 @@ namespace alps {
           //Work arrays
           //int max_mat_size = 0;
           //for (unsigned int z = 0; z < n_flavors; ++z) {
-            //max_mat_size = std::max(max_mat_size, M_flavors[z].size2());
+          //max_mat_size = std::max(max_mat_size, M_flavors[z].size2());
           //}
           const std::vector<double> &sqrt_vals = legendre_transformer.get_sqrt_2l_1();
 
@@ -225,7 +265,8 @@ namespace alps {
                 x_vals.push_back(2 * time_c_shifted * temperature - 1.0);
               }
             }
-            auto ref = boost::multi_array_ref<double,2>(legendre_vals_all.origin(), boost::extents[n_legendre][num_random_walk * Nv]);
+            auto ref = boost::multi_array_ref<double, 2>(legendre_vals_all.origin(),
+                                                         boost::extents[n_legendre][num_random_walk * Nv]);
             legendre_transformer.compute_legendre(x_vals, ref);//P_l[x(tau_q)]
             auto t4 = std::chrono::high_resolution_clock::now();
 
@@ -244,7 +285,8 @@ namespace alps {
                 }
 
                 for (auto i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
-                  legendre_tmp(i_legendre, random_walk) = sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][random_walk][q];
+                  legendre_tmp(i_legendre, random_walk) =
+                    sqrt_vals[i_legendre] * legendre_vals_all[i_legendre][random_walk][q];
                 }
               }
 
@@ -276,9 +318,9 @@ namespace alps {
         }
 
         template<class TYPES>
-        void InteractionExpansion<TYPES>::compute_Sl(const std::vector<double>& time_shifts,
-                                                     boost::multi_array<std::complex<double>, 4>& Sl
-          ) {
+        void InteractionExpansion<TYPES>::compute_Sl(const std::vector<double> &time_shifts,
+                                                     boost::multi_array<std::complex<double>, 4> &Sl
+        ) {
           std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);//clear the content for safety
           int n_legendre = legendre_transformer.Nl();
 
@@ -348,7 +390,7 @@ namespace alps {
                 const double tmp = creators[q].t().time() + time_shift;
                 std::complex<double> coeff = tmp < beta ? 1 : -1;
 
-                coeff *= sign / (1. *num_random_walk);
+                coeff *= sign / (1. * num_random_walk);
 
                 for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
                   for (unsigned int i_legendre = 0; i_legendre < n_legendre; ++i_legendre) {
@@ -363,6 +405,87 @@ namespace alps {
               //std::cout << "t3 - t2 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count() << std::endl;
               //std::cout << "t4 - t3 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count() << std::endl;
               //std::cout << "t5 - t4 " << std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count() << std::endl;
+            }//random_walk
+          }
+        }
+
+        /**
+         * Implementation of Eq. (197) of E. Gull et al., RMP (2011).
+         * There is a typo in the third line of Eq. (197). G_{x_p,j}^0 must be G_{x_q,j}^0.
+         *
+         *
+         * @tparam TYPES
+         * @param time_shifts
+         * @param Stau
+         */
+        template<class TYPES>
+        void InteractionExpansion<TYPES>::compute_Stau(const std::vector<double> &time_shifts,
+                                                       boost::multi_array<std::complex<double>, 4> &Stau
+        ) {
+          std::fill(Stau.origin(), Stau.origin() + Stau.num_elements(), 0.0);//clear the content for safety
+          int n_legendre = legendre_transformer.Nl();
+
+          const M_TYPE sign = submatrix_update->sign();
+          const double temperature = 1.0 / beta;
+
+          int n_bins = Stau.shape()[3];
+          double dtau = beta / n_bins;
+
+          //Work arrays
+          int max_mat_size = 0;
+          for (unsigned int z = 0; z < n_flavors; ++z) {
+            max_mat_size = std::max(max_mat_size, M_flavors[z].size2());
+          }
+          const std::vector<double> &sqrt_vals = legendre_transformer.get_sqrt_2l_1();
+
+          int num_random_walk = time_shifts.size();
+
+          alps::numeric::matrix<M_TYPE> gR(max_mat_size, n_site), M_gR(max_mat_size, n_site);
+
+          for (unsigned int z = 0; z < n_flavors; ++z) {
+            int Nv = M_flavors[z].size2();
+
+            if (Nv == 0) {
+              continue;
+            }
+            gR.destructive_resize(Nv, n_site);
+            M_gR.destructive_resize(Nv, n_site);
+
+            const std::vector<annihilator> &annihilators = submatrix_update->invA()[z].annihilators();
+            const std::vector<creator> &creators = submatrix_update->invA()[z].creators();
+
+            //shift times of operators by time_shift
+            for (std::size_t random_walk = 0; random_walk < num_random_walk; ++random_walk) {
+
+              auto t1 = std::chrono::high_resolution_clock::now();
+
+              double time_shift = time_shifts[random_walk];
+
+              for (unsigned int p = 0; p < Nv; ++p) {//annihilation operators
+                const double time_a = annihilators[p].t().time() + time_shift;
+
+                //interpolate G0
+                for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
+                  gR(p, site_B) = mycast<M_TYPE>(g0_intpl(time_a, z, annihilators[p].s(), site_B));
+                }
+              }
+
+              gemm(M_flavors[z], gR, M_gR);
+
+              for (unsigned int q = 0; q < Nv; ++q) {//creation operators
+                const unsigned int site_c = creators[q].s();
+                const double tmp = creators[q].t().time() + time_shift;
+                double time_c_shifted = tmp < beta ? tmp : tmp - beta;
+                auto ibin = static_cast<int>(time_c_shifted / dtau);
+
+                std::complex<double> coeff = tmp < beta ? 1 : -1;
+                coeff *= sign / (dtau * num_random_walk);
+
+                for (unsigned int site_B = 0; site_B < n_site; ++site_B) {
+                  Stau[z][site_c][site_B][ibin] += coeff * M_gR(q, site_B);
+                }
+              }
+
             }//random_walk
           }
         }
@@ -422,7 +545,8 @@ namespace alps {
           measurements["densities"] << sign_real * densities;
 
           {
-            std::vector<double> ninj(n_site * n_site * n_flavors * n_flavors);
+            std::vector<double> ninj(n_site *n_site
+            *n_flavors * n_flavors);
             int pos = 0;
             for (unsigned int flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
               for (unsigned int i = 0; i < n_site; ++i) {

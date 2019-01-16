@@ -35,6 +35,7 @@ namespace alps {
           parms.define<int>("G1.n_legendre", 200, "Number of Legendre polynomials");
           parms.define<int>("G1.n_matsubara", 1024, "Number of Matsubara frequencies");
           parms.define<int>("G1.num_samples", 50, "Number of samples for tau_j (See p 397 in E. Gull et al RMP)");
+          parms.define<int>("G1.n_bin", 10000, "Number of bins for binning measurement");
 
           //parms.define<int>("MAX_TIME", 86400, "Max simulation time in units of second");
 

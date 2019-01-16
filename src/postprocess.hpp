@@ -70,10 +70,98 @@ namespace alps {
           }
         }
 
+
+        template<class SOLVER_TYPE>
+        void evaluate_selfenergy_measurement_binning(const typename alps::accumulators::result_set &results,
+                                                     const typename alps::params &parms,
+                                                     boost::multi_array<std::complex<double>,4>& Stau,
+                                                     boost::multi_array<std::complex<double>,4>& Sl,
+                                                     boost::multi_array<std::complex<double>,4>& Sw
+        ) {
+          std::cout << "evaluating self energy measurement: binning, real space" << std::endl;
+          double sign = results["Sign"].template mean<double>();
+
+          double beta = parms["model.beta"];
+          int n_site = parms["model.sites"];
+          int n_flavors = parms["model.spins"];
+          int n_matsubara = parms["G1.n_matsubara"];
+          int n_legendre = parms["G1.n_legendre"];
+          int n_bin = parms["G1.n_bin"];
+
+          Stau.resize(boost::extents[n_bin][n_site][n_site][n_flavors]);
+          Sl.resize(boost::extents[n_legendre][n_site][n_site][n_flavors]);
+          std::fill(Sl.origin(), Sl.origin() + Sl.num_elements(), 0.0);
+          Sw.resize(boost::extents[n_matsubara][n_site][n_site][n_flavors]);
+
+          //load Stau
+          for (auto flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+            for (auto site1 = 0; site1 < n_site; ++site1) {
+              for (auto site2 = 0; site2 < n_site; ++site2) {
+                std::stringstream Stau_real_name, Stau_imag_name;
+                Stau_real_name << "Stau_real_" << flavor1 << "_" << site1 << "_" << site2;
+                Stau_imag_name << "Stau_imag_" << flavor1 << "_" << site1 << "_" << site2;
+                std::vector<double> mean_real = results[Stau_real_name.str().c_str()].template mean<std::vector<double> >();
+                std::vector<double> mean_imag = results[Stau_imag_name.str().c_str()].template mean<std::vector<double> >();
+                for (auto ib = 0; ib < n_bin; ++ib) {
+                  Stau[ib][site1][site2][flavor1] = std::complex<double>(mean_real[ib], mean_imag[ib]) / sign;
+                }
+              }
+            }
+          }
+
+          //Transform to Legendre basis
+          LegendreTransformer legendre_transformer(n_matsubara, n_legendre);
+          const std::vector<double> &sqrt_vals = legendre_transformer.get_sqrt_2l_1();
+          std::vector<double> x_vals(n_bin);
+          auto dtau = beta/n_bin;
+          auto dx = 2.0/n_bin;
+          for (auto ib=0; ib < n_bin; ++ib) {
+            x_vals[ib] = (ib + 0.5) * dx - 1;
+          }
+          boost::multi_array<double,2> Plx(boost::extents[n_legendre][n_bin]);
+          legendre_transformer.compute_legendre(x_vals, Plx);
+          //for (int i_l = 0; i_l < n_legendre; ++i_l) {
+            //for (auto ib = 0; ib < n_bin; ++ib) {
+              //std::cout << "debug " << i_l << " " << ib << " " << Plx[i_l][ib] << std::endl;
+            //}
+          //}
+
+          for (auto flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+            for (auto site1 = 0; site1 < n_site; ++site1) {
+              for (auto site2 = 0; site2 < n_site; ++site2) {
+                for (int i_l = 0; i_l < n_legendre; ++i_l) {
+                  for (auto ib = 0; ib < n_bin; ++ib) {
+                    Sl[i_l][site1][site2][flavor1] += sqrt_vals[i_l] * Plx[i_l][ib] * Stau[ib][site1][site2][flavor1] * dtau;
+                  }
+                }
+              }
+            }
+          }
+
+          //compute S(iomega_n)
+          {
+            auto &Tnl = legendre_transformer.Tnl();
+            Eigen::MatrixXcd Sl_vec(n_legendre, 1);
+            for (int flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
+              for (int site1 = 0; site1 < n_site; ++site1) {
+                for (int site2 = 0; site2 < n_site; ++site2) {
+                  for (int i_l = 0; i_l < n_legendre; ++i_l) {
+                    Sl_vec(i_l, 0) = Sl[i_l][site1][site2][flavor1];
+                  }
+                  Eigen::MatrixXcd Sw_vec(Tnl * Sl_vec);
+                  for (int w = 0; w < n_matsubara; ++w) {
+                    Sw[w][site1][site2][flavor1] = Sw_vec(w, 0);
+                  }
+                }
+              }
+            }
+          }
+        }
+
         template<class SOLVER_TYPE>
         void postprocess_densities(const typename alps::accumulators::result_set &results,
                                                       const typename alps::params &parms, alps::hdf5::archive& ar) {
-          std::cout << "evaluating self energy measurement: lengendre, real space" << std::endl;
+          std::cout << "evaluating densities" << std::endl;
           double sign = results["Sign"].template mean<double>();
 
           int n_site = parms["model.sites"];
@@ -110,11 +198,17 @@ namespace alps {
           alps::hdf5::archive ar(output_file, "a");
 
           /*  Single-particle Green's function */
-          boost::multi_array<std::complex<double>,4> Sl, Sw;
-          evaluate_selfenergy_measurement_legendre<SOLVER_TYPE>(results, parms, Sl, Sw);
+          //boost::multi_array<std::complex<double>,4> Stau, Sl, Sw;
+          boost::multi_array<std::complex<double>,4> Stau, Sl_binning, Sw_binning;
+          //evaluate_selfenergy_measurement_legendre<SOLVER_TYPE>(results, parms, Sl, Sw);
+          evaluate_selfenergy_measurement_binning<SOLVER_TYPE>(results, parms, Stau, Sl_binning, Sw_binning);
           ar["Sign"] = results["Sign"].template mean<double>();
-          ar["/SigmaG_legendre"] = Sl;
-          ar["/SigmaG_omega"] = Sw;
+          //ar["/SigmaG_legendre"] = Sl;
+          //ar["/SigmaG_omega"] = Sw;
+          ar["/SigmaG_legendre"] = Sl_binning;
+          ar["/SigmaG_omega"] = Sw_binning;
+          ar["/SigmaG_tau"] = Stau;
+
 
           /* Density and density correlations */
           postprocess_densities<SOLVER_TYPE>(results, parms, ar);

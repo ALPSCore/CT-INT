@@ -266,6 +266,7 @@ namespace alps {
 
             void compute_Sl(const std::vector<double>& time_shifts, boost::multi_array<std::complex<double>, 4>& Sl );
             void compute_Sl_optimized(const std::vector<double>& time_shifts, boost::multi_array<std::complex<double>, 4>& Sl );
+            void compute_Stau(const std::vector<double>& time_shifts, boost::multi_array<std::complex<double>, 4>& Stau);
 
             void measure_densities();
 
