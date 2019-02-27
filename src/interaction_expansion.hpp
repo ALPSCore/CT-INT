@@ -222,7 +222,7 @@ namespace alps {
         class InteractionExpansion : public InteractionExpansionBase {
         public:
 
-            InteractionExpansion(parameters_type const &params, std::size_t seed_offset = 42);
+            InteractionExpansion(parameters_type const &params, std::size_t seed_offset);
 
             ~InteractionExpansion();
 

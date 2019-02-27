@@ -31,7 +31,7 @@ namespace alps {
           comm.barrier();
 
           std::cout << "Running simulation on rank " << comm.rank() << std::endl;
-          my_sim_type my_sim(par, comm);
+          my_sim_type my_sim(par, comm, 928374, par["SEED"].template as<int>());
           my_sim.run(alps::stop_callback(par["timelimit"].template as<std::size_t>()));
 
           // Collect the results from the simulation
