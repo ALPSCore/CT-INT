@@ -11,26 +11,16 @@ branches:
     - master
     - devel
 
-addons:
-  apt:
-    sources:
-      # Boost 1.58
-      - sourceline: ppa:kzemek/boost
-    packages:
-      - libboost1.58-dev
-      - openmpi-bin
-      - openmpi-common
-      - openmpi-doc
-      - libopenmpi-dev
-      - libhdf5-serial-dev
-    config:
-      retries: true
-
 install: true
 
 before_script:
   - export OMPI_CC=${CC}
   - export OMPI_CXX=${CXX}
+
+before_install:
+  - sudo add-apt-repository ppa:kzemek/boost -y
+  - sudo apt-get update -q
+  - sudo apt-get install libboost1.58-dev openmpi-bin openmpi-common openmpi-doc libopenmpi-dev libhdf5-serial-dev -y --allow-unauthenticated 
 
 script:
   # Stop on first error
