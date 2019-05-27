@@ -22,6 +22,7 @@ namespace alps {
     public:
       typedef Scalar type;
       typedef Eigen::Block<Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > block_type;
+      typedef Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> matrix_type;
 
       ResizableMatrix(int size1, int size2) :
         size1_(size1),
@@ -300,7 +301,10 @@ namespace alps {
         }
       }
 
-      inline Scalar trace() {
+      inline Scalar trace() const {
+        if (size1_ == 0 || !is_allocated()) {
+          return 0.0;
+        }
         assert(is_allocated());
         assert(size1_ == size2_);
         return block().trace();
@@ -397,8 +401,31 @@ namespace alps {
     ALPS_STRONG_INLINE
     void gemm(const alps::fastupdate::ResizableMatrix<Scalar> &a, const alps::fastupdate::ResizableMatrix<Scalar> &b,
               alps::fastupdate::ResizableMatrix<Scalar> &c) {
+      typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> eigen_matrix_t;
       c.destructive_resize(a.size1(), b.size2());
-      c.block() = a.block() * b.block();
+      /*
+      if (a.size2() != b.size1()) {
+        throw std::runtime_error("size mismatch");
+      }
+      std::cout << "gemm " << a.size1() << " " << a.size2() << " " << b.size2() << std::endl;
+      c.block().setZero();
+      for (auto i=0; i<a.size1(); ++i) {
+        for (auto j=0; j<b.size2(); ++j) {
+          for (auto k=0; k<a.size2(); ++k) {
+            c(i, j) += a(i, k) * b(k, j);
+          }
+        }
+      }
+      */
+      eigen_matrix_t a_tmp = a.block();
+      eigen_matrix_t b_tmp = b.block();
+      eigen_matrix_t tmp = a_tmp * b_tmp;
+      c.block() = tmp;
+      
+      //auto a_block = a.block();
+      //auto b_block = b.block();
+      //Eigen::Map<eigen_matrix_t> a_map(&a(0,0), a.size1(), a.size2(), a.
+      //c.block() = a.block() * b.block();
     }
 
     template<typename Scalar>

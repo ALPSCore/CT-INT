@@ -36,7 +36,12 @@ namespace alps {
                 matrix_t C_invA(M,N,0.0), C_invA_B(M,M,0.0);
                 gemm(C, invA, C_invA);
                 gemm(C_invA, B, C_invA_B);
-                return (D-C_invA_B).safe_determinant();
+                auto tmp = D-C_invA_B;
+                auto tmp2 = tmp.safe_determinant();
+                //std::cout << " compute_det_ratio_up A: " << invA.trace() << " " << C_invA.trace() << " " << C_invA_B.trace() << " " << tmp.trace() << " " << tmp2 << std::endl;
+                
+                //return (D-C_invA_B).safe_determinant();
+                return tmp2;
             }
         }
 
@@ -127,15 +132,18 @@ namespace alps {
                 invBigMat = inverse(D);
                 return D.safe_determinant();
             } else {
-                static matrix_t H, C_invA, C_invA_B, invA_B, F, invA_copy;
+                static matrix_t H, C_invA, C_invA_B, invA_B, F;
                 H.destructive_resize(M, M);
                 C_invA.destructive_resize(M, N);
                 C_invA_B.destructive_resize(M, M);
                 invA_B.destructive_resize(N, M);
-                invA_copy.destructive_resize(N,N);
+                //invA_copy.destructive_resize(N,N);
                 F.destructive_resize(N,M);
 
-                invA_copy = invA;
+                using eigen_matrix_t = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+
+                //invA_copy = invA;
+                eigen_matrix_t invA_copy2 = invA.block();
 
                 //compute H
                 gemm(C, invA, C_invA);
@@ -150,10 +158,15 @@ namespace alps {
                 invBigMat.destructive_resize(N + M, N + M);//this may destroy the contents of invA as well
 
                 //compute G
-                invBigMat.block(N, 0, M, N) = - H.block() * C_invA.block();
+                eigen_matrix_t m_H_C_invA = - H.block() * C_invA.block();
+                invBigMat.block(N, 0, M, N) = m_H_C_invA;
 
                 //compute E
-                invBigMat.block(0, 0, N, N) = invA_copy.block() - invA_B.block() * invBigMat.block(N, 0, M, N);
+                //auto tmp2 = invA_copy.block() - invA_B.block() * invBigMat.block(N, 0, M, N);
+                eigen_matrix_t invA_B_2 = invA_B.block();
+                eigen_matrix_t tmp3 = invA_B_2 * m_H_C_invA;
+                eigen_matrix_t tmp4 = invA_copy2 - tmp3;
+                invBigMat.block(0, 0, N, N) = tmp4;
 
                 copy_block(H, 0, 0, invBigMat, N, N, M, M);
                 copy_block(F, 0, 0, invBigMat, 0, N, N, M);

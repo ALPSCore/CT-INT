@@ -6,7 +6,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
-project(ALPSCoreCTINT CXX)
+project(ALPSCoreCTINT C CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_SOURCE_DIR})
 
@@ -69,10 +69,10 @@ endif()
 #ALPSCore disable debug for gf library
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DBOOST_DISABLE_ASSERTS -DNDEBUG")
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-    message( STATUS "Using Intel Compiler. Adding -fp-model strict to prevent aggressive optimization.")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fp-model strict")
-endif()
+#if(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+    #message( STATUS "Using Intel Compiler. Adding -fp-model strict to prevent aggressive optimization.")
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fp-model strict")
+#endif()
 
 #include directories
 set(CTINT_LIBRARY_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR} ${MPI_CXX_INCLUDE_PATH} ${MPI_C_INCLUDE_PATH} ${CMAKE_SOURCE_DIR}/include) #rest taken care of by libraries dependencies
