@@ -71,8 +71,8 @@ namespace alps {
               alpha_[pos] = new_val;
             }
             void alpha_push_back(T new_elem) {alpha_.push_back(new_elem);}
-            std::vector<std::pair<vertex_t,size_t> > &vertex_info(){ return vertex_info_;}
-            const std::vector<std::pair<vertex_t,size_t> > &vertex_info() const{ return vertex_info_;}
+            vertex_info_type &vertex_info(){ return vertex_info_;}
+            const vertex_info_type& vertex_info() const{ return vertex_info_;}
 
             int find_row_col(my_uint64 v_uid, int i_rank) const {
               for(std::size_t i=0; i<creators_.size(); ++i) {
