@@ -552,7 +552,11 @@ namespace alps {
               for (unsigned int i = 0; i < n_site; ++i) {
                 for (unsigned int flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
                   for (unsigned int j = 0; j < n_site; ++j) {
-                    ninj[pos] = (dens[flavor1][i]) * (dens[flavor2][j]);
+                    if (flavor1 == flavor2 && i == j) {
+                        ninj[pos] = dens[flavor1][i];
+		    } else {
+                        ninj[pos] = (dens[flavor1][i]) * (dens[flavor2][j]);
+		    }
                     ++pos;
                   }
                 }
