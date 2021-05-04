@@ -49,7 +49,8 @@ namespace alps {
           for (int flavor = 0; flavor < n_flavors; ++flavor) {
             measurements << SimpleRealVectorObservable("densities_" + boost::lexical_cast<std::string>(flavor));
           }
-          measurements << SimpleRealVectorObservable("n_i n_j");
+          measurements << SimpleRealVectorObservable("n_i_n_j_real");
+          measurements << SimpleRealVectorObservable("n_i_n_j_imag");
 
           for (unsigned int flavor = 0; flavor < n_flavors; ++flavor) {
             for (unsigned int i = 0; i < n_site; ++i) {
@@ -500,6 +501,8 @@ namespace alps {
             dens[z].resize(n_site);
             memset(&(dens[z][0]), 0., sizeof(double) * (n_site));
           }
+          boost::multi_array<std::complex<double>, 3> dense_mat(boost::extents[n_flavors][n_site][n_site]);
+          std::fill(dense_mat.origin(), dense_mat.origin() + dense_mat.num_elements(), 0.0);
           double tau = beta * random();
           double sign_real = mycast<double>(sign);
           for (unsigned int z = 0; z < n_flavors; ++z) {
@@ -508,20 +511,33 @@ namespace alps {
             const std::vector<creator> &creators = submatrix_update->invA()[z].creators();
 
             using eigen_vector_t = Eigen::Matrix<M_TYPE, Eigen::Dynamic, 1>;
-            eigen_vector_t g0_tauj(Nv), M_g0_tauj(Nv), g0_taui(Nv);
+            eigen_vector_t g0_tauq(Nv), M_g0_tauq(Nv), g0_taup(Nv);
 
-            for (unsigned int s = 0; s < n_site; ++s) {
-              for (unsigned int j = 0; j < Nv; ++j)
-                g0_tauj[j] = mycast<M_TYPE>(g0_intpl(annihilators[j].t().time() - tau, z, annihilators[j].s(),
+            for (auto s = 0; s < n_site; ++s) {
+              for (auto q = 0; q < Nv; ++q) {
+                g0_tauq[q] = mycast<M_TYPE>(g0_intpl(annihilators[q].t().time() - tau, z, annihilators[q].s(),
                                                      s));//CHECK THE TREATMENT OF EQUAL-TIME Green's function
-              for (unsigned int i = 0; i < Nv; ++i)
-                g0_taui[i] = mycast<M_TYPE>(g0_intpl(tau - creators[i].t().time(), z, s, creators[i].s()));
-              if (M_flavors[z].size2() > 0) {
-                M_g0_tauj = M_flavors[z].block() * g0_tauj;
               }
-              dens[z][s] += mycast<double>(g0_intpl(-beta * 1E-10, z, s, s));//tau=-0
-              for (unsigned int j = 0; j < Nv; ++j) {
-                dens[z][s] -= mycast<double>(g0_taui[j] * M_g0_tauj[j]);
+              for (auto s2 = 0; s2 < n_site; ++s2) {
+                for (auto p = 0; p < Nv; ++p) {
+                  g0_taup[p] = mycast<M_TYPE>(g0_intpl(tau - creators[p].t().time(), z, s2, creators[p].s()));
+                }
+                if (M_flavors[z].size2() > 0) {
+                  M_g0_tauq = M_flavors[z].block() * g0_tauq;
+                }
+
+                if (s == s2) {
+                  dens[z][s] += mycast<double>(g0_intpl(-beta * 1E-10, z, s, s));//tau=-0
+                  for (auto q = 0; q < Nv; ++q) {
+                    dens[z][s] -= mycast<double>(g0_taup[q] * M_g0_tauq[q]);
+                  }
+                }
+
+                dense_mat[z][s][s2] += mycast<double>(g0_intpl(-beta * 1E-10, z, s2, s));//tau=-0
+                for (auto q = 0; q < Nv; ++q) {
+                  dense_mat[z][s][s2] -= mycast<double>(g0_taup[q] * M_g0_tauq[q]);
+                }
+
               }
             }
           }
@@ -545,24 +561,32 @@ namespace alps {
           measurements["densities"] << sign_real * densities;
 
           {
-            std::vector<double> ninj(n_site *n_site
-            *n_flavors * n_flavors);
+            std::vector<double> ninj_real(n_site *n_site *n_flavors * n_flavors);
+            std::vector<double> ninj_imag(n_site *n_site *n_flavors * n_flavors);
             int pos = 0;
             for (unsigned int flavor1 = 0; flavor1 < n_flavors; ++flavor1) {
               for (unsigned int i = 0; i < n_site; ++i) {
                 for (unsigned int flavor2 = 0; flavor2 < n_flavors; ++flavor2) {
                   for (unsigned int j = 0; j < n_site; ++j) {
-                    if (flavor1 == flavor2 && i == j) {
-                        ninj[pos] = dens[flavor1][i];
-		    } else {
-                        ninj[pos] = (dens[flavor1][i]) * (dens[flavor2][j]);
-		    }
+                    std::complex<double> ninj_;
+                    if (flavor1 == flavor2) {
+                      if (i==j) {
+                        ninj_ = dens[flavor1][i];
+                      } else {
+                        ninj_ = (dens[flavor1][i]) * (dens[flavor1][j]) - dense_mat[flavor1][i][j] * dense_mat[flavor1][j][i];
+                      }
+                    } else {
+                      ninj_ = (dens[flavor1][i]) * (dens[flavor2][j]);
+		                }
+                    ninj_real[pos] = std::real(ninj_);
+                    ninj_imag[pos] = std::imag(ninj_);
                     ++pos;
                   }
                 }
               }
             }
-            measurements["n_i n_j"] << sign_real * ninj;
+            measurements["n_i_n_j_real"] << sign_real * ninj_real;
+            measurements["n_i_n_j_imag"] << sign_real * ninj_imag;
           }
         }
     }

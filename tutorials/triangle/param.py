@@ -7,7 +7,7 @@ import h5py
 #from h5dump import *
 def create_dataset_from_dict(f, path, dict):
     dset = []
-    for k,v in dict.items():
+    for k,v in list(dict.items()):
         #print k, v, type(v)
         if isinstance(v,int):
             dset.append(f.create_dataset(path+'/'+k, data=v, dtype='i4'))
@@ -58,8 +58,8 @@ parms = (
 #input_file = pyalps.writeParameterFile('input', parms)
 #input_file = 
 with open('input.ini', 'w') as f:
-    for key,value in parms.items():
-        print>>f, key, ' = ', value
+    for key,value in list(parms.items()):
+        print(key, ' = ', value, file=f)
 
 #pyalps.writeParameterFile('input', parms)
 #print input_file

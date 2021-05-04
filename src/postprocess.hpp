@@ -172,9 +172,22 @@ namespace alps {
           std::transform(densities.begin(), densities.end(), densities.begin(), divide_by_sign);
           ar["/densities"] = densities;
 
-          std::vector<double> ni_nj_flatten = results["n_i n_j"].template mean<std::vector<double> >();
-          boost::multi_array<double,4> ni_nj(boost::extents[n_flavors][n_site][n_flavors][n_site]);
-          std::transform(ni_nj_flatten.begin(), ni_nj_flatten.end(), ni_nj.origin(), divide_by_sign);
+          std::vector<double> ni_nj_real_flatten = results["n_i_n_j_real"].template mean<std::vector<double> >();
+          std::vector<double> ni_nj_imag_flatten = results["n_i_n_j_imag"].template mean<std::vector<double> >();
+          std::vector<std::complex<double>> ni_nj_flatten (n_site*n_site*n_flavors*n_flavors);
+          boost::multi_array<std::complex<double>,4> ni_nj(boost::extents[n_flavors][n_site][n_flavors][n_site]);
+          auto idx = 0;
+          for (auto f1=0; f1<n_flavors; ++f1) {
+            for (auto s1=0; s1<n_site; ++s1) {
+              for (auto f2=0; f2<n_flavors; ++f2) {
+                for (auto s2=0; s2<n_site; ++s2) {
+                  ni_nj[f1][s1][f2][s2] = std::complex<double>(ni_nj_real_flatten[idx], ni_nj_imag_flatten[idx])/sign;
+                  ++ idx;
+                }
+              }
+            }
+          }
+          //std::transform(ni_nj_flatten.begin(), ni_nj_flatten.end(), ni_nj.origin(), divide_by_sign);
           ar["/ni_nj"] = ni_nj;
         }
 

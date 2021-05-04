@@ -29,45 +29,45 @@ for spin in range(2):
 
 Sigma = numpy.zeros_like(Giw)
 for spin in range(2):
-    for iw in xrange(niw):
+    for iw in range(niw):
         #Sigma[spin, iw, :, :] = - numpy.dot(SigmaG[iw, :, :, spin], numpy.linalg.inv(Giw[spin, iw, :, :]))
         Sigma[spin, iw, :, :] = numpy.linalg.inv(G0_iwn[iw, :, spin, :, spin]) -  numpy.linalg.inv(Giw[spin, iw, :, :])
 
 with open("G_omega.txt", "w") as f:
-    for iw in xrange(niw):
-        print>>f, iw, Giw[up,iw,0,0].imag, Giw[down,iw,0,0].imag
+    for iw in range(niw):
+        print(iw, Giw[up,iw,0,0].imag, Giw[down,iw,0,0].imag, file=f)
     f.close()
 
 with open("G_omega_all.txt", "w") as f:
-    for spin in xrange(2):
-        for i in xrange(3):
-            for j in xrange(3):
-                for iw in xrange(niw):
-                    print>>f, iw, Giw[spin,iw,i,j].real, Giw[spin,iw,i,j].imag, G0_iwn[iw,i,spin,j,spin].real, G0_iwn[iw,i,spin,j,spin].imag
-                print >>f, ""
-                print >>f, ""
+    for spin in range(2):
+        for i in range(3):
+            for j in range(3):
+                for iw in range(niw):
+                    print(iw, Giw[spin,iw,i,j].real, Giw[spin,iw,i,j].imag, G0_iwn[iw,i,spin,j,spin].real, G0_iwn[iw,i,spin,j,spin].imag, file=f)
+                print("", file=f)
+                print("", file=f)
 
 with open("Sigma_omega.txt", "w") as f:
-    for spin in xrange(2):
-        for i in xrange(3):
-            for j in xrange(3):
-                for iw in xrange(niw):
-                    print>>f, iw, Sigma[spin,iw,i,j].real, Sigma[spin,iw,i,j].imag
-                print >>f, ""
-                print >>f, ""
+    for spin in range(2):
+        for i in range(3):
+            for j in range(3):
+                for iw in range(niw):
+                    print(iw, Sigma[spin,iw,i,j].real, Sigma[spin,iw,i,j].imag, file=f)
+                print("", file=f)
+                print("", file=f)
 
 with open("SigmaG_omega.txt", "w") as f:
-    for i in xrange(3):
-        for j in xrange(3):
-            print>>f, "#", i, j
-            for iw in xrange(niw):
-                print>>f, iw, SigmaG[iw,i,j, 0].real, SigmaG[iw,i,j, 0].imag
-            print>>f, ""
+    for i in range(3):
+        for j in range(3):
+            print("#", i, j, file=f)
+            for iw in range(niw):
+                print(iw, SigmaG[iw,i,j, 0].real, SigmaG[iw,i,j, 0].imag, file=f)
+            print("", file=f)
 
 with open("SigmaG_l.txt", "w") as f:
-    for i in xrange(3):
-        for j in xrange(3):
-            print>>f, "#", i, j
-            for l in xrange(nl):
-                print>>f, l, SigmaG_l[l,i,j, 0].real, SigmaG_l[l,i,j, 0].imag, SigmaG_l[l,i,j, 1].real, SigmaG_l[l,i,j, 1].imag
-            print>>f, ""
+    for i in range(3):
+        for j in range(3):
+            print("#", i, j, file=f)
+            for l in range(nl):
+                print(l, SigmaG_l[l,i,j, 0].real, SigmaG_l[l,i,j, 0].imag, SigmaG_l[l,i,j, 1].real, SigmaG_l[l,i,j, 1].imag, file=f)
+            print("", file=f)
